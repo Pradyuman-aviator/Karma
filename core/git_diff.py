@@ -13,7 +13,8 @@ def get_changed_files(base: str = "main", head: str = "HEAD") -> list[str]:
             text=True,
             check=True,
         )
-        return [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        files = [line.strip() for line in result.stdout.splitlines() if line.strip()]
+        return [f for f in files if "__pycache__" not in f and not f.endswith(".pyc")]
     except subprocess.CalledProcessError as e:
         print(f"Git command failed: {e.stderr}")
         return []
@@ -36,4 +37,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-"# test" 
+# test 

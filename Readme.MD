@@ -32,7 +32,7 @@ Karma is being developed across four distinct phases:
 
 | Phase | Module / Target | Description | Status |
 | :---: | :--- | :--- | :---: |
-| **Phase 1** | **Git Diff & AST Analysis** | Analyze git diffs & build static code dependency graphs to select affected tests. | 🚧 *In Progress* |
+| **Phase 1** | **Git Diff & AST Analysis** | Analyze git diffs & build static code dependency graphs to select affected tests. | ✅ *Completed* |
 | **Phase 2** | **GitHub Actions Integration** | Seamless CI runner plugins & GitHub Workflow integration. | 📅 *Planned* |
 | **Phase 3** | **ML Prediction Layer** | AI/ML models to score test failure probabilities and prioritize high-risk tests. | 📅 *Planned* |
 | **Phase 4** | **Flaky Test Registry** | Quarantine flaky tests, track failure reliability, and avoid false-positive pipeline breaks. | 📅 *Planned* |
@@ -117,4 +117,3 @@ Contributions are welcome! Feel free to open issues or submit pull requests to h
 
 Distributed under the [MIT License](LICENSE).
 
-"# test" 
