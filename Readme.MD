@@ -36,6 +36,7 @@ Karma is being developed across four distinct phases:
 | **Phase 2** | **GitHub Actions Integration** | Seamless CI runner plugins & GitHub Workflow integration. | 📅 *Planned* |
 | **Phase 3** | **ML Prediction Layer** | AI/ML models to score test failure probabilities and prioritize high-risk tests. | 📅 *Planned* |
 | **Phase 4** | **Flaky Test Registry** | Quarantine flaky tests, track failure reliability, and avoid false-positive pipeline breaks. | 📅 *Planned* |
+| **Phase 5** | **LLM AI Copilot & Auto-Fix** | LLM-driven semantic test mapping, automated test generation, and failure diagnosis. | 📅 *Planned* |
 
 ---
 
