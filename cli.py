@@ -22,10 +22,31 @@ def main():
     # Step 4: Tests select
     affected_tests = get_affected_tests(changed_files=changed_files, dep_map=dep_map)
 
-    # Step 5: Print space-separated output for CI/CD runners
-    if affected_tests:
-        print(" ".join(affected_tests))
+    # Step 5: Run affected tests & report results
+    from core.reporter import Reporter, TestResult
+    import subprocess
 
-## uhmmm
+    reporter = Reporter()
+
+    for test in affected_tests:
+        result = subprocess.run(
+            ["python", "-m", "pytest", test, "-q"],
+            capture_output=True,
+            text=True
+        )
+        passed = result.returncode == 0
+        reporter.add_result(TestResult(
+            name=test,
+            passed=passed,
+            error_message=result.stdout if not passed else ""
+        ))
+
+    reporter.print_summary()
+
+    if args.ci:
+        reporter.write_github_summary()
+
+    reporter.exit()
+
 if __name__ == "__main__":
     main()
