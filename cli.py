@@ -10,6 +10,7 @@ def main():
     parser.add_argument("--base", default="main", help="Base git commit/branch (default: main)")
     parser.add_argument("--head", default="HEAD", help="Head git commit/branch (default: HEAD)")
     parser.add_argument("--repo", default=".", help="Repository root directory (default: .)")
+    parser.add_argument("--ci", action="store_true", help="Enable CI mode (GitHub summary, no color)")
     args = parser.parse_args()
 
     # Step 2: Changed files
