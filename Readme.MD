@@ -73,10 +73,13 @@ Karma/
 ├── tests/
 │   ├── test_git_diff_parser.py
 │   └── test_selector.py
-├── action.yml               # GitHub Action manifest                       [Phase 2]
+├── action.yml               # GitHub Action manifest (Docker)              [Phase 2]
 ├── Dockerfile               # Container image for CI runner                [Phase 2]
+├── entrypoint.sh            # Docker Action entrypoint                     [Phase 2]
 ├── cli.py                   # Command-line interface entrypoint
 ├── requirements.txt         # Package dependencies
+├── .github/workflows/
+│   └── karma-ci.yml         # Example / dogfood CI workflow                [Phase 2]
 └── Readme.MD                # Project documentation
 ```
 
@@ -110,6 +113,76 @@ Or invoke via Python CLI:
 ```bash
 python cli.py run
 ```
+
+Select affected tests without executing them:
+
+```bash
+python cli.py select --base main
+```
+
+---
+
+## CI Integration
+
+Karma ships as a **Docker-based GitHub Action**. On every pull request or push, it diffs against the base branch, selects affected tests, runs them with pytest, and fails the job if any selected test fails.
+
+### Reference workflow
+
+See [`.github/workflows/karma-ci.yml`](.github/workflows/karma-ci.yml) for the dogfood workflow used in this repository.
+
+### Use in any Python workflow
+
+```yaml
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # required for accurate base...HEAD diffs
+
+      - name: Run Karma
+        id: karma
+        uses: Pradyuman-aviator/Karma@main   # or pin to a tag/SHA
+        with:
+          base-branch: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
+
+      - name: Affected tests
+        run: echo "${{ steps.karma.outputs.test_files }}"
+```
+
+For a local checkout of this repo (dogfooding), use `uses: ./` instead of the remote ref.
+
+### Inputs
+
+| Input | Default | Description |
+| --- | --- | --- |
+| `base-branch` | `main` | Git ref to diff against (prefer `origin/<branch>` in CI) |
+
+### Outputs
+
+| Output | Description |
+| --- | --- |
+| `test_files` | Space-separated list of affected test files |
+| `tests-run` | Number of affected test files executed |
+
+### Exit behavior
+
+- **0** — all affected tests passed, or none were affected
+- **1** — one or more affected tests failed
+
+### Notes
+
+- Ensure `actions/checkout` uses `fetch-depth: 0` (or otherwise fetch the base ref) so `git diff` can see the merge base.
+- Consumer application dependencies are not installed by the Action image. Install your project deps in a prior step if selected tests import your application packages.
+- Dependency graphs are cached in `.karma_cache.json` in the workspace between rebuilds when source hashes match.
 
 ---
 

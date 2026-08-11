@@ -10,3 +10,4 @@ ENV/
 env/
 .idea/
 .vscode/
+.karma_cache.json

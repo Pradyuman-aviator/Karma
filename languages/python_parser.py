@@ -48,7 +48,10 @@ def extract_internal_imports(
     Step 4 — Resolve import module to actual relative file path in repo ("from core.git_diff ..." -> "core/git_diff.py")
     Step 5 — Keep ONLY internal repo files, ignore external libraries (subprocess, pytest, etc.)
     """
+    root = Path(root_dir).resolve()
     path = Path(file_path)
+    if not path.is_absolute():
+        path = root / path
     if not path.is_file():
         return set()
 
@@ -60,7 +63,7 @@ def extract_internal_imports(
 
     # Relative path of current file normalized with forward slashes
     try:
-        rel_file = path.relative_to(Path(root_dir).resolve()).as_posix()
+        rel_file = path.relative_to(root).as_posix()
     except ValueError:
         rel_file = path.as_posix().replace("\\", "/")
 
