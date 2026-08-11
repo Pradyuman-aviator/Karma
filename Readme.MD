@@ -5,7 +5,7 @@
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
 [![License](https://img.shields.io/badge/license-MIT-green.svg)]()
-[![Development Phase](https://img.shields.io/badge/Phase-2--In%20Development-orange.svg)]()
+[![Development Phase](https://img.shields.io/badge/Phase-3--Planned-blue.svg)]()
 
 ---
 
@@ -34,7 +34,7 @@ Karma is being developed across five distinct phases:
 | Phase | Module / Target | Description | Status |
 | :---: | :--- | :--- | :---: |
 | **Phase 1** | **Git Diff & AST Analysis** | Analyze git diffs & build static code dependency graphs to select affected tests. | ✅ *Completed* |
-| **Phase 2** | **GitHub Actions Integration** | Seamless CI runner plugins & GitHub Workflow integration. | 🚧 *In Progress* |
+| **Phase 2** | **GitHub Actions Integration** | Seamless CI runner plugins & GitHub Workflow integration. | ✅ *Completed* |
 | **Phase 3** | **ML Prediction Layer** | AI/ML models to score test failure probabilities and prioritize high-risk tests. | 📅 *Planned* |
 | **Phase 4** | **Flaky Test Registry** | Quarantine flaky tests, track failure reliability, and avoid false-positive pipeline breaks. | 📅 *Planned* |
 | **Phase 5** | **LLM AI Copilot & Auto-Fix** | LLM-driven semantic test mapping, automated test generation, and failure diagnosis. | 📅 *Planned* |
@@ -122,7 +122,7 @@ python cli.py select --base main
 
 ---
 
-## CI Integration
+## 🔗 CI Integration
 
 Karma ships as a **Docker-based GitHub Action**. On every pull request or push, it diffs against the base branch, selects affected tests, runs them with pytest, and fails the job if any selected test fails.
 
