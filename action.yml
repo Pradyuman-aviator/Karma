@@ -1,0 +1,40 @@
+name: Karma Smart Test Selector
+description: Runs only the tests affected by your code changes using AST analysis
+
+inputs:
+  base-branch:
+    description: The base branch to diff against
+    required: false
+    default: main
+
+  python-version:
+    description: Python version to use
+    required: false
+    default: "3.10"
+
+outputs:
+  tests-run:
+    description: Number of tests that were executed
+
+runs:
+  using: composite
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+        cache: pip
+
+    - name: Install Karma dependencies
+      run: pip install -r requirements.txt
+      shell: bash
+      working-directory: ${{ github.action_path }}
+
+    - name: Run Karma smart test selection
+      run: python cli.py run --base ${{ inputs.base-branch }} --ci
+      shell: bash
+      working-directory: ${{ github.action_path }}
+
+branding:
+  icon: zap
+  color: orange
