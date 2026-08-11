@@ -1,7 +1,12 @@
 import subprocess
+from typing import Optional
 
 
-def get_changed_files(base: str = "main", head: str = "HEAD") -> list[str]:
+def get_changed_files(
+    base: str = "main",
+    head: str = "HEAD",
+    repo: Optional[str] = None,
+) -> list[str]:
     """
     Input:  base = "main", head = "HEAD"
     Output: ["core/git_diff.py", "languages/python_parser.py"]
@@ -9,6 +14,7 @@ def get_changed_files(base: str = "main", head: str = "HEAD") -> list[str]:
     try:
         result = subprocess.run(
             ["git", "diff", "--name-only", base, head],
+            cwd=repo,
             capture_output=True,
             text=True,
             check=True,
@@ -26,15 +32,9 @@ def get_changed_files(base: str = "main", head: str = "HEAD") -> list[str]:
         return []
 
 
-
-## checking
-
-
-
 def main():
     print(get_changed_files())
 
 
 if __name__ == "__main__":
     main()
-# test 
