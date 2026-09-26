@@ -29,6 +29,30 @@ should have run, or made CI pass without running any tests.
 - The Docker-based action could not import a project's dependencies. It is now a
   composite action running in the workflow's own Python environment.
 - Python 3.9 was not actually supported despite the documentation claiming 3.8+.
+- Found by an adversarial review and fixed, each with a regression test. Each of these
+  could skip a test that would fail:
+  - a changed test-package `__init__.py`
+  - helpers imported via a conftest directory on `sys.path`
+  - `--doctest-modules`
+  - pytest 9 `pytest.toml` / `[tool.pytest]` config and pytest's config precedence
+  - Windows' case-insensitive test names
+  - submodule bumps
+  - pytest's `pythonpath`
+  - `-p` plugins
+  - lossy parsing of files `ast` cannot parse
+  - `exclude` dropping edges
+  - gitignored generated modules
+  - `from pkg import *`
+  - package-vs-module precedence
+  - `--head` other than the checked-out commit
+  - `testpaths` / `norecursedirs`
+- `karma run --all` ran nothing when Karma recognised no test files; full runs now
+  always go to pytest.
+- Crashes on deeply nested generated code (including a hard interpreter crash on Python
+  3.9/3.10), on an annotation-only `pytest_plugins`, and on non-ASCII output to a
+  Windows pipe.
+- A user's own `--junitxml` was silently replaced.
+- Action: `base-branch: main` failed; `args`/`pytest-args` lost quoting and extra lines.
 
 ### Added
 - `conftest.py` awareness, full-suite triggers for dependency and configuration files,

@@ -130,13 +130,20 @@ graph LR
    - pytest's sibling imports inside test directories
    - `importlib.import_module("…")` and `pytest_plugins`
    - files with syntax newer than your interpreter, via a fallback scan
-3. **What to run.** A breadth-first search from each changed file through reverse dependencies. It applies pytest's own rule that a `conftest.py` affects every test beneath it.
+3. **What to run.** A breadth-first search from each changed file through reverse dependencies. It also follows pytest's own rules:
+   - a `conftest.py` or test-package `__init__.py` affects every test beneath it
+   - plugins loaded with `-p` affect every test
+   - `--doctest-modules` and `--doctest-glob` make modules and text files into tests
+   - `testpaths` and `norecursedirs` bound what counts as a test
+
+   Karma reads these from pytest's own configuration, found the way pytest finds it: `pytest.toml`, `pytest.ini`, `pyproject.toml`, `tox.ini`, or `setup.cfg`, plus `addopts` and `PYTEST_ADDOPTS`.
 
 ### Staying safe
 
 A test selector must never skip a test that would fail. Karma leans toward running more:
 
-- Changes to `pyproject.toml`, `setup.py`/`setup.cfg`, `tox.ini`, `pytest.ini`, `requirements*.txt`, `constraints*.txt`, or lock files **run the whole suite**.
+- Changes to packaging or pytest configuration (`pyproject.toml`, `setup.py`/`setup.cfg`, `tox.ini`, `pytest.ini`/`pytest.toml`), dependency files (`requirements*.txt`/`.in`, `requirements/*.txt`, `constraints*.txt`, lock files, `environment.yml`, `.python-version`), or a **git submodule** **run the whole suite**.
+- A full run always goes to pytest's own discovery, so it can never "pass" with zero tests because Karma didn't recognise them.
 - If git can't determine the changes (unknown ref, missing history), Karma **fails loudly** (exit 2) instead of passing with zero tests. `--on-git-error run-all` falls back to the full suite instead.
 - Changed files that no test depends on are listed, so nothing is dropped silently.
 
@@ -177,7 +184,7 @@ Optional, in `pyproject.toml`:
 [tool.karma]
 test-patterns = ["test_*.py", "*_test.py"]  # default: pytest's python_files, else these
 source-roots = [".", "src"]                  # where your top-level packages live
-exclude = ["docs/*", "migrations/*"]         # never analysed
+exclude = ["docs/*", "migrations/*"]         # not parsed (imports into them still count)
 extend-run-all-on = ["Dockerfile"]           # add to the full-suite triggers (run-all-on replaces them)
 pytest-args = ["-p", "no:cacheprovider"]     # always passed to pytest
 

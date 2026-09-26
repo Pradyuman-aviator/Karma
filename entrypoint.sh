@@ -43,10 +43,13 @@ has_commit() { git rev-parse --verify --quiet "$1^{commit}" >/dev/null 2>&1; }
 # rather than failing (or, worse, silently selecting nothing).
 if [[ -n "$BASE" ]] && ! has_commit "$BASE"; then
   echo "::group::Karma: fetching base ref $BASE"
+  branch="${BASE#origin/}"
   if [[ "$BASE" == origin/* ]]; then
-    git fetch --no-tags origin "+refs/heads/${BASE#origin/}:refs/remotes/${BASE}" || true
+    git fetch --no-tags origin "+refs/heads/${branch}:refs/remotes/origin/${branch}" || true
+  elif git fetch --no-tags origin "+refs/heads/${branch}:refs/remotes/origin/${branch}"; then
+    BASE="origin/${branch}" # a bare branch name such as `main` only exists on the remote
   else
-    git fetch --no-tags origin "$BASE" || true
+    git fetch --no-tags origin "$BASE" || true # a commit SHA
   fi
   echo "::endgroup::"
 fi
@@ -59,8 +62,21 @@ if [[ -n "$BASE" ]] && [[ "$(git rev-parse --is-shallow-repository 2>/dev/null)"
 fi
 
 # --- run -----------------------------------------------------------------------------
-read -r -a EXTRA_ARGS <<<"${INPUT_ARGS:-}"
-read -r -a PYTEST_ARGS <<<"${INPUT_PYTEST_ARGS:-}"
+# Split inputs like a shell would (quotes respected, multi-line YAML values allowed).
+# Python's shlex does it portably; bash 3.2 on macOS has no `readarray -d`.
+split_words() {
+  "$PYTHON" -c 'import shlex, sys; sys.stdout.write("".join(w + "\0" for w in shlex.split(sys.argv[1])))' "$1"
+}
+for input_name in INPUT_ARGS INPUT_PYTEST_ARGS; do
+  if ! "$PYTHON" -c 'import shlex, sys; shlex.split(sys.argv[1])' "${!input_name:-}" 2>/dev/null; then
+    echo "::error title=Karma::cannot parse the ${input_name#INPUT_} input (unbalanced quotes?)"
+    exit 2
+  fi
+done
+EXTRA_ARGS=()
+while IFS= read -r -d '' word; do EXTRA_ARGS+=("$word"); done < <(split_words "${INPUT_ARGS:-}")
+PYTEST_ARGS=()
+while IFS= read -r -d '' word; do PYTEST_ARGS+=("$word"); done < <(split_words "${INPUT_PYTEST_ARGS:-}")
 
 cmd=("$PYTHON" "$ACTION_PATH/cli.py" "${INPUT_COMMAND:-run}" --ci --head HEAD
   --on-git-error "${INPUT_ON_GIT_ERROR:-fail}")

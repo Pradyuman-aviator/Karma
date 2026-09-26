@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import json
 import logging
 import sys
@@ -96,15 +97,22 @@ def _changes(args: argparse.Namespace, root: Path) -> tuple[ChangeSet, str | Non
 
 def _plan(args: argparse.Namespace) -> Plan:
     root = _resolve_root(args.repo)
-    config = load_config(root)
+    # `karma run -- -p plugin --doctest-modules` changes what pytest will collect.
+    config = load_config(root).with_pytest_args(args.pytest_args)
     changes, base, everything = _changes(args, root)
     graph = _build_graph(root, config, args, changes.deleted)
     if everything:
-        tests = tuple(sorted(f for f in graph.files if is_test_file(f, config.test_patterns)))
+        tests = tuple(sorted(f for f in graph.files if is_test_file(f, config)))
         reason = "--all was requested" if args.all else "changes could not be determined"
         selection = Selection(tests=tests, total_tests=len(tests), run_all_reason=reason)
     else:
         selection = select_tests(changes, graph, config)
+    if not selection.total_tests:
+        log.warning(
+            "found no test files (test patterns: %s); if pytest finds tests here, set "
+            "[tool.karma] test-patterns",
+            " ".join(config.test_patterns),
+        )
     log.info("%s", describe_selection(selection))
     return Plan(root, config, selection, base)
 
@@ -144,7 +152,9 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.explain:
         sys.stderr.write(format_explanation(selection, sys.stderr))
 
-    if not selection.tests:
+    # A full run always goes to pytest, even if Karma recognised no test files itself:
+    # pytest's discovery is the authority, and an empty "full run" must never pass.
+    if not selection.tests and not selection.run_all:
         log.info("no affected tests; nothing to run")
         if args.ci:
             _github_outputs(selection, tests_run=0)
@@ -160,6 +170,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         python=args.python,
         args=pytest_args,
         known_tests=selection.tests,
+        report=plan.config.junitxml,
     )
 
     print_run_summary(result)
@@ -290,7 +301,17 @@ def _configure_logging(verbose: bool, quiet: bool) -> None:
     logger.setLevel(logging.DEBUG if verbose else logging.WARNING if quiet else logging.INFO)
 
 
+def _safe_streams() -> None:
+    """Never crash on output: a non-ASCII path piped on Windows uses cp1252 (strict)."""
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            with contextlib.suppress(ValueError, OSError):
+                reconfigure(errors="backslashreplace")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
+    _safe_streams()
     arguments = list(sys.argv[1:] if argv is None else argv)
     pytest_args: list[str] = []
     if "--" in arguments:

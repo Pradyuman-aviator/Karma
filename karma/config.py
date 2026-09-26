@@ -19,15 +19,22 @@ the whole path relative to the analysed directory, and ``*`` also matches ``/``.
 
 from __future__ import annotations
 
-import configparser
 import logging
 import sys
-from dataclasses import dataclass
+from collections.abc import Sequence
+from dataclasses import dataclass, replace
 from pathlib import Path
 from types import ModuleType
 from typing import Any
 
 from karma.errors import ConfigError
+from karma.pytest_config import (
+    DEFAULT_NORECURSEDIRS,
+    addopts_from_environment,
+    analyse_args,
+    entry_point_plugins,
+    find_settings,
+)
 
 log = logging.getLogger(__name__)
 
@@ -45,17 +52,29 @@ DEFAULT_SOURCE_ROOTS = (".", "src")
 # Changes to these can affect any test (dependencies, pytest configuration, ...),
 # so they select the whole suite rather than risk skipping a failing test.
 DEFAULT_RUN_ALL_ON = (
+    # packaging and pytest configuration
     "pyproject.toml",
     "setup.py",
     "setup.cfg",
     "tox.ini",
     "pytest.ini",
+    ".pytest.ini",
+    "pytest.toml",
+    ".pytest.toml",
+    # dependencies and the interpreter
     "requirements*.txt",
+    "requirements*.in",
+    "*requirements/*.txt",
+    "*requirements/*.in",
     "constraints*.txt",
+    "Pipfile",
     "Pipfile.lock",
     "poetry.lock",
     "pdm.lock",
     "uv.lock",
+    "environment.yml",
+    "environment.yaml",
+    ".python-version",
 )
 
 
@@ -67,6 +86,24 @@ class Config:
     exclude: tuple[str, ...] = ()
     mappings: tuple[tuple[str, tuple[str, ...]], ...] = ()
     pytest_args: tuple[str, ...] = ()
+    # Derived from pytest's own configuration and command line:
+    testpaths: tuple[str, ...] = ()
+    norecursedirs: tuple[str, ...] = DEFAULT_NORECURSEDIRS
+    plugins: tuple[str, ...] = ()
+    doctest_modules: bool = False
+    doctest_globs: tuple[str, ...] = ()
+    junitxml: str | None = None
+
+    def with_pytest_args(self, args: Sequence[str]) -> Config:
+        """Account for pytest arguments (``addopts`` or ``karma run -- ...``)."""
+        options = analyse_args(args)
+        return replace(
+            self,
+            plugins=(*self.plugins, *options.plugins),
+            doctest_modules=self.doctest_modules or options.doctest_modules,
+            doctest_globs=(*self.doctest_globs, *options.doctest_globs),
+            junitxml=options.junitxml or self.junitxml,
+        )
 
 
 _LIST_KEYS = {
@@ -97,10 +134,15 @@ def load_config(root: Path) -> Config:
     values: dict[str, Any] = {
         field: _string_list(table[key], key) for key, field in _LIST_KEYS.items() if key in table
     }
-    if "test_patterns" not in values:
-        pytest_patterns = _pytest_python_files(root, pyproject)
-        if pytest_patterns:
-            values["test_patterns"] = pytest_patterns
+    # Agree with pytest: its python_files, testpaths, norecursedirs and pythonpath.
+    settings = find_settings(root)
+    if "test_patterns" not in values and settings.python_files:
+        values["test_patterns"] = settings.python_files
+    roots = values.get("source_roots", DEFAULT_SOURCE_ROOTS)
+    values["source_roots"] = tuple(dict.fromkeys((*roots, *settings.pythonpath)))
+    values["testpaths"] = settings.testpaths
+    values["norecursedirs"] = settings.norecursedirs
+    values["plugins"] = entry_point_plugins(pyproject)
     if "extend-run-all-on" in table:
         base = values.get("run_all_on", DEFAULT_RUN_ALL_ON)
         values["run_all_on"] = (
@@ -109,7 +151,10 @@ def load_config(root: Path) -> Config:
         )
     if "mappings" in table:
         values["mappings"] = _mappings(table["mappings"])
-    return Config(**values)
+    config = Config(**values)
+    return config.with_pytest_args(
+        [*settings.addopts, *addopts_from_environment(), *config.pytest_args]
+    )
 
 
 def _read_pyproject(path: Path) -> dict[str, Any]:
@@ -144,28 +189,3 @@ def _mappings(value: object) -> tuple[tuple[str, tuple[str, ...]], ...]:
         (pattern, _string_list(targets, f"mappings.{pattern!r}"))
         for pattern, targets in value.items()
     )
-
-
-def _pytest_python_files(root: Path, pyproject: dict[str, Any]) -> tuple[str, ...]:
-    """Honour pytest's own ``python_files`` setting when Karma's is not set."""
-    ini_options = pyproject.get("tool", {}).get("pytest", {}).get("ini_options", {})
-    value = ini_options.get("python_files") if isinstance(ini_options, dict) else None
-    if value is None:
-        for filename, section in (
-            ("pytest.ini", "pytest"),
-            ("tox.ini", "pytest"),
-            ("setup.cfg", "tool:pytest"),
-        ):
-            parser = configparser.ConfigParser(interpolation=None)
-            try:
-                parser.read(root / filename, encoding="utf-8")
-            except (configparser.Error, UnicodeDecodeError):
-                continue
-            if parser.has_option(section, "python_files"):
-                value = parser.get(section, "python_files")
-                break
-    if isinstance(value, str):
-        return tuple(value.split())
-    if isinstance(value, list) and all(isinstance(v, str) for v in value):
-        return tuple(value)
-    return ()

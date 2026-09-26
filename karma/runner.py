@@ -77,16 +77,20 @@ def run_pytest(
     python: str = sys.executable,
     args: Sequence[str] = (),
     known_tests: Sequence[str] = (),
+    report: str | None = None,
 ) -> RunResult:
     """Run ``python -m pytest`` on ``tests`` (all tests if empty), streaming its output.
 
     Test paths are split across several pytest invocations only if they would exceed
     the operating system's command-line length limit. ``known_tests`` (paths relative to
-    ``cwd``) help map pytest's paths back when its rootdir is not ``cwd``.
+    ``cwd``) help map pytest's paths back when its rootdir is not ``cwd``. ``report`` is
+    the user's own ``--junitxml`` path, which is read instead of adding Karma's.
     """
     started = time.monotonic()
     batches = _batches(list(tests), fixed_length=len(python) + sum(len(a) + 3 for a in args) + 200)
-    results = [_run_once(batch, cwd=cwd, python=python, args=args) for batch in batches]
+    results = [
+        _run_once(batch, cwd=cwd, python=python, args=args, report=report) for batch in batches
+    ]
     known = [*tests, *known_tests]
     return RunResult(
         exit_code=_combine_exit_codes([r.exit_code for r in results]),
@@ -130,20 +134,19 @@ def _batches(tests: list[str], fixed_length: int) -> list[list[str]]:
     return batches
 
 
-def _run_once(tests: list[str], *, cwd: Path, python: str, args: Sequence[str]) -> RunResult:
+def _run_once(
+    tests: list[str], *, cwd: Path, python: str, args: Sequence[str], report: str | None
+) -> RunResult:
     with tempfile.TemporaryDirectory(prefix="karma-") as tmp:
-        report = Path(tmp) / "junit.xml"
-        command = [
-            python,
-            "-m",
-            "pytest",
-            *args,
-            f"--junitxml={report}",
+        if report:
+            # The user asked for their own report: keep it, and read it afterwards.
+            path = cwd / report
+            extra: list[str] = []
+        else:
+            path = Path(tmp) / "junit.xml"
             # xunit1 records each test's file and line, used for annotations.
-            "-o",
-            "junit_family=xunit1",
-            *tests,
-        ]
+            extra = [f"--junitxml={path}", "-o", "junit_family=xunit1"]
+        command = [python, "-m", "pytest", *args, *extra, *tests]
         log.debug("running %s", " ".join(command))
         sys.stdout.flush()
         sys.stderr.flush()
@@ -152,10 +155,10 @@ def _run_once(tests: list[str], *, cwd: Path, python: str, args: Sequence[str]) 
         except OSError as exc:
             log.error("could not start pytest with %s: %s", python, exc)
             return RunResult(exit_code=EXIT_INTERNAL_ERROR, crashed=True)
-        if not report.exists():
+        if not path.exists():
             crashed = exit_code not in (EXIT_OK, EXIT_NO_TESTS_COLLECTED)
             return RunResult(exit_code=exit_code, crashed=crashed)
-        return RunResult(exit_code=exit_code, cases=tuple(parse_junit(report)))
+        return RunResult(exit_code=exit_code, cases=tuple(parse_junit(path)))
 
 
 def _combine_exit_codes(codes: Sequence[int]) -> int:

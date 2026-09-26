@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import re
 import subprocess
@@ -328,3 +329,51 @@ class TestEntryPoints:
         )
         assert proc.returncode == 0, proc.stderr
         assert proc.stdout.strip() == f"karma {karma.__version__}"
+
+
+class TestReviewRegressions:
+    def test_full_run_asks_pytest_even_if_karma_sees_no_tests(
+        self, project: GitRepo, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        # Karma's patterns don't match, but pytest's own discovery does: never pass empty.
+        project.write("pyproject.toml", '[tool.karma]\ntest-patterns = ["nothing_*.py"]\n')
+        project.write("tests/test_boom.py", "def test_boom():\n    assert False\n")
+
+        assert karma_main(project, "run", "--all", "--", "-p", "no:cacheprovider") == 1
+
+        _, err = capfd.readouterr()
+        assert "found no test files" in err
+
+    def test_user_junitxml_is_kept(self, project: GitRepo) -> None:
+        project.write("app/other.py", "VALUE = 1  # edit\n")
+
+        assert karma_main(project, "run", "--base", "main", "--", "--junitxml=report.xml") == 0
+
+        assert "test_value" in (project.path / "report.xml").read_text(encoding="utf-8")
+
+    def test_doctest_modules_select_the_changed_module(
+        self, project: GitRepo, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        project.write(
+            "app/other.py",
+            'VALUE = 1\n\ndef shout():\n    """\n    >>> shout()\n    \'HI\'\n    """\n'
+            '    return "hi"\n',
+        )
+
+        assert karma_main(project, "run", "--base", "main", "--", "--doctest-modules") == 1
+
+        assert "app/other.py::app.other.shout" in capfd.readouterr().out
+
+    def test_output_never_crashes_on_unencodable_paths(
+        self, project: GitRepo, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        project.write("tests/test_日本.py", "from app.util import double\n")
+        project.write("app/util.py", "def double(x):\n    return x + x\n")
+        buffer = io.BytesIO()
+        ascii_stdout = io.TextIOWrapper(buffer, encoding="ascii", errors="strict")
+        monkeypatch.setattr(sys, "stdout", ascii_stdout)
+
+        assert karma_main(project, "select", "--base", "main") == 0
+
+        ascii_stdout.flush()
+        assert rb"tests/test_\u65e5\u672c.py" in buffer.getvalue()

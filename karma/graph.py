@@ -68,7 +68,7 @@ class DependencyGraph:
         return "\n".join(lines) + "\n"
 
 
-def matches_any(path: str, patterns: Iterable[str]) -> str | None:
+def matches_any(path: str, patterns: Iterable[str], *, case_sensitive: bool = True) -> str | None:
     """Return the first glob in ``patterns`` matching ``path``, or ``None``.
 
     Patterns containing ``/`` match the whole repository-relative path; others match
@@ -77,7 +77,11 @@ def matches_any(path: str, patterns: Iterable[str]) -> str | None:
     name = path.rpartition("/")[2]
     for pattern in patterns:
         target = path if "/" in pattern else name
-        if fnmatch.fnmatchcase(target, pattern):
+        if not case_sensitive:
+            target, pattern_cmp = target.lower(), pattern.lower()
+        else:
+            pattern_cmp = pattern
+        if fnmatch.fnmatchcase(target, pattern_cmp):
             return pattern
     return None
 
@@ -98,7 +102,11 @@ def build_graph(
     Files missing from ``cache`` are parsed in ``jobs`` worker processes (default:
     one per CPU) when there are enough of them to be worth it.
     """
-    files = [f for f in list_files(root, ".py") if not matches_any(f, exclude)]
+    listed = list_files(root, ".py")
+    files = [f for f in listed if not matches_any(f, exclude)]
+    # Excluded files are not parsed, but imports *into* them must still resolve, or a
+    # change to one would look like it affects nothing.
+    excluded = [f for f in listed if matches_any(f, exclude)]
     store = cache if cache is not None else ImportCache(None)
 
     imports: dict[str, tuple[ImportRef, ...]] = {}
@@ -118,7 +126,7 @@ def build_graph(
         store.store(rel, data, refs)
         imports[rel] = refs
 
-    resolver = ModuleResolver([*files, *deleted], source_roots)
+    resolver = ModuleResolver([*files, *excluded, *deleted], source_roots)
     edges = {rel: resolver.resolve(rel, imports[rel]) for rel in files}
 
     log.debug("parsed %d files, %d from cache", store.misses, store.hits)

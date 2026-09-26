@@ -137,3 +137,23 @@ class TestParallelParsing:
         graph = build_graph(project.path, jobs=4)
 
         assert graph.dependencies("app/core.py") == {"app/__init__.py", "app/util.py"}
+
+
+def test_excluded_files_keep_the_edges_into_them(project: GitRepo) -> None:
+    graph = build_graph(project.path, exclude=["app/util.py"])
+
+    assert "app/util.py" not in graph.files  # not analysed...
+    assert graph.dependents("app/util.py") == {"app/core.py"}  # ...but still a dependency
+
+
+def test_gitignored_generated_modules_are_analysed(project: GitRepo) -> None:
+    project.write(".gitignore", "*_pb2.py\n.venv/\n")
+    project.write("app/api_pb2.py", "from app.util import helper\n")
+    project.write(".venv/lib/site.py", "import app.core\n")
+    project.write("tests/test_api.py", "import app.api_pb2\n")
+
+    graph = build_graph(project.path)
+
+    assert "app/api_pb2.py" in graph.files
+    assert graph.dependents("app/api_pb2.py") == {"tests/test_api.py"}
+    assert not any(f.startswith(".venv/") for f in graph.files)

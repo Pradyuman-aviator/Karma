@@ -185,3 +185,36 @@ def test_option_like_base_is_rejected_before_reaching_git(
     assert proc.returncode == 2
     assert "invalid base-branch" in proc.stdout
     assert not marker.exists()
+
+
+def test_bare_branch_name_as_base(upstream: GitRepo, tmp_path: Path) -> None:
+    # Regression: `base-branch: main` was fetched into origin/main, then `main` was used.
+    clone = shallow_clone(upstream, tmp_path)
+
+    proc, outputs = run_action(clone, tmp_path, INPUT_BASE_BRANCH="main", INPUT_COMMAND="select")
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert output_value(outputs, "test_files") == "tests/test_other.py"
+
+
+def test_inputs_are_split_like_a_shell(upstream: GitRepo, tmp_path: Path) -> None:
+    clone = shallow_clone(upstream, tmp_path)
+
+    proc, _ = run_action(
+        clone,
+        tmp_path,
+        GITHUB_BASE_REF="main",
+        INPUT_ARGS="--explain\n--jobs 2",
+        INPUT_PYTEST_ARGS='-k "test_y or nothing"\n-v',
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "app/other.py  (changed)" in proc.stderr  # --explain on the first line survived
+    assert "test_y PASSED" in proc.stdout  # -k kept its quoted value, -v applied
+
+
+def test_unbalanced_quotes_fail_loudly(upstream: GitRepo, tmp_path: Path) -> None:
+    clone = shallow_clone(upstream, tmp_path)
+    proc, _ = run_action(clone, tmp_path, GITHUB_BASE_REF="main", INPUT_PYTEST_ARGS='-k "oops')
+    assert proc.returncode == 2
+    assert "cannot parse the PYTEST_ARGS input" in proc.stdout

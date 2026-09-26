@@ -200,3 +200,75 @@ class TestChangeSet:
     def test_to_relative_accepts_windows_separators_and_case(self, tmp_path: Path) -> None:
         assert to_relative(r"a\b.py", tmp_path) == "a/b.py"
         assert to_relative(str(tmp_path).upper() + r"\c.py", tmp_path) == "c.py"
+
+
+class TestReviewRegressions:
+    def test_submodule_bumps_are_reported(self, repo: GitRepo, tmp_path: Path) -> None:
+        lib = GitRepo(tmp_path / "lib")
+        lib.path.mkdir()
+        lib.git("init", "-q", "-b", "main")
+        lib.write("libpkg/core.py", "def f():\n    return 1\n")
+        lib.commit("lib v1")
+        repo.git(
+            "-c",
+            "protocol.file.allow=always",
+            "submodule",
+            "add",
+            "-q",
+            str(lib.path),
+            "vendor/lib",
+        )
+        base = repo.commit("add submodule")
+        lib.write("libpkg/core.py", "def f():\n    return 2\n")
+        lib.commit("lib v2")
+        repo.git(
+            "-C", "vendor/lib", "-c", "protocol.file.allow=always", "pull", "-q", "origin", "main"
+        )
+        repo.commit("bump submodule")
+
+        changes = get_changes(base, "HEAD", cwd=repo.path)
+
+        assert changes.submodules == ("vendor/lib",)
+        assert "vendor/lib" in changes.all
+        assert changes.modified == ()
+
+    def test_head_must_be_the_checked_out_commit(self, repo: GitRepo) -> None:
+        repo.write("a.py")
+        repo.commit("a")
+        repo.branch("feature")
+        repo.write("b.py")
+        repo.commit("b")
+        repo.checkout("main")
+
+        with pytest.raises(GitError, match="not the checked-out commit"):
+            get_changes("main", "feature", cwd=repo.path)
+
+    def test_files_are_relative_to_the_current_directory(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
+    ) -> None:
+        project = tmp_path / "proj"
+        (project / "pkg").mkdir(parents=True)
+        (project / "pkg" / "app.py").write_text("", encoding="utf-8")
+        monkeypatch.chdir(tmp_path)
+
+        from_cwd = ChangeSet.from_paths(["proj/pkg/app.py"], project)
+        from_root = ChangeSet.from_paths(["pkg/app.py"], project)
+        typo = ChangeSet.from_paths(["pkg/ap.py"], project)
+
+        assert from_cwd.modified == from_root.modified == ("pkg/app.py",)
+        assert typo.deleted == ("pkg/ap.py",)
+        assert "pkg/ap.py does not exist" in caplog.text
+
+    def test_raw_diff_parsing(self) -> None:
+        zero = "0" * 40
+        output = (
+            f":100644 100644 {zero} {zero} M\0a.py\0"
+            f":000000 100644 {zero} {zero} A\0b.py\0"
+            f":100644 000000 {zero} {zero} D\0c.py\0"
+            f":160000 160000 {zero} {zero} M\0vendor/lib\0"
+            "garbage\0\0"
+        )
+        changes = git._parse_raw(output)
+        assert changes.modified == ("a.py", "b.py")
+        assert changes.deleted == ("c.py",)
+        assert changes.submodules == ("vendor/lib",)

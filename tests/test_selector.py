@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from karma.config import Config
@@ -46,7 +48,7 @@ class TestIsTestFile:
         ["tests/test_x.py", "test_x.py", "pkg/x_test.py", "tests/unit/deep/test_y.py"],
     )
     def test_matches_pytest_defaults(self, path: str) -> None:
-        assert is_test_file(path, Config().test_patterns)
+        assert is_test_file(path, Config())
 
     @pytest.mark.parametrize(
         "path",
@@ -59,11 +61,11 @@ class TestIsTestFile:
         ],
     )
     def test_rejects_non_test_modules(self, path: str) -> None:
-        assert not is_test_file(path, Config().test_patterns)
+        assert not is_test_file(path, Config())
 
     def test_custom_patterns(self) -> None:
-        assert is_test_file("checks/check_api.py", ["check_*.py"])
-        assert is_test_file("qa/suite.py", ["qa/*.py"])
+        assert is_test_file("checks/check_api.py", Config(test_patterns=("check_*.py",)))
+        assert is_test_file("qa/suite.py", Config(test_patterns=("qa/*.py",)))
 
 
 class TestSelectTests:
@@ -195,3 +197,57 @@ def test_selection_to_dict() -> None:
             "tests/test_core.py": ["tests/test_core.py", "app/core.py"],
         },
     }
+
+
+class TestPytestSemantics:
+    """Regressions from an adversarial review: pytest behaviours imports don't show."""
+
+    def test_test_package_init_applies_to_tests_beneath_it(self) -> None:
+        graph = DependencyGraph(
+            {"tests/__init__.py": set(), "tests/test_app.py": {"app.py"}, "app.py": set()}
+        )
+        selection = select_tests(ChangeSet(modified=("tests/__init__.py",)), graph, Config())
+        assert selection.tests == ("tests/test_app.py",)
+
+    def test_pytest_plugins_loaded_with_p_apply_to_every_test(self) -> None:
+        graph = DependencyGraph(
+            {"tests/plugin.py": set(), "tests/test_a.py": set(), "other/test_b.py": set()}
+        )
+        config = Config(plugins=("tests.plugin",))
+        selection = select_tests(ChangeSet(modified=("tests/plugin.py",)), graph, config)
+        assert selection.tests == ("other/test_b.py", "tests/test_a.py")
+
+    def test_submodule_changes_run_everything(self) -> None:
+        selection = select_tests(ChangeSet(submodules=("vendor/lib",)), GRAPH, Config())
+        assert selection.run_all
+        assert "submodule vendor/lib" in str(selection.run_all_reason)
+
+    def test_doctest_modules_make_modules_tests(self) -> None:
+        config = Config(doctest_modules=True)
+        assert is_test_file("app/core.py", config)
+        assert is_test_file("app/__init__.py", config)
+        assert not is_test_file("tests/conftest.py", config)
+        assert not is_test_file("setup.py", config)
+        selection = select_tests(ChangeSet(modified=("app/util.py",)), GRAPH, config)
+        assert {"app/util.py", "app/core.py", "app/api.py"} <= set(selection.tests)
+
+    def test_doctest_glob_files_are_tests_themselves(self) -> None:
+        config = Config(doctest_globs=("*.rst",))
+        selection = select_tests(ChangeSet(modified=("docs/guide.rst",)), GRAPH, config)
+        assert selection.tests == ("docs/guide.rst",)
+        assert selection.no_impact == ()
+
+    def test_testpaths_bound_the_candidates(self) -> None:
+        config = Config(testpaths=("tests",))
+        assert is_test_file("tests/test_a.py", config)
+        assert not is_test_file("scripts/test_release.py", config)
+        assert is_test_file("pkg/tests/test_a.py", Config(testpaths=("*/tests",)))
+
+    def test_norecursedirs_bound_the_candidates(self) -> None:
+        assert not is_test_file("tests/data/test_input.py", Config(norecursedirs=("data",)))
+        assert not is_test_file(".venv/lib/test_x.py", Config())  # default ".*"
+        assert not is_test_file("build/test_x.py", Config())
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="pytest is case-insensitive on Windows")
+    def test_file_name_case_follows_the_platform(self) -> None:
+        assert is_test_file("tests/Test_App.py", Config())
