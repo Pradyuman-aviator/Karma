@@ -1,6 +1,6 @@
 import unittest
-from core.dep_graph import build_reverse_graph
-from core.test_selector import get_affected_tests, is_test_file
+from karma.graph import build_reverse_graph
+from karma.selector import get_affected_tests, is_test_file
 
 
 class TestSelector(unittest.TestCase):

@@ -1,0 +1,3 @@
+# Normalise line endings: shell scripts with CRLF break in Linux CI/containers.
+* text=auto eol=lf
+*.png binary
