@@ -16,8 +16,6 @@ class TestResult:
     error_message: str = ""
 
 
-
-
 class Reporter:
     def __init__(self):
         self.results: List[TestResult] = []
@@ -27,11 +25,11 @@ class Reporter:
 
     def print_summary(self):
         # Ensure emojis render on Windows terminals
-        if hasattr(sys.stdout, 'reconfigure'):
-            sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+        if hasattr(sys.stdout, "reconfigure"):
+            sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 
-        passed  = sum(1 for r in self.results if r.passed)
-        failed  = sum(1 for r in self.results if not r.passed and not r.skipped)
+        passed = sum(1 for r in self.results if r.passed)
+        failed = sum(1 for r in self.results if not r.passed and not r.skipped)
         skipped = sum(1 for r in self.results if r.skipped)
 
         print("\n========== KARMA TEST SUMMARY ==========")
