@@ -26,4 +26,4 @@ env/
 .vscode/
 
 # Karma's own dependency-graph cache
-.karma_cache.json
+.karma_cache/

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from karma import graph as graph_module
-from karma.cache import ImportCache
+from karma.cache import ImportCache, default_cache_path
 from karma.graph import DependencyGraph, build_graph, matches_any
 from tests.helpers import GitRepo
 
@@ -46,7 +46,7 @@ def test_deleted_modules_keep_their_importers_edges(project: GitRepo) -> None:
 
 
 def test_uses_and_saves_the_cache(project: GitRepo) -> None:
-    path = project.path / ".karma_cache.json"
+    path = default_cache_path(project.path)
     build_graph(project.path, cache=ImportCache(path))
     assert path.exists()
 
@@ -54,6 +54,15 @@ def test_uses_and_saves_the_cache(project: GitRepo) -> None:
     build_graph(project.path, cache=warm)
     assert warm.misses == 0
     assert warm.hits == 5
+
+
+def test_cache_directory_is_invisible_to_git(project: GitRepo) -> None:
+    project.commit("project")
+
+    build_graph(project.path, cache=ImportCache(default_cache_path(project.path)))
+
+    assert default_cache_path(project.path).exists()
+    assert project.git("status", "--porcelain") == ""  # no untracked cache to trip over
 
 
 def test_unreadable_files_are_treated_as_empty(

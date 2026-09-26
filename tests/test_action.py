@@ -170,3 +170,18 @@ def test_unknown_base_fails_by_default_or_runs_everything(
     )
     assert ran_all.returncode == 0, ran_all.stdout + ran_all.stderr
     assert output_value(outputs, "run-all") == "true"
+
+
+def test_option_like_base_is_rejected_before_reaching_git(
+    upstream: GitRepo, tmp_path: Path
+) -> None:
+    clone = shallow_clone(upstream, tmp_path)
+    marker = tmp_path / "pwned"
+
+    proc, _ = run_action(
+        clone, tmp_path, INPUT_BASE_BRANCH=f"--upload-pack=touch {marker.as_posix()}"
+    )
+
+    assert proc.returncode == 2
+    assert "invalid base-branch" in proc.stdout
+    assert not marker.exists()

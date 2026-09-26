@@ -11,7 +11,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from karma import __version__
-from karma.cache import CACHE_FILE, ImportCache
+from karma.cache import ImportCache, default_cache_path
 from karma.config import Config, load_config
 from karma.errors import GitError, KarmaError
 from karma.git import ChangeSet, default_base, get_changes
@@ -63,7 +63,7 @@ def _build_graph(
         source_roots=config.source_roots,
         exclude=config.exclude,
         deleted=deleted,
-        cache=None if args.no_cache else ImportCache(root / CACHE_FILE),
+        cache=None if args.no_cache else ImportCache(default_cache_path(root)),
         jobs=args.jobs,
     )
 

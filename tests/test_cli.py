@@ -39,7 +39,6 @@ def project(repo: GitRepo) -> GitRepo:
         '[tool.karma]\npytest-args = ["-p", "no:cacheprovider"]\n'
         '[tool.pytest.ini_options]\npythonpath = ["."]\n',
     )
-    repo.write(".gitignore", ".karma_cache.json\n")
     repo.commit("project")
     repo.branch("feature")
     return repo

@@ -94,10 +94,21 @@ def test_unreadable_cache_is_ignored(tmp_path: Path) -> None:
 def test_write_failure_is_logged_not_raised(
     tmp_path: Path, caplog: pytest.LogCaptureFixture
 ) -> None:
-    cache = ImportCache(tmp_path / "missing-dir" / "c.json")
+    cache = ImportCache(tmp_path / "no" / "such-dir" / "c.json")  # parent's parent missing
     cache.imports_for("a.py", b"")
 
     cache.save()
 
     assert "could not write cache" in caplog.text
-    assert not (tmp_path / "missing-dir").exists()
+    assert not (tmp_path / "no").exists()
+
+
+def test_cache_directory_ignores_itself(tmp_path: Path) -> None:
+    cache = ImportCache(tmp_path / ".karma_cache" / "imports.json")
+    cache.imports_for("a.py", b"")
+
+    cache.save()
+
+    directory = tmp_path / ".karma_cache"
+    assert (directory / ".gitignore").read_text(encoding="utf-8").splitlines()[-1] == "*"
+    assert (directory / "CACHEDIR.TAG").read_text(encoding="utf-8").startswith("Signature: ")

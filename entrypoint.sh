@@ -31,6 +31,11 @@ if [[ -z "$BASE" ]]; then
     BASE="origin/${KARMA_DEFAULT_BRANCH}"
   fi
 fi
+# A ref starting with "-" would be parsed by git as an option (e.g. --upload-pack=...).
+if [[ "$BASE" == -* ]]; then
+  echo "::error title=Karma::invalid base-branch '$BASE'"
+  exit 2
+fi
 
 has_commit() { git rev-parse --verify --quiet "$1^{commit}" >/dev/null 2>&1; }
 

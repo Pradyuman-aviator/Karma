@@ -50,6 +50,9 @@ should have run, or made CI pass without running any tests.
 - The import cache is incremental and per file, and cold parsing runs in parallel:
   on pandas (1,415 files) the graph builds in 1.2 s cold, 0.34 s warm (was 6.5 s,
   with any change forcing a full rebuild).
+- The cache lives in `.karma_cache/`, which contains its own `.gitignore` (like
+  `.pytest_cache/`), so it never shows up as an untracked or "changed" file. The old
+  `.karma_cache.json` can be deleted.
 - Code moved from the top-level `core`/`languages` packages into `karma`. `python
   cli.py …` still works.
 - The Docker image is now a standalone `karma` CLI image.

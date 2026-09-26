@@ -8,4 +8,4 @@
 .venv
 venv
 tests
-.karma_cache.json
+.karma_cache/
