@@ -15,8 +15,9 @@ from karma import __version__
 from karma.cache import ImportCache, default_cache_path
 from karma.config import Config, load_config
 from karma.errors import GitError, KarmaError
-from karma.git import ChangeSet, default_base, get_changes
+from karma.git import ChangeSet, default_base, get_changes, verify_ref
 from karma.graph import DependencyGraph, build_graph
+from karma.history import History, default_history_path, run_from
 from karma.reporter import (
     append_step_summary,
     describe_selection,
@@ -26,7 +27,7 @@ from karma.reporter import (
     run_markdown,
     write_github_outputs,
 )
-from karma.runner import EXIT_NO_TESTS_COLLECTED, EXIT_OK, run_pytest
+from karma.runner import EXIT_NO_TESTS_COLLECTED, EXIT_OK, RunResult, run_pytest
 from karma.selector import Selection, is_test_file, select_tests
 
 log = logging.getLogger("karma")
@@ -175,6 +176,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     )
 
     print_run_summary(result)
+    if not args.no_history and result.cases:
+        _record_history(plan, result)
     if args.ci:
         _github_outputs(selection, tests_run=len(selection.tests))
         emit_annotations(result.problems, plan.root)
@@ -184,6 +187,15 @@ def cmd_run(args: argparse.Namespace) -> int:
     if result.exit_code == EXIT_NO_TESTS_COLLECTED and not selection.run_all:
         return EXIT_OK
     return result.exit_code
+
+
+def _record_history(plan: Plan, result: RunResult) -> None:
+    try:
+        commit: str | None = verify_ref("HEAD", plan.root)
+    except GitError:
+        commit = None
+    history = History.load(default_history_path(plan.root))
+    history.append(run_from(result, plan.selection, commit))
 
 
 def cmd_graph(args: argparse.Namespace) -> int:
@@ -266,6 +278,11 @@ def build_parser() -> argparse.ArgumentParser:
         "Arguments after '--' go to pytest, e.g.: karma run -- -x -n auto",
     )
     _add_selection_options(run)
+    run.add_argument(
+        "--no-history",
+        action="store_true",
+        help="do not record results in .karma_cache/history.jsonl (used for --prioritize)",
+    )
     run.add_argument(
         "--python",
         default=sys.executable,

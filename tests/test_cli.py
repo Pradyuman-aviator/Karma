@@ -387,3 +387,23 @@ def test_a_full_run_that_collects_nothing_fails(
     project.write("app/other.py", "VALUE = 1  # edit\n")
     # ...while a targeted run that deselects everything is still fine.
     assert karma_main(project, "run", "--base", "main", "--", "-m", "no_such_marker") == 0
+
+
+class TestHistoryRecording:
+    def test_run_records_history(self, project: GitRepo, capfd: pytest.CaptureFixture[str]) -> None:
+        project.write("app/util.py", "def double(x):\n    return x * 3\n")  # breaks test_quad
+
+        karma_main(project, "run", "--base", "main")
+
+        path = project.path / ".karma_cache" / "history.jsonl"
+        (line,) = path.read_text(encoding="utf-8").splitlines()
+        record = json.loads(line)
+        assert record["changed"] == ["app/util.py"]
+        assert record["tests"]["tests/test_core.py"][0] == "failed"
+        assert record["tests"]["tests/test_core.py"][2] == 2  # test -> core -> util
+        assert record["commit"] == project.git("rev-parse", "HEAD")
+
+    def test_no_history_flag(self, project: GitRepo, capfd: pytest.CaptureFixture[str]) -> None:
+        project.write("app/other.py", "VALUE = 1  # edit\n")
+        karma_main(project, "run", "--base", "main", "--no-history")
+        assert not (project.path / ".karma_cache" / "history.jsonl").exists()

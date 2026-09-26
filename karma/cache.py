@@ -34,7 +34,7 @@ def default_cache_path(root: Path) -> Path:
     return root / CACHE_DIR / "imports.json"
 
 
-def _prepare_directory(directory: Path) -> None:
+def prepare_directory(directory: Path) -> None:
     """Create the cache directory so that git and backup tools ignore it (like pytest)."""
     if directory.is_dir():
         return
@@ -104,7 +104,7 @@ class ImportCache:
         }
         tmp = self.path.with_name(f"{self.path.name}.{os.getpid()}.tmp")
         try:
-            _prepare_directory(self.path.parent)
+            prepare_directory(self.path.parent)
             tmp.write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
             os.replace(tmp, self.path)
         except OSError as exc:
