@@ -1,13 +1,29 @@
+# Python bytecode / build artifacts
 __pycache__/
 *.py[cod]
 *$py.class
+build/
+dist/
+*.egg-info/
+
+# Test / coverage / tooling caches
 .pytest_cache/
+.mypy_cache/
+.ruff_cache/
 .coverage
+.coverage.*
+coverage.xml
 htmlcov/
+
+# Virtual environments
 .venv/
 venv/
 ENV/
 env/
+
+# Editors
 .idea/
 .vscode/
+
+# Karma's own dependency-graph cache
 .karma_cache.json
