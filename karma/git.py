@@ -6,6 +6,7 @@ analysed (``--repo``), which may be a sub-directory of the git work tree.
 
 from __future__ import annotations
 
+import fnmatch
 import logging
 import os
 import subprocess
@@ -201,7 +202,9 @@ def get_changes(
       untracked files, which is what you want when running Karma locally.
     * ``staged``: only what is staged in the index, for pre-commit hooks.
     """
+    # --ignore-submodules=none: a `.gitmodules` "ignore = all" must not hide a bump.
     diff = ["diff", "--raw", "-z", "--no-renames", "--no-color", "--no-abbrev", "--relative"]
+    diff.append("--ignore-submodules=none")
     if staged:
         try:
             against = verify_ref("HEAD", cwd)
@@ -259,22 +262,24 @@ def _parse_raw(output: str, merge_base: str | None = None) -> ChangeSet:
     )
 
 
-def list_files(root: Path, suffix: str = ".py") -> list[str]:
-    """List the files under ``root`` ending in ``suffix`` that Python could import.
+def list_files(root: Path, globs: Sequence[str] = ("*.py",)) -> list[str]:
+    """List the files under ``root`` that match ``globs`` (see :func:`matches_glob`).
 
     With git: tracked files, untracked ones, and *individually* ignored files such as
     generated ``*_pb2.py`` or ``_version.py`` modules, which are importable even though
     they are not committed. Wholly ignored directories (virtualenvs, build output) are
     skipped. Without git, the file system is walked.
     """
-    pathspec = ["--", f"*{suffix}"]
+    # git's default pathspec `*` also matches `/`, so "*test*.txt" finds nested files;
+    # results are then filtered exactly.
+    pathspec = ["--", *(g if "/" in g else f"*{g}" for g in globs)]
     try:
         output = run_git(
             ["ls-files", "-z", "--cached", "--others", "--exclude-standard", *pathspec], root
         )
     except GitError as exc:
         log.debug("git ls-files unavailable (%s); walking the file system", exc)
-        return _walk(root, suffix)
+        return _walk(root, globs)
     candidates = set(output.split("\0"))
     try:
         # --directory collapses fully ignored directories into one "dir/" entry.
@@ -282,14 +287,26 @@ def list_files(root: Path, suffix: str = ".py") -> list[str]:
             ["ls-files", "-z", "--others", "--ignored", "--exclude-standard", "--directory"],
             root,
         )
-        candidates.update(p for p in ignored.split("\0") if p.endswith(suffix))
+        candidates.update(p for p in ignored.split("\0") if not p.endswith("/"))
     except GitError as exc:  # pragma: no cover - the first ls-files just worked
         log.debug("could not list ignored files: %s", exc)
     # --cached still lists files deleted from the working tree but not yet from the index.
-    return sorted(p for p in candidates if p and (root / p).is_file())
+    return sorted(p for p in candidates if p and matches_glob(p, globs) and (root / p).is_file())
 
 
-def _walk(root: Path, suffix: str) -> list[str]:
+def matches_glob(path: str, globs: Iterable[str]) -> bool:
+    """Globs without ``/`` match the file name; others match the whole path."""
+    name = path.rpartition("/")[2]
+    for glob in globs:
+        if glob.startswith("*") and not any(c in glob[1:] for c in "*?[/"):
+            if name.endswith(glob[1:]):  # fast path for "*.py"
+                return True
+        elif fnmatch.fnmatchcase(path if "/" in glob else name, glob):
+            return True
+    return False
+
+
+def _walk(root: Path, globs: Sequence[str]) -> list[str]:
     found: list[str] = []
     for dirpath, dirnames, filenames in os.walk(root):
         dirnames[:] = sorted(
@@ -298,5 +315,9 @@ def _walk(root: Path, suffix: str) -> list[str]:
             if d not in _SKIP_DIRS and not d.startswith(".") and not d.endswith(".egg-info")
         )
         rel_dir = Path(dirpath).relative_to(root)
-        found.extend((rel_dir / name).as_posix() for name in filenames if name.endswith(suffix))
+        found.extend(
+            rel
+            for rel in ((rel_dir / name).as_posix() for name in filenames)
+            if matches_glob(rel, globs)
+        )
     return sorted(found)

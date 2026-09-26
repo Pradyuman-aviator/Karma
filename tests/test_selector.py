@@ -233,7 +233,8 @@ class TestPytestSemantics:
 
     def test_doctest_glob_files_are_tests_themselves(self) -> None:
         config = Config(doctest_globs=("*.rst",))
-        selection = select_tests(ChangeSet(modified=("docs/guide.rst",)), GRAPH, config)
+        graph = DependencyGraph({**GRAPH.edges, "docs/guide.rst": set()})  # a doctest node
+        selection = select_tests(ChangeSet(modified=("docs/guide.rst",)), graph, config)
         assert selection.tests == ("docs/guide.rst",)
         assert selection.no_impact == ()
 
@@ -251,3 +252,37 @@ class TestPytestSemantics:
     @pytest.mark.skipif(sys.platform != "win32", reason="pytest is case-insensitive on Windows")
     def test_file_name_case_follows_the_platform(self) -> None:
         assert is_test_file("tests/Test_App.py", Config())
+
+
+class TestReviewRoundTwo:
+    def test_path_style_norecursedirs(self) -> None:
+        config = Config(norecursedirs=("tests/data",))
+        assert not is_test_file("tests/data/test_sample.py", config)
+        assert not is_test_file("pkg/tests/data/test_sample.py", config)  # anchored anywhere
+        assert is_test_file("tests/test_data.py", config)
+
+    def test_excluded_files_are_never_tests_but_keep_their_chains(self) -> None:
+        graph = DependencyGraph(
+            {
+                "app/models.py": set(),
+                "migrations/test_m0001.py": {"app/models.py"},
+                "tests/test_mig.py": {"migrations/test_m0001.py"},
+            }
+        )
+        config = Config(exclude=("migrations/*",))
+        selection = select_tests(ChangeSet(modified=("app/models.py",)), graph, config)
+        assert selection.tests == ("tests/test_mig.py",)  # the chain runs through migrations/
+
+    def test_text_doctests_are_tests_by_default(self) -> None:
+        assert is_test_file("tests/test_usage.txt", Config())
+        assert not is_test_file("docs/usage.rst", Config())
+        assert is_test_file("docs/usage.rst", Config(doctest_globs=("*.rst",)))
+        graph = DependencyGraph({"app.py": set(), "docs/test_usage.txt": {"app.py"}})
+        selection = select_tests(ChangeSet(modified=("app.py",)), graph, Config())
+        assert selection.tests == ("docs/test_usage.txt",)
+
+    def test_deleting_a_plugin_selects_every_test(self) -> None:
+        graph = DependencyGraph({"tests/test_a.py": set(), "tests/test_b.py": set()})
+        config = Config(plugins=("tests.plugin",))
+        changes = ChangeSet(deleted=("tests/plugin.py",))
+        assert select_tests(changes, graph, config).tests == ("tests/test_a.py", "tests/test_b.py")

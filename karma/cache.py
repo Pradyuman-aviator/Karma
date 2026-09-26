@@ -17,12 +17,12 @@ from collections.abc import Collection
 from pathlib import Path
 
 from karma import __version__
-from karma.languages.python import ImportRef, parse_imports
+from karma.languages.python import ImportRef, parse_file
 
 log = logging.getLogger(__name__)
 
 CACHE_DIR = ".karma_cache"
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 def _stamp() -> str:
@@ -80,7 +80,7 @@ class ImportCache:
     def imports_for(self, rel_path: str, data: bytes) -> tuple[ImportRef, ...]:
         refs = self.lookup(rel_path, data)
         if refs is None:
-            refs = parse_imports(data, rel_path)
+            refs = parse_file(data, rel_path)
             self.store(rel_path, data, refs)
         return refs
 

@@ -31,11 +31,6 @@ def test_build_graph_resolves_repository_imports(project: GitRepo) -> None:
     assert graph.dependents("not/in/graph.py") == frozenset()
 
 
-def test_exclude_patterns(project: GitRepo) -> None:
-    graph = build_graph(project.path, exclude=["build/*"])
-    assert "build/generated.py" not in graph.files
-
-
 def test_deleted_modules_keep_their_importers_edges(project: GitRepo) -> None:
     project.delete("app/util.py")
 
@@ -139,13 +134,6 @@ class TestParallelParsing:
         assert graph.dependencies("app/core.py") == {"app/__init__.py", "app/util.py"}
 
 
-def test_excluded_files_keep_the_edges_into_them(project: GitRepo) -> None:
-    graph = build_graph(project.path, exclude=["app/util.py"])
-
-    assert "app/util.py" not in graph.files  # not analysed...
-    assert graph.dependents("app/util.py") == {"app/core.py"}  # ...but still a dependency
-
-
 def test_gitignored_generated_modules_are_analysed(project: GitRepo) -> None:
     project.write(".gitignore", "*_pb2.py\n.venv/\n")
     project.write("app/api_pb2.py", "from app.util import helper\n")
@@ -157,3 +145,25 @@ def test_gitignored_generated_modules_are_analysed(project: GitRepo) -> None:
     assert "app/api_pb2.py" in graph.files
     assert graph.dependents("app/api_pb2.py") == {"tests/test_api.py"}
     assert not any(f.startswith(".venv/") for f in graph.files)
+
+
+def test_doctest_text_files_become_nodes(project: GitRepo) -> None:
+    project.write("docs/test_usage.txt", ">>> from app.core import thing\n")
+    project.write("docs/guide.rst", ">>> import app.util\n")
+
+    default = build_graph(project.path, doctest_globs=("test*.txt",))
+    with_rst = build_graph(project.path, doctest_globs=("*.rst",))
+
+    assert default.dependencies("docs/test_usage.txt") == {"app/__init__.py", "app/core.py"}
+    assert "docs/guide.rst" not in default.files
+    assert with_rst.dependencies("docs/guide.rst") == {"app/__init__.py", "app/util.py"}
+
+
+def test_docstring_imports_count_only_with_doctest_modules(project: GitRepo) -> None:
+    project.write("app/util.py", 'def f():\n    """\n    >>> import app.core\n    """\n')
+
+    assert build_graph(project.path).dependencies("app/util.py") == frozenset()
+    assert build_graph(project.path, doctest_modules=True).dependencies("app/util.py") == {
+        "app/__init__.py",
+        "app/core.py",
+    }

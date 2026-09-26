@@ -217,4 +217,15 @@ def test_unbalanced_quotes_fail_loudly(upstream: GitRepo, tmp_path: Path) -> Non
     clone = shallow_clone(upstream, tmp_path)
     proc, _ = run_action(clone, tmp_path, GITHUB_BASE_REF="main", INPUT_PYTEST_ARGS='-k "oops')
     assert proc.returncode == 2
-    assert "cannot parse the PYTEST_ARGS input" in proc.stdout
+    assert "cannot parse the pytest-args input" in proc.stdout
+
+
+def test_non_ascii_inputs_survive(upstream: GitRepo, tmp_path: Path) -> None:
+    clone = shallow_clone(upstream, tmp_path)
+
+    proc, _ = run_action(
+        clone, tmp_path, GITHUB_BASE_REF="main", INPUT_PYTEST_ARGS='-k "not 慢" -v'
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "test_y PASSED" in proc.stdout  # the pytest arguments were not dropped

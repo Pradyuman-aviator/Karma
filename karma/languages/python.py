@@ -35,34 +35,81 @@ class ImportRef:
     ``import a.b``            -> ``ImportRef("a.b")``
     ``from a.b import c, d``  -> ``ImportRef("a.b", ("c", "d"))``
     ``from ..x import y``     -> ``ImportRef("x", ("y",), level=2)``
+
+    ``doctest`` marks imports made by ``>>>`` examples in docstrings; they only count
+    when pytest runs doctests (``--doctest-modules``).
     """
 
     module: str
     names: tuple[str, ...] = ()
     level: int = 0
+    doctest: bool = False
 
     def to_json(self) -> list[Any]:
-        return [self.module, list(self.names), self.level]
+        data: list[Any] = [self.module, list(self.names), self.level]
+        return [*data, 1] if self.doctest else data
 
     @classmethod
     def from_json(cls, data: Sequence[Any]) -> ImportRef:
-        module, names, level = data
+        if len(data) not in (3, 4):
+            raise ValueError(f"malformed import record: {data!r}")
+        module, names, level = data[:3]
         if not (isinstance(module, str) and isinstance(level, int) and isinstance(names, list)):
             raise ValueError(f"malformed import record: {data!r}")
-        return cls(module, tuple(str(n) for n in names), level)
+        return cls(module, tuple(str(n) for n in names), level, doctest=len(data) == 4)
 
 
 # --------------------------------------------------------------------------- parsing
 
 
-def parse_imports(source: Source, filename: str = "<unknown>") -> tuple[ImportRef, ...]:
+def parse_file(data: bytes, path: str) -> tuple[ImportRef, ...]:
+    """Imports of a Python module, or of a doctest text file (anything not ``.py``)."""
+    if path.endswith(".py"):
+        return parse_imports(data, path)
+    return parse_doctest_text(data.decode("utf-8", "replace"))
+
+
+def parse_doctest_text(text: str) -> tuple[ImportRef, ...]:
+    """Imports made by the ``>>>`` examples of a doctest text file (e.g. ``test*.txt``)."""
+    source = _doctest_source(text)
+    return parse_imports(source, "<doctest>", docstrings=False) if source else ()
+
+
+def _doctest_source(text: str) -> str:
+    """The import statements among the ``>>>`` examples in ``text``.
+
+    Only imports matter for dependencies, and parsing just those (with their ``...``
+    continuation lines) is far cheaper than parsing whole examples and their output.
+    """
+    if ">>>" not in text:
+        return ""
+    lines: list[str] = []
+    in_import = False
+    for line in text.splitlines():
+        stripped = line.lstrip()
+        if stripped.startswith(">>>"):
+            code = stripped[3:].strip()
+            in_import = code.startswith(("import ", "from ")) or "import_module(" in code
+            if in_import:
+                lines.append(code)
+        elif in_import and stripped.startswith("..."):
+            lines.append(stripped[3:].strip())
+        else:
+            in_import = False
+    return "\n".join(lines) + "\n" if lines else ""
+
+
+def parse_imports(
+    source: Source, filename: str = "<unknown>", *, docstrings: bool = True
+) -> tuple[ImportRef, ...]:
     """Return every module ``source`` may import, in a stable order.
 
     Covers ``import``/``from`` statements anywhere in the file (including inside
     functions and ``if TYPE_CHECKING:`` blocks), ``importlib.import_module("x")`` and
-    ``__import__("x")`` calls with literal arguments, and ``pytest_plugins``
-    declarations. If the file cannot be parsed (for example it uses syntax newer than
-    the running interpreter) a token-based scan is used so its edges are not lost.
+    ``__import__("x")`` calls with literal arguments, ``pytest_plugins`` declarations,
+    and (marked ``doctest``) imports in docstring examples. If the file cannot be parsed
+    (e.g. it uses syntax newer than the running interpreter) a token-based scan is used
+    so its edges are not lost.
     """
     try:
         tree = _parse(source, filename)
@@ -70,7 +117,11 @@ def parse_imports(source: Source, filename: str = "<unknown>") -> tuple[ImportRe
         log.debug("%s: not parseable by this Python (%s); scanning tokens", filename, exc)
         return tuple(dict.fromkeys(_scan_imports(source)))
 
+    text_hint = source if isinstance(source, bytes) else source.encode("utf-8", "replace")
     refs: dict[ImportRef, None] = {}  # insertion-ordered set
+    if docstrings and (b">>> import" in text_hint or b">>> from" in text_hint):
+        for ref in _docstring_imports(tree):
+            refs[ref] = None
     # Import statements can only appear as statements, so walking statement blocks
     # (a small fraction of all AST nodes) finds them all, in source order.
     for node in _statements(tree.body):
@@ -86,15 +137,15 @@ def parse_imports(source: Source, filename: str = "<unknown>") -> tuple[ImportRe
             and _is_pytest_plugins(node)
         ):
             for plugin in _string_literals(node.value):
-                refs[ImportRef(plugin)] = None
+                for name in _plugin_names(plugin):
+                    refs[ImportRef(name)] = None
     # Dynamic imports are expressions and need a full walk; only pay for it when needed.
-    text_hint = source if isinstance(source, bytes) else source.encode("utf-8", "replace")
     if b"import_module" in text_hint or b"__import__" in text_hint:
         for node in ast.walk(tree):
             if isinstance(node, ast.Call):
-                ref = _dynamic_import(node)
-                if ref is not None:
-                    refs[ref] = None
+                dynamic = _dynamic_import(node)
+                if dynamic is not None:
+                    refs[dynamic] = None
     return tuple(refs)
 
 
@@ -181,6 +232,27 @@ def _dynamic_import(call: ast.Call) -> ImportRef | None:
     base = parts[: len(parts) - (level - 1)]
     rest = module[level:]
     return ImportRef(".".join([*base, rest] if rest else base))
+
+
+def _docstring_imports(tree: ast.Module) -> Iterator[ImportRef]:
+    """Imports in the ``>>>`` examples of module, class and function docstrings."""
+    owners: list[ast.AST] = [tree]
+    owners.extend(
+        node
+        for node in _statements(tree.body)
+        if isinstance(node, (ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+    )
+    for owner in owners:
+        assert isinstance(owner, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef))
+        docstring = ast.get_docstring(owner, clean=False)
+        if docstring and ">>>" in docstring:
+            for ref in parse_imports(_doctest_source(docstring), docstrings=False):
+                yield ImportRef(ref.module, ref.names, ref.level, doctest=True)
+
+
+def _plugin_names(value: str) -> Iterator[str]:
+    # pytest accepts a comma-separated string: pytest_plugins = "a.b,c.d"
+    return (name.strip() for name in value.split(",") if name.strip())
 
 
 def _is_pytest_plugins(node: ast.Assign | ast.AnnAssign) -> bool:
@@ -289,7 +361,8 @@ def _imports_in(statement: list[_Token]) -> Iterator[ImportRef]:
         for kind, text in statement[words.index("=") + 1 :]:
             if kind == tokenize.STRING:
                 with contextlib.suppress(ValueError, SyntaxError):
-                    yield ImportRef(str(ast.literal_eval(text)))
+                    for name in _plugin_names(str(ast.literal_eval(text))):
+                        yield ImportRef(name)
     for i, (_kind, text) in enumerate(statement[:-2]):
         # importlib.import_module("x") / __import__("x") with a literal, absolute name
         if text in ("import_module", "__import__") and statement[i + 1][1] == "(":
@@ -369,8 +442,16 @@ class ModuleResolver:
     ``sys.path``, so directories holding a conftest above the importer are roots too.
     """
 
-    def __init__(self, files: Iterable[str], source_roots: Sequence[str] = ("", "src")) -> None:
+    def __init__(
+        self,
+        files: Iterable[str],
+        source_roots: Sequence[str] = ("", "src"),
+        *,
+        doctests: bool = False,
+    ) -> None:
+        """``doctests``: also follow imports in docstring examples (``--doctest-modules``)."""
         self._files = frozenset(files)
+        self._doctests = doctests
         self._roots = tuple(dict.fromkeys(_normalise_root(r) for r in source_roots))
         self._packages = frozenset(
             _parent(f) for f in self._files if f.rpartition("/")[2] == "__init__.py"
@@ -387,30 +468,44 @@ class ModuleResolver:
                     self._children.setdefault(_parent(directory), []).append(f)
             elif name.endswith(".py"):
                 self._children.setdefault(directory, []).append(f)
+        # The same imports recur across many files: memoise per (import, root) and per
+        # directory. This keeps resolving a large repository fast.
+        self._absolute_memo: dict[tuple[ImportRef, str], tuple[str, ...]] = {}
+        self._roots_memo: dict[str, tuple[str, ...]] = {}
 
     def resolve(self, importer: str, refs: Iterable[ImportRef]) -> set[str]:
         """Return the repository files that ``importer`` depends on via ``refs``."""
-        roots = dict.fromkeys((*self._roots, *self._dynamic_roots(importer)))
+        roots = self._roots_for(_parent(importer))
         found: set[str] = set()
         for ref in refs:
+            if ref.doctest and not self._doctests:
+                continue
             if ref.level:
                 found.update(self._resolve_relative(importer, ref))
                 continue
             for root in roots:
-                found.update(self._resolve_absolute(ref, root))
+                key = (ref, root)
+                hits = self._absolute_memo.get(key)
+                if hits is None:
+                    hits = self._absolute_memo[key] = tuple(self._resolve_absolute(ref, root))
+                found.update(hits)
         found.discard(importer)
         return found
 
-    def _dynamic_roots(self, importer: str) -> Iterator[str]:
-        """The importer's own import root, then those of conftest directories above it."""
-        yield self._import_root(_parent(importer))
-        directory = _parent(importer)
-        while True:
-            if directory in self._conftest_dirs:
-                yield self._import_root(directory)
-            if not directory:
-                return
-            directory = _parent(directory)
+    def _roots_for(self, directory: str) -> tuple[str, ...]:
+        """Source roots, the directory's own import root, and those of conftests above."""
+        roots = self._roots_memo.get(directory)
+        if roots is None:
+            dynamic = [self._import_root(directory)]
+            current = directory
+            while True:
+                if current in self._conftest_dirs:
+                    dynamic.append(self._import_root(current))
+                if not current:
+                    break
+                current = _parent(current)
+            roots = self._roots_memo[directory] = tuple(dict.fromkeys((*self._roots, *dynamic)))
+        return roots
 
     def _import_root(self, directory: str) -> str:
         """The first directory, from ``directory`` upwards, that is not a package."""

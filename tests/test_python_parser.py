@@ -5,7 +5,13 @@ import warnings
 
 import pytest
 
-from karma.languages.python import ImportRef, ModuleResolver, parse_imports
+from karma.languages.python import (
+    ImportRef,
+    ModuleResolver,
+    parse_doctest_text,
+    parse_file,
+    parse_imports,
+)
 
 
 def parse(source: str) -> tuple[ImportRef, ...]:
@@ -311,3 +317,65 @@ class TestModuleResolver:
     def test_deleted_modules_can_still_be_resolved(self) -> None:
         # build_graph passes deleted paths in so importers keep their edges.
         assert resolve({"gone.py"}, "main.py", "import gone\n") == {"gone.py"}
+
+
+class TestDoctests:
+    def test_docstring_examples_are_marked_as_doctest_imports(self) -> None:
+        refs = parse(
+            '''
+            """Module doc.
+
+            >>> from pkg.other import VALUE
+            >>> VALUE
+            1
+            """
+            import os
+
+            class Thing:
+                """
+                >>> import pkg.klass
+                """
+
+            def f():
+                """
+                >>> from pkg import (
+                ...     helper,
+                ... )
+                """
+            '''
+        )
+        assert ImportRef("os") in refs
+        assert ImportRef("pkg.other", ("VALUE",), doctest=True) in refs
+        assert ImportRef("pkg.klass", doctest=True) in refs
+        assert ImportRef("pkg", ("helper",), doctest=True) in refs
+
+    def test_doctest_imports_only_resolve_when_doctests_run(self) -> None:
+        files = {"pkg/__init__.py", "pkg/other.py", "pkg/mod.py"}
+        refs = parse('def f():\n    """\n    >>> from pkg.other import VALUE\n    """\n')
+        assert ModuleResolver(files).resolve("pkg/mod.py", refs) == set()
+        assert ModuleResolver(files, doctests=True).resolve("pkg/mod.py", refs) == {
+            "pkg/__init__.py",
+            "pkg/other.py",
+        }
+
+    def test_doctest_text_files(self) -> None:
+        text = (
+            "Usage\n=====\n\n    >>> import app\n    >>> app.X\n    1\n\nNot code: import nothing\n"
+        )
+        assert parse_file(text.encode(), "docs/test_usage.txt") == (ImportRef("app"),)
+        assert parse_doctest_text("no examples here\n") == ()
+
+    def test_json_round_trip_keeps_the_doctest_flag(self) -> None:
+        ref = ImportRef("a", (), 0, doctest=True)
+        assert ImportRef.from_json(ref.to_json()) == ref
+        with pytest.raises(ValueError, match="malformed"):
+            ImportRef.from_json(["a"])
+
+    def test_comma_separated_pytest_plugins(self) -> None:
+        assert parse('pytest_plugins = "fixtures.db, fixtures.web"\n') == (
+            ImportRef("fixtures.db"),
+            ImportRef("fixtures.web"),
+        )
+        # ...also through the token scanner
+        refs = parse('pytest_plugins = "fixtures.db,fixtures.web"\nexcept A, B: pass\n')
+        assert ImportRef("fixtures.web") in refs

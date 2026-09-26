@@ -11,6 +11,7 @@ and ``setup.cfg`` (``[tool:pytest]``) wins.
 from __future__ import annotations
 
 import configparser
+import contextlib
 import logging
 import os
 import shlex
@@ -140,16 +141,22 @@ def _settings(inifile: Path, values: dict[str, Any], root: Path) -> PytestSettin
         # ini paths are relative to the ini file; Karma's are relative to `root`.
         out = []
         for entry in entries:
-            rel = Path(os.path.relpath(base / entry, root)).as_posix()
+            try:
+                rel = Path(os.path.relpath(base / entry, root)).as_posix()
+            except ValueError:  # on another drive (Windows): cannot be inside root
+                continue
             if rel != ".." and not rel.startswith("../"):
                 out.append("" if rel == "." else rel)
         return tuple(out)
 
+    # pytest only uses testpaths when it runs from its rootdir (the ini file's
+    # directory); run from a sub-directory, it collects everything below it.
+    at_rootdir = base.resolve() == root.resolve()
     norecursedirs = values.get("norecursedirs")
     return PytestSettings(
         inifile=inifile,
         python_files=_words(values.get("python_files")),
-        testpaths=relative(_words(values.get("testpaths"))),
+        testpaths=relative(_words(values.get("testpaths"))) if at_rootdir else (),
         norecursedirs=_words(norecursedirs) if norecursedirs is not None else DEFAULT_NORECURSEDIRS,
         pythonpath=relative(_words(values.get("pythonpath"))),
         addopts=_words(values.get("addopts"), shell=True),
@@ -196,11 +203,34 @@ def addopts_from_environment() -> tuple[str, ...]:
     return _words(os.environ.get("PYTEST_ADDOPTS", ""), shell=True)
 
 
-def entry_point_plugins(pyproject: dict[str, Any]) -> tuple[str, ...]:
-    """Modules the project registers as pytest plugins (``pytest11`` entry points)."""
-    table: object = pyproject
-    for key in ("project", "entry-points", "pytest11"):
-        table = table.get(key) if isinstance(table, dict) else None
-    if not isinstance(table, dict):
-        return ()
-    return tuple(v.split(":")[0].strip() for v in table.values() if isinstance(v, str))
+def plugins_from_environment() -> tuple[str, ...]:
+    """``PYTEST_PLUGINS``: comma-separated modules pytest loads as plugins."""
+    value = os.environ.get("PYTEST_PLUGINS", "")
+    return tuple(name.strip() for name in value.split(",") if name.strip())
+
+
+def entry_point_plugins(pyproject: dict[str, Any], root: Path | None = None) -> tuple[str, ...]:
+    """Modules the project registers as pytest plugins (``pytest11`` entry points).
+
+    Read from PEP 621 ``[project.entry-points.pytest11]``, Poetry's
+    ``[tool.poetry.plugins.pytest11]``, and setup.cfg's ``[options.entry_points]``.
+    """
+    specs: list[str] = []
+    for keys in (
+        ("project", "entry-points", "pytest11"),
+        ("tool", "poetry", "plugins", "pytest11"),
+    ):
+        table: object = pyproject
+        for key in keys:
+            table = table.get(key) if isinstance(table, dict) else None
+        if isinstance(table, dict):
+            specs.extend(v for v in table.values() if isinstance(v, str))
+    if root is not None and (root / "setup.cfg").is_file():
+        parser = configparser.ConfigParser(interpolation=None)
+        with contextlib.suppress(OSError, UnicodeDecodeError, configparser.Error):
+            parser.read(root / "setup.cfg", encoding="utf-8")
+            if parser.has_option("options.entry_points", "pytest11"):
+                for line in parser.get("options.entry_points", "pytest11").splitlines():
+                    if "=" in line:  # name = module:attr
+                        specs.append(line.split("=", 1)[1])
+    return tuple(dict.fromkeys(s.split(":")[0].strip() for s in specs if s.strip()))

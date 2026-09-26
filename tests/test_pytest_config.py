@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
 import pytest
@@ -70,8 +71,10 @@ class TestFindSettings:
         service = tmp_path / "service"
         service.mkdir()
         settings = find_settings(service)
-        assert settings.testpaths == ("tests",)  # other/ is outside the analysed directory
-        assert settings.pythonpath == ("lib",)
+        assert settings.pythonpath == ("lib",)  # ../ is outside the analysed directory
+        # testpaths only apply when pytest runs from its rootdir (tmp_path), not service/
+        assert settings.testpaths == ()
+        assert find_settings(tmp_path).testpaths == ("service/tests", "other")
 
     def test_addopts_are_shell_split(self, tmp_path: Path) -> None:
         write(tmp_path / "pytest.ini", '[pytest]\naddopts = -p tests.plugin -k "not slow"\n')
@@ -151,3 +154,33 @@ addopts = "-p tests.fixtures --doctest-modules"
         config = load_config(tmp_path).with_pytest_args(["-p", "x", "--junitxml", "o.xml"])
         assert config.plugins == ("x",)
         assert config.junitxml == "o.xml"
+
+
+class TestReviewRoundTwo:
+    def test_testpaths_only_apply_at_the_rootdir(self, tmp_path: Path) -> None:
+        write(
+            tmp_path / "pyproject.toml", '[tool.pytest.ini_options]\ntestpaths = ["proj/tests"]\n'
+        )
+        (tmp_path / "proj").mkdir()
+        assert find_settings(tmp_path).testpaths == ("proj/tests",)
+        assert find_settings(tmp_path / "proj").testpaths == ()  # pytest ignores them there
+
+    def test_poetry_and_setup_cfg_plugins(self, tmp_path: Path) -> None:
+        pyproject = {"tool": {"poetry": {"plugins": {"pytest11": {"a": "poetry_plugin"}}}}}
+        write(
+            tmp_path / "setup.cfg",
+            "[options.entry_points]\npytest11 =\n    b = cfg_plugin.hooks:plugin\n",
+        )
+        assert entry_point_plugins(pyproject, tmp_path) == ("poetry_plugin", "cfg_plugin.hooks")
+
+    def test_pytest_plugins_environment_variable(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("PYTEST_PLUGINS", "fixtures.db, fixtures.web")
+        assert load_config(tmp_path).plugins == ("fixtures.db", "fixtures.web")
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="drive letters are Windows-only")
+    def test_paths_on_another_drive_are_ignored(self, tmp_path: Path) -> None:
+        other = "D:/shared/libs" if not str(tmp_path).upper().startswith("D") else "E:/libs"
+        write(tmp_path / "pytest.ini", f"[pytest]\npythonpath = . {other}\n")
+        assert find_settings(tmp_path).pythonpath == ("",)

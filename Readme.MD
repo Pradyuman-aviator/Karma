@@ -132,8 +132,8 @@ graph LR
    - files with syntax newer than your interpreter, via a fallback scan
 3. **What to run.** A breadth-first search from each changed file through reverse dependencies. It also follows pytest's own rules:
    - a `conftest.py` or test-package `__init__.py` affects every test beneath it
-   - plugins loaded with `-p` affect every test
-   - `--doctest-modules` and `--doctest-glob` make modules and text files into tests
+   - plugins (`-p`, `PYTEST_PLUGINS`, `pytest11` entry points, `pytest_plugins`) affect every test
+   - doctests: `test*.txt` files (or your `--doctest-glob`) are tests; their `>>>` imports are dependencies. With `--doctest-modules`, modules are tests and their docstring imports count too
    - `testpaths` and `norecursedirs` bound what counts as a test
 
    Karma reads these from pytest's own configuration, found the way pytest finds it: `pytest.toml`, `pytest.ini`, `pyproject.toml`, `tox.ini`, or `setup.cfg`, plus `addopts` and `PYTEST_ADDOPTS`.
@@ -174,6 +174,8 @@ The graph is cached per file by content hash, so a typical run re-parses only wh
 | Cold, parallel | 1.2 s |
 | Warm cache | 0.34 s |
 
+Absolute timings vary with machine load: a later run of the same benchmark on a busier machine measured 4.4 s / 1.7 s / 0.8 s. The ratios hold: parallel parsing is about 3× faster than serial on a cold start, and the cache makes warm runs several times faster again.
+
 ---
 
 ## Configuration
@@ -184,7 +186,7 @@ Optional, in `pyproject.toml`:
 [tool.karma]
 test-patterns = ["test_*.py", "*_test.py"]  # default: pytest's python_files, else these
 source-roots = [".", "src"]                  # where your top-level packages live
-exclude = ["docs/*", "migrations/*"]         # not parsed (imports into them still count)
+exclude = ["examples/*"]                     # never selected as tests (still analysed)
 extend-run-all-on = ["Dockerfile"]           # add to the full-suite triggers (run-all-on replaces them)
 pytest-args = ["-p", "no:cacheprovider"]     # always passed to pytest
 
@@ -216,7 +218,7 @@ Patterns without `/` match file names anywhere; patterns with `/` match the path
 
 | Code | Meaning |
 | --- | --- |
-| pytest's | Returned as-is, except "no tests collected" (5), which becomes 0 |
+| pytest's | Returned as-is, except "no tests collected" (5) on a targeted run, which becomes 0 (a full run that collects nothing still fails) |
 | 2 | Karma error: bad ref, invalid config, … |
 | 130 | Interrupted |
 

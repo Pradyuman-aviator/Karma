@@ -377,3 +377,13 @@ class TestReviewRegressions:
 
         ascii_stdout.flush()
         assert rb"tests/test_\u65e5\u672c.py" in buffer.getvalue()
+
+
+def test_a_full_run_that_collects_nothing_fails(
+    project: GitRepo, capfd: pytest.CaptureFixture[str]
+) -> None:
+    # Everything deselected: plain pytest exits 5 and so must a full Karma run.
+    assert karma_main(project, "run", "--all", "--", "-m", "no_such_marker") == 5
+    project.write("app/other.py", "VALUE = 1  # edit\n")
+    # ...while a targeted run that deselects everything is still fine.
+    assert karma_main(project, "run", "--base", "main", "--", "-m", "no_such_marker") == 0

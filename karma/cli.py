@@ -62,10 +62,11 @@ def _build_graph(
     return build_graph(
         root,
         source_roots=config.source_roots,
-        exclude=config.exclude,
         deleted=deleted,
         cache=None if args.no_cache else ImportCache(default_cache_path(root)),
         jobs=args.jobs,
+        doctest_modules=config.doctest_modules,
+        doctest_globs=config.effective_doctest_globs,
     )
 
 
@@ -178,7 +179,11 @@ def cmd_run(args: argparse.Namespace) -> int:
         _github_outputs(selection, tests_run=len(selection.tests))
         emit_annotations(result.problems, plan.root)
         append_step_summary(run_markdown(selection, result, plan.base))
-    return EXIT_OK if result.exit_code == EXIT_NO_TESTS_COLLECTED else result.exit_code
+    # "No tests collected" is fine for a targeted run (e.g. -m deselected them), but a
+    # full run that collects nothing must fail, exactly as plain pytest does.
+    if result.exit_code == EXIT_NO_TESTS_COLLECTED and not selection.run_all:
+        return EXIT_OK
+    return result.exit_code
 
 
 def cmd_graph(args: argparse.Namespace) -> int:

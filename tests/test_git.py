@@ -225,6 +225,9 @@ class TestReviewRegressions:
             "-C", "vendor/lib", "-c", "protocol.file.allow=always", "pull", "-q", "origin", "main"
         )
         repo.commit("bump submodule")
+        # `ignore = all` in .gitmodules must not hide the bump.
+        repo.git("config", "-f", ".gitmodules", "submodule.vendor/lib.ignore", "all")
+        repo.git("config", "diff.ignoreSubmodules", "all")
 
         changes = get_changes(base, "HEAD", cwd=repo.path)
 

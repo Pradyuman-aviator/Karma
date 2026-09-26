@@ -24,10 +24,15 @@ _CASE_SENSITIVE = sys.platform != "win32"
 
 
 def is_test_file(path: str, config: Config) -> bool:
-    """Whether a full pytest run would collect ``path``."""
+    """Whether a full pytest run would collect ``path`` (and it is not ``exclude``d)."""
     name = path.rpartition("/")[2]
-    if not name.endswith(".py") or not _in_test_scope(path, config):
+    if matches_any(path, config.exclude) or not _in_test_scope(path, config):
         return False
+    if not name.endswith(".py"):
+        # Text files are doctests when they match --doctest-glob (default test*.txt).
+        return bool(
+            matches_any(path, config.effective_doctest_globs, case_sensitive=_CASE_SENSITIVE)
+        )
     if config.doctest_modules and name not in _NOT_DOCTESTS:
         return True  # every module is collected for its doctests
     return name not in _NOT_TESTS and bool(
@@ -37,12 +42,22 @@ def is_test_file(path: str, config: Config) -> bool:
 
 def _in_test_scope(path: str, config: Config) -> bool:
     """Apply ``testpaths`` and ``norecursedirs``, which bound a full pytest run."""
-    directories = path.split("/")[:-1]
-    if any(fnmatch.fnmatch(d, p) for d in directories for p in config.norecursedirs):
-        return False
+    parts = path.split("/")[:-1]
+    for i, directory in enumerate(parts):
+        dir_path = "/".join(parts[: i + 1])
+        if any(_norecurse(directory, dir_path, p) for p in config.norecursedirs):
+            return False
     if not config.testpaths:
         return True
     return any(_under(path, root) for root in config.testpaths)
+
+
+def _norecurse(name: str, dir_path: str, pattern: str) -> bool:
+    # Like pytest's fnmatch_ex: a pattern with a separator matches the directory's path
+    # (anchored anywhere, as pytest compares absolute paths with a "*/" prefix).
+    if "/" not in pattern:
+        return fnmatch.fnmatch(name, pattern)
+    return fnmatch.fnmatch(dir_path, pattern) or fnmatch.fnmatch(dir_path, f"*/{pattern}")
 
 
 def _under(path: str, root: str) -> bool:
@@ -121,7 +136,7 @@ def select_tests(changes: ChangeSet, graph: DependencyGraph, config: Config) -> 
             )
 
     test_set = frozenset(all_tests)
-    affected = _Affected(graph, config, all_tests)
+    affected = _Affected(graph, config, all_tests, changes.deleted)
 
     # Breadth-first search from every changed file. `parent` doubles as the visited set
     # and records, for each reached file, the file that led to it.
@@ -133,12 +148,6 @@ def select_tests(changes: ChangeSet, graph: DependencyGraph, config: Config) -> 
             if neighbour not in parent:
                 parent[neighbour] = node
                 queue.append(neighbour)
-
-    # Text files collected for doctests (--doctest-glob) are tests of their own.
-    for path in changes.modified:
-        if config.doctest_globs and matches_any(path, config.doctest_globs):
-            parent.setdefault(path, None)
-            test_set |= {path}
 
     selected = tuple(sorted(f for f in parent if f in test_set))
     return Selection(
@@ -153,14 +162,21 @@ def select_tests(changes: ChangeSet, graph: DependencyGraph, config: Config) -> 
 class _Affected:
     """``affected(path)``: the files directly affected when ``path`` changes."""
 
-    def __init__(self, graph: DependencyGraph, config: Config, all_tests: list[str]) -> None:
+    def __init__(
+        self,
+        graph: DependencyGraph,
+        config: Config,
+        all_tests: list[str],
+        deleted: tuple[str, ...] = (),
+    ) -> None:
         self._graph = graph
         self._config = config
         self._all_tests = all_tests
         self._mapped: dict[str, tuple[str, ...]] = {}
-        # Modules loaded as pytest plugins (-p NAME, pytest11 entry points) apply to
-        # every test, like a conftest.py at the root.
-        resolver = ModuleResolver(graph.files, config.source_roots)
+        # Modules loaded as pytest plugins (-p NAME, pytest11 entry points,
+        # PYTEST_PLUGINS) apply to every test, like a conftest.py at the root. A deleted
+        # plugin breaks every test, so deleted files must resolve too.
+        resolver = ModuleResolver([*graph.files, *deleted], config.source_roots)
         self._plugins = resolver.resolve("conftest.py", [ImportRef(p) for p in config.plugins])
 
     def __call__(self, node: str) -> list[str]:

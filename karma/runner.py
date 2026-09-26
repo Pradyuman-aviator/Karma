@@ -147,6 +147,7 @@ def _run_once(
             # xunit1 records each test's file and line, used for annotations.
             extra = [f"--junitxml={path}", "-o", "junit_family=xunit1"]
         command = [python, "-m", "pytest", *args, *extra, *tests]
+        before = _fingerprint(path)
         log.debug("running %s", " ".join(command))
         sys.stdout.flush()
         sys.stderr.flush()
@@ -155,10 +156,19 @@ def _run_once(
         except OSError as exc:
             log.error("could not start pytest with %s: %s", python, exc)
             return RunResult(exit_code=EXIT_INTERNAL_ERROR, crashed=True)
-        if not path.exists():
+        # A report left over from an earlier run must not pass for this run's results.
+        if not path.exists() or _fingerprint(path) == before:
             crashed = exit_code not in (EXIT_OK, EXIT_NO_TESTS_COLLECTED)
             return RunResult(exit_code=exit_code, crashed=crashed)
         return RunResult(exit_code=exit_code, cases=tuple(parse_junit(path)))
+
+
+def _fingerprint(path: Path) -> tuple[int, int] | None:
+    try:
+        stat = path.stat()
+    except OSError:
+        return None
+    return stat.st_mtime_ns, stat.st_size
 
 
 def _combine_exit_codes(codes: Sequence[int]) -> int:

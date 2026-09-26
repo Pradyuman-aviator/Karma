@@ -13,7 +13,7 @@ from pathlib import Path
 
 from karma.cache import ImportCache
 from karma.git import list_files
-from karma.languages.python import ImportRef, ModuleResolver, parse_imports
+from karma.languages.python import ImportRef, ModuleResolver, parse_file
 
 log = logging.getLogger(__name__)
 
@@ -90,23 +90,24 @@ def build_graph(
     root: Path,
     *,
     source_roots: Sequence[str] = ("", "src"),
-    exclude: Sequence[str] = (),
     deleted: Iterable[str] = (),
     cache: ImportCache | None = None,
     jobs: int | None = None,
+    doctest_modules: bool = False,
+    doctest_globs: Sequence[str] = (),
 ) -> DependencyGraph:
     """Scan every Python file under ``root`` and resolve its imports.
 
     ``deleted`` files are known to the resolver even though they no longer exist, so
     files that still import a deleted module keep an edge to it and get re-tested.
+    Text files matching ``doctest_globs`` become nodes too, with the imports of their
+    ``>>>`` examples; with ``doctest_modules``, docstring examples count as imports.
     Files missing from ``cache`` are parsed in ``jobs`` worker processes (default:
     one per CPU) when there are enough of them to be worth it.
     """
-    listed = list_files(root, ".py")
-    files = [f for f in listed if not matches_any(f, exclude)]
-    # Excluded files are not parsed, but imports *into* them must still resolve, or a
-    # change to one would look like it affects nothing.
-    excluded = [f for f in listed if matches_any(f, exclude)]
+    files = list_files(root)
+    if doctest_globs:
+        files += [f for f in list_files(root, doctest_globs) if not f.endswith(".py")]
     store = cache if cache is not None else ImportCache(None)
 
     imports: dict[str, tuple[ImportRef, ...]] = {}
@@ -126,7 +127,7 @@ def build_graph(
         store.store(rel, data, refs)
         imports[rel] = refs
 
-    resolver = ModuleResolver([*files, *excluded, *deleted], source_roots)
+    resolver = ModuleResolver([*files, *deleted], source_roots, doctests=doctest_modules)
     edges = {rel: resolver.resolve(rel, imports[rel]) for rel in files}
 
     log.debug("parsed %d files, %d from cache", store.misses, store.hits)
@@ -149,8 +150,8 @@ def _parse_all(
         chunk = max(1, len(pending) // (workers * 4))
         try:
             with ProcessPoolExecutor(max_workers=workers) as pool:
-                return list(pool.map(parse_imports, blobs, names, chunksize=chunk))
+                return list(pool.map(parse_file, blobs, names, chunksize=chunk))
         except (OSError, RuntimeError, BrokenProcessPool) as exc:
             # Some sandboxes forbid subprocesses or shared memory; parse serially instead.
             log.debug("parallel parsing unavailable (%s); parsing serially", exc)
-    return [parse_imports(data, rel) for rel, data in pending]
+    return [parse_file(data, rel) for rel, data in pending]

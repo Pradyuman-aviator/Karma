@@ -5,7 +5,7 @@ Example::
     [tool.karma]
     test-patterns = ["test_*.py", "*_test.py"]   # default: pytest's python_files
     source-roots = [".", "src"]                   # where top-level packages live
-    exclude = ["docs/*", "migrations/*"]          # never analysed
+    exclude = ["docs/*", "migrations/*"]          # never selected as tests (still analysed)
     extend-run-all-on = ["Dockerfile"]            # also run everything when these change
     pytest-args = ["-p", "no:cacheprovider"]
 
@@ -34,6 +34,7 @@ from karma.pytest_config import (
     analyse_args,
     entry_point_plugins,
     find_settings,
+    plugins_from_environment,
 )
 
 log = logging.getLogger(__name__)
@@ -94,6 +95,11 @@ class Config:
     doctest_globs: tuple[str, ...] = ()
     junitxml: str | None = None
 
+    @property
+    def effective_doctest_globs(self) -> tuple[str, ...]:
+        """Text files pytest collects as doctests; ``test*.txt`` unless configured."""
+        return self.doctest_globs or ("test*.txt",)
+
     def with_pytest_args(self, args: Sequence[str]) -> Config:
         """Account for pytest arguments (``addopts`` or ``karma run -- ...``)."""
         options = analyse_args(args)
@@ -142,7 +148,7 @@ def load_config(root: Path) -> Config:
     values["source_roots"] = tuple(dict.fromkeys((*roots, *settings.pythonpath)))
     values["testpaths"] = settings.testpaths
     values["norecursedirs"] = settings.norecursedirs
-    values["plugins"] = entry_point_plugins(pyproject)
+    values["plugins"] = (*entry_point_plugins(pyproject, root), *plugins_from_environment())
     if "extend-run-all-on" in table:
         base = values.get("run_all_on", DEFAULT_RUN_ALL_ON)
         values["run_all_on"] = (

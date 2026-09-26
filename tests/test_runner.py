@@ -206,3 +206,26 @@ def test_paths_are_rebased_when_pytest_rootdir_is_a_subdirectory(tmp_path: Path)
 def test_rebase_only_on_a_unique_match(tmp_path: Path, known: list[str], expected: str) -> None:
     case = TestCase("test_x.py::test_a", Outcome.FAILED, file="test_x.py")
     assert runner._rebase(case, tmp_path, known).file == expected
+
+
+def test_a_stale_user_report_is_not_mistaken_for_results(suite: Path) -> None:
+    report = suite / "report.xml"
+    run_pytest(
+        ["test_mixed.py"],
+        cwd=suite,
+        args=["-p", "no:cacheprovider", "--junitxml=report.xml"],
+        report="report.xml",
+    )
+    assert "test_fail" in report.read_text(encoding="utf-8")
+
+    # A usage error means pytest writes no report; the old one must not be read.
+    result = run_pytest(
+        ["test_green.py"],
+        cwd=suite,
+        args=["--junitxml=report.xml", "--no-such-option"],
+        report="report.xml",
+    )
+
+    assert result.exit_code == runner.EXIT_USAGE_ERROR
+    assert result.cases == ()
+    assert result.crashed

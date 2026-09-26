@@ -63,20 +63,27 @@ fi
 
 # --- run -----------------------------------------------------------------------------
 # Split inputs like a shell would (quotes respected, multi-line YAML values allowed).
-# Python's shlex does it portably; bash 3.2 on macOS has no `readarray -d`.
+# Python's shlex does it portably (bash 3.2 on macOS has no `readarray -d`). Words are
+# written as NUL-separated UTF-8 *bytes*, so a Windows code page cannot break them, and
+# go through a file, so a failure stops the action instead of silently dropping args.
+WORDS_FILE="$(mktemp)"
+trap 'rm -f "$WORDS_FILE"' EXIT
 split_words() {
-  "$PYTHON" -c 'import shlex, sys; sys.stdout.write("".join(w + "\0" for w in shlex.split(sys.argv[1])))' "$1"
-}
-for input_name in INPUT_ARGS INPUT_PYTEST_ARGS; do
-  if ! "$PYTHON" -c 'import shlex, sys; shlex.split(sys.argv[1])' "${!input_name:-}" 2>/dev/null; then
-    echo "::error title=Karma::cannot parse the ${input_name#INPUT_} input (unbalanced quotes?)"
+  if ! "$PYTHON" -c '
+import shlex, sys
+words = shlex.split(sys.argv[1])
+sys.stdout.buffer.write(b"".join(w.encode("utf-8") + b"\0" for w in words))
+' "$2" >"$WORDS_FILE" 2>/dev/null; then
+    echo "::error title=Karma::cannot parse the $1 input (unbalanced quotes?)"
     exit 2
   fi
-done
+}
 EXTRA_ARGS=()
-while IFS= read -r -d '' word; do EXTRA_ARGS+=("$word"); done < <(split_words "${INPUT_ARGS:-}")
+split_words args "${INPUT_ARGS:-}"
+while IFS= read -r -d '' word; do EXTRA_ARGS+=("$word"); done <"$WORDS_FILE"
 PYTEST_ARGS=()
-while IFS= read -r -d '' word; do PYTEST_ARGS+=("$word"); done < <(split_words "${INPUT_PYTEST_ARGS:-}")
+split_words pytest-args "${INPUT_PYTEST_ARGS:-}"
+while IFS= read -r -d '' word; do PYTEST_ARGS+=("$word"); done <"$WORDS_FILE"
 
 cmd=("$PYTHON" "$ACTION_PATH/cli.py" "${INPUT_COMMAND:-run}" --ci --head HEAD
   --on-git-error "${INPUT_ON_GIT_ERROR:-fail}")
@@ -85,5 +92,7 @@ if [[ -n "$BASE" ]]; then cmd+=(--base "$BASE"); fi
 cmd+=(${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"})
 if [[ ${#PYTEST_ARGS[@]} -gt 0 ]]; then cmd+=(-- "${PYTEST_ARGS[@]}"); fi
 
+rm -f "$WORDS_FILE" # `exec` replaces this shell, so the EXIT trap would not run
+trap - EXIT
 echo "karma: ${cmd[*]}"
 exec "${cmd[@]}"

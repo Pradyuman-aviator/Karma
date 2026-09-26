@@ -46,6 +46,18 @@ should have run, or made CI pass without running any tests.
   - package-vs-module precedence
   - `--head` other than the checked-out commit
   - `testpaths` / `norecursedirs`
+- A second review round, also fixed with tests:
+  - text-file doctests (`test*.txt` by default) and imports inside doctest examples
+  - path-style `norecursedirs`
+  - `testpaths` applied outside pytest's rootdir
+  - chains through `exclude`d files (`exclude` now only means "never a test")
+  - Poetry / setup.cfg / `PYTEST_PLUGINS` / comma-separated `pytest_plugins` plugins
+  - deleted plugins
+  - submodules with `ignore = all`
+  - pytest paths on another drive
+  - stale user JUnit reports
+  - full runs that collect nothing now fail like plain pytest
+  - non-ASCII action inputs
 - `karma run --all` ran nothing when Karma recognised no test files; full runs now
   always go to pytest.
 - Crashes on deeply nested generated code (including a hard interpreter crash on Python
