@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import logging
 import subprocess
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -25,8 +27,25 @@ def _hermetic_git(
     for var in ("AUTHOR", "COMMITTER"):
         monkeypatch.setenv(f"GIT_{var}_NAME", "Karma Tests")
         monkeypatch.setenv(f"GIT_{var}_EMAIL", "tests@karma.invalid")
-    for var in ("GITHUB_OUTPUT", "GITHUB_STEP_SUMMARY", "GITHUB_ACTIONS"):
+    # Karma reads these; when this suite itself runs on GitHub Actions they must not leak in.
+    for var in (
+        "GITHUB_ACTIONS",
+        "GITHUB_BASE_REF",
+        "GITHUB_OUTPUT",
+        "GITHUB_STEP_SUMMARY",
+        "GITHUB_WORKSPACE",
+        "KARMA_BASE",
+    ):
         monkeypatch.delenv(var, raising=False)
+
+
+@pytest.fixture(autouse=True)
+def _restore_karma_logger() -> Iterator[None]:
+    """``cli.main`` configures the ``karma`` logger; undo it so caplog keeps working."""
+    logger = logging.getLogger("karma")
+    saved = (logger.handlers[:], logger.propagate, logger.level)
+    yield
+    logger.handlers[:], logger.propagate, logger.level = saved
 
 
 @pytest.fixture

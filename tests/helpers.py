@@ -24,7 +24,8 @@ class GitRepo:
     def write(self, rel: str, content: str = "") -> Path:
         target = self.path / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        target.write_text(content, encoding="utf-8", newline="\n")
+        with open(target, "w", encoding="utf-8", newline="\n") as fh:  # LF on every OS
+            fh.write(content)
         return target
 
     def delete(self, rel: str) -> None:
