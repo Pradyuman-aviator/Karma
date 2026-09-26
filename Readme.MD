@@ -140,6 +140,23 @@ A test selector must never skip a test that would fail. Karma leans toward runni
 - If git can't determine the changes (unknown ref, missing history), Karma **fails loudly** (exit 2) instead of passing with zero tests. `--on-git-error run-all` falls back to the full suite instead.
 - Changed files that no test depends on are listed, so nothing is dropped silently.
 
+### Validated on real projects
+
+Real modules in two well-known open-source projects were deliberately broken, and Karma's selection was compared with the test files that *actually* failed when the full suite ran:
+
+| Project | Modules broken | Failing test files Karma missed | Test files skipped (avg) |
+| --- | ---: | ---: | ---: |
+| [encode/starlette](https://github.com/encode/starlette) @ `9774b08` (1,277 tests) | 32 | **0** | 40.8%; 87–97% for leaf modules such as middleware |
+| [Textualize/rich](https://github.com/Textualize/rich) @ `9d8f9a3` (1,007 tests) | 15 | **0** | 6.6% |
+
+rich shows the limit of file-level analysis. Nearly every test imports `rich.console`, which imports most of the library, so most changes rightly select almost everything. Karma saves the most where components are separated, as in most applications and monorepos.
+
+**Check it on your own project** before relying on it. The script mutates modules one at a time, runs your suite, and restores every file:
+
+```bash
+python scripts/safety_check.py --package src/yourpackage --samples 20
+```
+
 ### Performance
 
 The graph is cached per file by content hash, so a typical run re-parses only what changed. Cold starts parse in parallel across CPU cores. Measured on pandas' source tree (1,415 files, 8,140 import edges; Windows, 16 logical CPUs):
