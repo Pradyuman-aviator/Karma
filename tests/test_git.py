@@ -275,3 +275,16 @@ class TestReviewRegressions:
         assert changes.modified == ("a.py", "b.py")
         assert changes.deleted == ("c.py",)
         assert changes.submodules == ("vendor/lib",)
+
+
+class TestCaseSensitivity:
+    def test_matches_glob_can_ignore_case(self) -> None:
+        assert not git.matches_glob("tests/TestUsage.txt", ["test*.txt"], case_sensitive=True)
+        assert git.matches_glob("tests/TestUsage.txt", ["test*.txt"], case_sensitive=False)
+        assert git.matches_glob("pkg/Mod.PY", ["*.py"], case_sensitive=False)
+
+    @pytest.mark.skipif(sys.platform != "win32", reason="pytest is case-insensitive on Windows")
+    def test_list_files_is_case_insensitive_on_windows(self, repo: GitRepo) -> None:
+        repo.write("tests/TestUsage.txt", ">>> import app\n")
+        repo.commit("doctest")
+        assert list_files(repo.path, ("test*.txt",)) == ["tests/TestUsage.txt"]

@@ -63,8 +63,8 @@ DEFAULT_RUN_ALL_ON = (
     "pytest.toml",
     ".pytest.toml",
     # dependencies and the interpreter
-    "requirements*.txt",
-    "requirements*.in",
+    "*requirements*.txt",  # requirements-dev.txt, test-requirements.txt, ...
+    "*requirements*.in",
     "*requirements/*.txt",
     "*requirements/*.in",
     "constraints*.txt",

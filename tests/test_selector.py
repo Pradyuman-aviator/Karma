@@ -134,7 +134,16 @@ class TestSelectTests:
         assert selection.tests == ("a/test_a.py", "test_b.py")
 
     @pytest.mark.parametrize(
-        "trigger", ["pyproject.toml", "requirements-dev.txt", "sub/requirements.txt", "uv.lock"]
+        "trigger",
+        [
+            "pyproject.toml",
+            "requirements-dev.txt",
+            "sub/requirements.txt",
+            "uv.lock",
+            "test-requirements.txt",
+            "dev-requirements.txt",
+            "requirements/base.txt",
+        ],
     )
     def test_run_all_triggers(self, trigger: str) -> None:
         selection = select("app/render.py", trigger)

@@ -10,6 +10,7 @@ import fnmatch
 import logging
 import os
 import subprocess
+import sys
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,6 +18,9 @@ from pathlib import Path
 from karma.errors import GitError
 
 log = logging.getLogger(__name__)
+
+# pytest matches file-name globs case-insensitively on Windows (fnmatch uses normcase).
+CASE_SENSITIVE = sys.platform != "win32"
 
 # `git hash-object -t tree /dev/null`: lets --staged work before the first commit.
 EMPTY_TREE = "4b825dc642cb6eb9a060e54bf8d69288fbee4904"
@@ -272,7 +276,8 @@ def list_files(root: Path, globs: Sequence[str] = ("*.py",)) -> list[str]:
     """
     # git's default pathspec `*` also matches `/`, so "*test*.txt" finds nested files;
     # results are then filtered exactly.
-    pathspec = ["--", *(g if "/" in g else f"*{g}" for g in globs)]
+    magic = "" if CASE_SENSITIVE else ":(icase)"
+    pathspec = ["--", *(magic + (g if "/" in g else f"*{g}") for g in globs)]
     try:
         output = run_git(
             ["ls-files", "-z", "--cached", "--others", "--exclude-standard", *pathspec], root
@@ -294,8 +299,14 @@ def list_files(root: Path, globs: Sequence[str] = ("*.py",)) -> list[str]:
     return sorted(p for p in candidates if p and matches_glob(p, globs) and (root / p).is_file())
 
 
-def matches_glob(path: str, globs: Iterable[str]) -> bool:
-    """Globs without ``/`` match the file name; others match the whole path."""
+def matches_glob(path: str, globs: Iterable[str], *, case_sensitive: bool = CASE_SENSITIVE) -> bool:
+    """Globs without ``/`` match the file name; others match the whole path.
+
+    Case sensitivity follows the platform, as in pytest.
+    """
+    if not case_sensitive:
+        path = path.lower()
+        globs = [g.lower() for g in globs]
     name = path.rpartition("/")[2]
     for glob in globs:
         if glob.startswith("*") and not any(c in glob[1:] for c in "*?[/"):

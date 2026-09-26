@@ -3,14 +3,13 @@
 from __future__ import annotations
 
 import fnmatch
-import sys
 from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
 from karma.config import Config
-from karma.git import ChangeSet
+from karma.git import CASE_SENSITIVE, ChangeSet
 from karma.graph import DependencyGraph, matches_any
 from karma.languages.python import ImportRef, ModuleResolver
 
@@ -19,8 +18,6 @@ _NOT_DOCTESTS = frozenset({"conftest.py", "setup.py", "__main__.py"})
 # Files that apply to every test beneath their directory: pytest loads conftest.py
 # implicitly, and imports a test package's __init__.py before its test modules.
 _DIRECTORY_SCOPED = frozenset({"conftest.py", "__init__.py"})
-# pytest matches python_files case-insensitively on Windows (fnmatch uses normcase).
-_CASE_SENSITIVE = sys.platform != "win32"
 
 
 def is_test_file(path: str, config: Config) -> bool:
@@ -31,12 +28,12 @@ def is_test_file(path: str, config: Config) -> bool:
     if not name.endswith(".py"):
         # Text files are doctests when they match --doctest-glob (default test*.txt).
         return bool(
-            matches_any(path, config.effective_doctest_globs, case_sensitive=_CASE_SENSITIVE)
+            matches_any(path, config.effective_doctest_globs, case_sensitive=CASE_SENSITIVE)
         )
     if config.doctest_modules and name not in _NOT_DOCTESTS:
         return True  # every module is collected for its doctests
     return name not in _NOT_TESTS and bool(
-        matches_any(path, config.test_patterns, case_sensitive=_CASE_SENSITIVE)
+        matches_any(path, config.test_patterns, case_sensitive=CASE_SENSITIVE)
     )
 
 
