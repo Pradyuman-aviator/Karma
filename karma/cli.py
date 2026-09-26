@@ -5,7 +5,8 @@ import sys
 from pathlib import Path
 
 from karma.cache import load_cache, save_cache
-from karma.git import get_changed_files
+from karma.errors import KarmaError
+from karma.git import get_changes
 from karma.reporter import Reporter, TestResult
 from karma.selector import get_affected_tests
 from karma.languages.python import build_dependency_map, get_all_python_files
@@ -60,9 +61,8 @@ def _run_pytest(test_files: list[str], repo: str) -> Reporter:
 
 def cmd_run(args: argparse.Namespace) -> None:
     repo = str(Path(args.repo).resolve())
-    head = args.head or "HEAD"
-
-    changed_files = get_changed_files(base=args.base, head=head, repo=repo)
+    
+    changed_files = list(get_changes(args.base, args.head, cwd=Path(repo)).all)
     dep_map = _load_dependency_map(repo)
     affected_tests = get_affected_tests(changed_files=changed_files, dep_map=dep_map)
 
@@ -93,9 +93,8 @@ def cmd_run(args: argparse.Namespace) -> None:
 def cmd_select(args: argparse.Namespace) -> None:
     """Select affected tests and print them (no execution)."""
     repo = str(Path(args.repo).resolve())
-    head = args.head or "HEAD"
-
-    changed_files = get_changed_files(base=args.base, head=head, repo=repo)
+    
+    changed_files = list(get_changes(args.base, args.head, cwd=Path(repo)).all)
     dep_map = _load_dependency_map(repo)
     affected_tests = get_affected_tests(changed_files=changed_files, dep_map=dep_map)
 
@@ -109,7 +108,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     def add_common(flags: argparse.ArgumentParser) -> None:
         flags.add_argument("--base", default="main", help="Base git commit/branch (default: main)")
-        flags.add_argument("--head", default="HEAD", help="Head git commit/branch (default: HEAD)")
+        flags.add_argument("--head", default=None, help="Head commit (default: the working tree)")
         flags.add_argument("--repo", default=".", help="Repository root directory (default: .)")
         flags.add_argument("--ci", action="store_true", help="Enable CI mode (GitHub summary, outputs)")
 
@@ -126,16 +125,20 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def main() -> None:
+def main() -> int:
     parser = build_parser()
     args = parser.parse_args()
 
-    if hasattr(args, "func"):
-        args.func(args)
-        return
-
-    # No subcommand: keep prior select-and-print behavior
-    cmd_select(args)
+    try:
+        if hasattr(args, "func"):
+            args.func(args)
+        else:
+            # No subcommand: keep prior select-and-print behavior
+            cmd_select(args)
+    except KarmaError as exc:
+        print(f"[Karma] error: {exc}", file=sys.stderr)
+        return 2
+    return 0
 
 
 if __name__ == "__main__":
