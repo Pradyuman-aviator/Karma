@@ -1,12 +1,4 @@
-from pathlib import Path
-import sys
-
-# Ensure repository root is in sys.path when script is executed directly
-repo_root = str(Path(__file__).resolve().parent.parent)
-if repo_root not in sys.path:
-    sys.path.insert(0, repo_root)
-
-from languages.python_parser import build_dependency_map
+from karma.languages.python import build_dependency_map
 
 
 def build_forward_graph(root_dir: str = ".") -> dict[str, set[str]]:

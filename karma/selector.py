@@ -1,7 +1,7 @@
 from collections import deque
 from pathlib import Path
 
-from core.dep_graph import build_reverse_graph
+from karma.graph import build_reverse_graph
 
 
 def is_test_file(file_path: str) -> bool:
