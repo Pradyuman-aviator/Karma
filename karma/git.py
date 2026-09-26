@@ -130,6 +130,33 @@ def verify_ref(ref: str, cwd: Path) -> str:
         raise GitError(f"unknown git ref {ref!r}. {_HISTORY_HINT}") from None
 
 
+def default_base(cwd: Path) -> str:
+    """Best guess for the branch this work will be merged into.
+
+    ``$KARMA_BASE``, then the pull request's target on GitHub Actions, then the
+    remote's default branch, then the first of main/master that exists.
+    """
+    if os.environ.get("KARMA_BASE"):
+        return os.environ["KARMA_BASE"]
+    if os.environ.get("GITHUB_BASE_REF"):
+        return f"origin/{os.environ['GITHUB_BASE_REF']}"
+    try:
+        remote_head = run_git(
+            ["symbolic-ref", "--quiet", "--short", "refs/remotes/origin/HEAD"], cwd
+        )
+        if remote_head.strip():
+            return remote_head.strip()
+    except GitError:
+        pass
+    for candidate in ("origin/main", "origin/master", "main", "master"):
+        try:
+            verify_ref(candidate, cwd)
+        except GitError:
+            continue
+        return candidate
+    return "main"
+
+
 def merge_base(base: str, head: str, cwd: Path) -> str:
     """Return the best common ancestor of ``base`` and ``head``."""
     base_sha = verify_ref(base, cwd)

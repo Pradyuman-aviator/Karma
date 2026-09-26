@@ -1,141 +1,311 @@
+"""Command-line interface: ``karma run``, ``karma select`` and ``karma graph``."""
+
+from __future__ import annotations
+
 import argparse
-import os
-import subprocess
+import json
+import logging
 import sys
+from collections.abc import Sequence
+from dataclasses import dataclass
 from pathlib import Path
 
+from karma import __version__
 from karma.cache import CACHE_FILE, ImportCache
-from karma.errors import KarmaError
-from karma.git import get_changes
-from karma.reporter import Reporter, TestResult
-from karma.config import load_config
-from karma.graph import build_graph
-from karma.selector import select_tests
+from karma.config import Config, load_config
+from karma.errors import GitError, KarmaError
+from karma.git import ChangeSet, default_base, get_changes
+from karma.graph import DependencyGraph, build_graph
+from karma.reporter import (
+    append_step_summary,
+    describe_selection,
+    emit_annotations,
+    format_explanation,
+    print_run_summary,
+    run_markdown,
+    write_github_outputs,
+)
+from karma.runner import EXIT_NO_TESTS_COLLECTED, EXIT_OK, run_pytest
+from karma.selector import Selection, is_test_file, select_tests
+
+log = logging.getLogger("karma")
+
+EXIT_KARMA_ERROR = 2
+EXIT_INTERRUPTED = 130
+COMMANDS = ("run", "select", "graph")
 
 
-def _write_github_output(name: str, value: str) -> None:
-    output_path = os.environ.get("GITHUB_OUTPUT")
-    if not output_path:
-        return
-    with open(output_path, "a", encoding="utf-8") as f:
-        f.write(f"{name}={value}\n")
+@dataclass(frozen=True)
+class Plan:
+    """Everything needed to report on or run a selection."""
+
+    root: Path
+    config: Config
+    selection: Selection
+    base: str | None
 
 
-def _select(args: argparse.Namespace) -> tuple[str, list[str]]:
-    root = Path(args.repo).resolve()
-    config = load_config(root)
-    changes = get_changes(args.base, args.head, cwd=root)
-    graph = build_graph(
+# --------------------------------------------------------------------------- selection
+
+
+def _resolve_root(repo: str) -> Path:
+    root = Path(repo).resolve()
+    if not root.is_dir():
+        raise KarmaError(f"--repo {repo!r} is not a directory")
+    return root
+
+
+def _build_graph(
+    root: Path, config: Config, args: argparse.Namespace, deleted: Sequence[str] = ()
+) -> DependencyGraph:
+    return build_graph(
         root,
         source_roots=config.source_roots,
         exclude=config.exclude,
-        deleted=changes.deleted,
-        cache=ImportCache(root / CACHE_FILE),
-    )
-    return str(root), list(select_tests(changes, graph, config).tests)
-
-
-def _run_pytest(test_files: list[str], repo: str) -> Reporter:
-    reporter = Reporter()
-    cmd = [sys.executable, "-m", "pytest", "-q", "--tb=short", *test_files]
-    result = subprocess.run(
-        cmd,
-        cwd=repo,
-        capture_output=True,
-        text=True,
+        deleted=deleted,
+        cache=None if args.no_cache else ImportCache(root / CACHE_FILE),
+        jobs=args.jobs,
     )
 
-    combined = (result.stdout or "") + (result.stderr or "")
-    if combined.strip():
-        print(combined)
 
-    if result.returncode == 0:
-        for test_file in test_files:
-            reporter.add_result(TestResult(name=test_file, passed=True))
+def _changes(args: argparse.Namespace, root: Path) -> tuple[ChangeSet, str | None, bool]:
+    """Return ``(changes, base, run_everything)`` for the selection options."""
+    if args.files is not None:
+        return ChangeSet.from_paths(args.files, root), None, False
+    if args.all:
+        return ChangeSet(), None, True
+    try:
+        if args.staged:
+            return get_changes(cwd=root, staged=True), None, False
+        base: str = args.base or default_base(root)
+        changes = get_changes(base, args.head, cwd=root)
+    except GitError as exc:
+        if args.on_git_error != "run-all":
+            raise
+        log.warning("%s", exc)
+        log.warning("--on-git-error=run-all: running the full suite instead")
+        return ChangeSet(), None, True
+    log.info(
+        "comparing %s against %s (merge base %s)",
+        args.head or "the working tree",
+        base,
+        (changes.merge_base or "?")[:10],
+    )
+    return changes, base, False
+
+
+def _plan(args: argparse.Namespace) -> Plan:
+    root = _resolve_root(args.repo)
+    config = load_config(root)
+    changes, base, everything = _changes(args, root)
+    graph = _build_graph(root, config, args, changes.deleted)
+    if everything:
+        tests = tuple(sorted(f for f in graph.files if is_test_file(f, config.test_patterns)))
+        reason = "--all was requested" if args.all else "changes could not be determined"
+        selection = Selection(tests=tests, total_tests=len(tests), run_all_reason=reason)
     else:
-        # Mark all selected files failed when the suite exits non-zero;
-        # pytest output is printed above for diagnosis.
-        error = combined.strip().splitlines()[-1] if combined.strip() else "pytest failed"
-        for test_file in test_files:
-            reporter.add_result(TestResult(name=test_file, passed=False, error_message=error))
-    return reporter
+        selection = select_tests(changes, graph, config)
+    log.info("%s", describe_selection(selection))
+    return Plan(root, config, selection, base)
 
 
-def cmd_run(args: argparse.Namespace) -> None:
-    repo, affected_tests = _select(args)
+def _github_outputs(selection: Selection, tests_run: int) -> None:
+    write_github_outputs(
+        {
+            "test_files": " ".join(selection.tests),
+            "tests-run": str(tests_run),
+            "selected-count": str(len(selection.tests)),
+            "total-count": str(selection.total_tests),
+            "run-all": str(selection.run_all).lower(),
+        }
+    )
 
-    test_files_value = " ".join(affected_tests)
-    _write_github_output("test_files", test_files_value)
 
-    if not affected_tests:
-        print("[Karma] No affected tests found.")
-        _write_github_output("tests-run", "0")
-        if args.ci:
-            summary_path = os.environ.get("GITHUB_STEP_SUMMARY")
-            if summary_path:
-                with open(summary_path, "a", encoding="utf-8") as f:
-                    f.write("## Karma Test Results\n")
-                    f.write("- No affected tests to run\n")
-        sys.exit(0)
+# --------------------------------------------------------------------------- commands
 
-    print(f"[Karma] Affected tests: {test_files_value}")
-    _write_github_output("tests-run", str(len(affected_tests)))
 
-    reporter = _run_pytest(affected_tests, repo=repo)
-    reporter.print_summary()
+def cmd_select(args: argparse.Namespace) -> int:
+    plan = _plan(args)
+    selection = plan.selection
+    if args.explain:
+        sys.stdout.write(format_explanation(selection, sys.stdout))
+    elif args.format == "json":
+        print(json.dumps(selection.to_dict(), indent=2))
+    elif selection.tests:
+        print(("\n" if args.format == "lines" else " ").join(selection.tests))
     if args.ci:
-        reporter.write_github_summary()
-    reporter.exit()
+        _github_outputs(selection, tests_run=0)
+    return EXIT_OK
 
 
-def cmd_select(args: argparse.Namespace) -> None:
-    """Select affected tests and print them (no execution)."""
-    repo, affected_tests = _select(args)
+def cmd_run(args: argparse.Namespace) -> int:
+    plan = _plan(args)
+    selection = plan.selection
+    if args.explain:
+        sys.stderr.write(format_explanation(selection, sys.stderr))
 
-    if affected_tests:
-        print(" ".join(affected_tests))
+    if not selection.tests:
+        log.info("no affected tests; nothing to run")
+        if args.ci:
+            _github_outputs(selection, tests_run=0)
+            append_step_summary(run_markdown(selection, None, plan.base))
+        return EXIT_OK
+
+    # For a full run, let pytest discover tests itself so its testpaths setting applies.
+    targets = [] if selection.run_all else list(selection.tests)
+    pytest_args = [*plan.config.pytest_args, *args.pytest_args]
+    result = run_pytest(targets, cwd=plan.root, python=args.python, args=pytest_args)
+
+    print_run_summary(result)
+    if args.ci:
+        _github_outputs(selection, tests_run=len(selection.tests))
+        emit_annotations(result.problems, plan.root)
+        append_step_summary(run_markdown(selection, result, plan.base))
+    return EXIT_OK if result.exit_code == EXIT_NO_TESTS_COLLECTED else result.exit_code
+
+
+def cmd_graph(args: argparse.Namespace) -> int:
+    root = _resolve_root(args.repo)
+    graph = _build_graph(root, load_config(root), args)
+    render = {"json": graph.to_json, "dot": graph.to_dot, "mermaid": graph.to_mermaid}
+    sys.stdout.write(render[args.format]())
+    return EXIT_OK
+
+
+# --------------------------------------------------------------------------- parser
+
+
+def _add_verbosity(parser: argparse.ArgumentParser, default: object) -> None:
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument(
+        "-v", "--verbose", action="store_true", default=default, help="show debug logging"
+    )
+    group.add_argument(
+        "-q", "--quiet", action="store_true", default=default, help="only show warnings"
+    )
+
+
+def _add_analysis_options(parser: argparse.ArgumentParser) -> None:
+    # SUPPRESS: `karma -v run` and `karma run -v` both work without overriding each other.
+    _add_verbosity(parser, argparse.SUPPRESS)
+    parser.add_argument(
+        "--repo", default=".", metavar="DIR", help="project directory to analyse (default: .)"
+    )
+    parser.add_argument("--no-cache", action="store_true", help="do not read or write the cache")
+    parser.add_argument(
+        "--jobs", type=int, metavar="N", help="worker processes for parsing (default: CPU count)"
+    )
+
+
+def _add_selection_options(parser: argparse.ArgumentParser) -> None:
+    _add_analysis_options(parser)
+    source = parser.add_argument_group("what counts as changed")
+    source.add_argument(
+        "--base",
+        metavar="REF",
+        help="branch or commit the change will merge into (default: $KARMA_BASE, the pull "
+        "request base on GitHub Actions, origin/HEAD, or main/master)",
+    )
+    source.add_argument(
+        "--head", metavar="REF", help="compare this commit instead of the working tree"
+    )
+    exclusive = source.add_mutually_exclusive_group()
+    exclusive.add_argument("--staged", action="store_true", help="only changes staged for commit")
+    exclusive.add_argument(
+        "--files", nargs="+", metavar="PATH", help="treat these files as changed; skip git"
+    )
+    exclusive.add_argument("--all", action="store_true", help="select every test")
+    source.add_argument(
+        "--on-git-error",
+        choices=("fail", "run-all"),
+        default="fail",
+        help="if changes cannot be determined: fail (default) or run the full suite",
+    )
+    parser.add_argument("--explain", action="store_true", help="show why each test was selected")
+    parser.add_argument(
+        "--ci", action="store_true", help="write GitHub Actions outputs, summary and annotations"
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="Karma Test Selection Engine CLI")
-    subparsers = parser.add_subparsers(dest="command")
+    parser = argparse.ArgumentParser(
+        prog="karma",
+        description="Run only the tests affected by your change.",
+        epilog="Run 'karma <command> --help' for the options of each command.",
+    )
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
+    _add_verbosity(parser, False)
+    commands = parser.add_subparsers(dest="command", metavar="<command>")
 
-    def add_common(flags: argparse.ArgumentParser) -> None:
-        flags.add_argument("--base", default="main", help="Base git commit/branch (default: main)")
-        flags.add_argument("--head", default=None, help="Head commit (default: the working tree)")
-        flags.add_argument("--repo", default=".", help="Repository root directory (default: .)")
-        flags.add_argument(
-            "--ci", action="store_true", help="Enable CI mode (GitHub summary, outputs)"
-        )
+    run = commands.add_parser(
+        "run",
+        help="select affected tests and run them with pytest",
+        description="Select the tests affected by your change and run them with pytest. "
+        "Arguments after '--' go to pytest, e.g.: karma run -- -x -n auto",
+    )
+    _add_selection_options(run)
+    run.add_argument(
+        "--python",
+        default=sys.executable,
+        metavar="EXE",
+        help="interpreter used to run pytest (default: the one running Karma)",
+    )
+    run.set_defaults(func=cmd_run)
 
-    run_parser = subparsers.add_parser("run", help="Select and run affected tests")
-    add_common(run_parser)
-    run_parser.set_defaults(func=cmd_run)
+    select = commands.add_parser(
+        "select",
+        help="print the affected tests without running them",
+        description="Print the tests affected by your change, e.g.: pytest $(karma select)",
+    )
+    _add_selection_options(select)
+    select.add_argument(
+        "--format",
+        choices=("text", "lines", "json"),
+        default="text",
+        help="text: space-separated (default); lines: one per line; json: full details",
+    )
+    select.set_defaults(func=cmd_select)
 
-    select_parser = subparsers.add_parser("select", help="Print affected test files only")
-    add_common(select_parser)
-    select_parser.set_defaults(func=cmd_select)
-
-    # Backward-compatible top-level flags (default: select-only behavior)
-    add_common(parser)
+    graph = commands.add_parser(
+        "graph", help="print the dependency graph", description="Print the dependency graph."
+    )
+    _add_analysis_options(graph)
+    graph.add_argument("--format", choices=("json", "dot", "mermaid"), default="json")
+    graph.set_defaults(func=cmd_graph)
     return parser
 
 
-def main() -> int:
+def _configure_logging(verbose: bool, quiet: bool) -> None:
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(logging.Formatter("karma: %(message)s"))
+    logger = logging.getLogger("karma")
+    logger.handlers[:] = [handler]
+    logger.propagate = False
+    logger.setLevel(logging.DEBUG if verbose else logging.WARNING if quiet else logging.INFO)
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    arguments = list(sys.argv[1:] if argv is None else argv)
+    pytest_args: list[str] = []
+    if "--" in arguments:
+        split = arguments.index("--")
+        arguments, pytest_args = arguments[:split], arguments[split + 1 :]
+    if not set(COMMANDS) & set(arguments) and not {"-h", "--help", "--version"} & set(arguments):
+        arguments.insert(0, "select")  # `karma --base main` keeps its historic meaning
+
     parser = build_parser()
-    args = parser.parse_args()
+    args = parser.parse_args(arguments)
+    if pytest_args and args.command != "run":
+        parser.error("arguments after '--' are only accepted by 'karma run'")
+    args.pytest_args = pytest_args
+    _configure_logging(args.verbose, args.quiet)
 
     try:
-        if hasattr(args, "func"):
-            args.func(args)
-        else:
-            # No subcommand: keep prior select-and-print behavior
-            cmd_select(args)
+        exit_code: int = args.func(args)
     except KarmaError as exc:
-        print(f"[Karma] error: {exc}", file=sys.stderr)
-        return 2
-    return 0
-
-
-if __name__ == "__main__":
-    main()
+        log.error("error: %s", exc)
+        return EXIT_KARMA_ERROR
+    except KeyboardInterrupt:
+        log.error("interrupted")
+        return EXIT_INTERRUPTED
+    return exit_code
