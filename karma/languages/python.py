@@ -11,8 +11,14 @@ Analysis happens in two steps so the expensive part can be cached per file:
 from __future__ import annotations
 
 import ast
+import contextlib
+import io
 import logging
 import re
+import sys
+import threading
+import tokenize
+import warnings
 from collections.abc import Iterable, Iterator, Sequence
 from dataclasses import dataclass
 from typing import Any, Union
@@ -56,12 +62,12 @@ def parse_imports(source: Source, filename: str = "<unknown>") -> tuple[ImportRe
     functions and ``if TYPE_CHECKING:`` blocks), ``importlib.import_module("x")`` and
     ``__import__("x")`` calls with literal arguments, and ``pytest_plugins``
     declarations. If the file cannot be parsed (for example it uses syntax newer than
-    the running interpreter) a line-based scan is used so its edges are not lost.
+    the running interpreter) a token-based scan is used so its edges are not lost.
     """
     try:
-        tree = ast.parse(source, filename=filename)
-    except (SyntaxError, ValueError):
-        log.debug("%s: not parseable by this Python; falling back to a line scan", filename)
+        tree = _parse(source, filename)
+    except (SyntaxError, ValueError, RecursionError, MemoryError) as exc:
+        log.debug("%s: not parseable by this Python (%s); scanning tokens", filename, exc)
         return tuple(dict.fromkeys(_scan_imports(source)))
 
     refs: dict[ImportRef, None] = {}  # insertion-ordered set
@@ -74,8 +80,11 @@ def parse_imports(source: Source, filename: str = "<unknown>") -> tuple[ImportRe
         elif isinstance(node, ast.ImportFrom):
             names = tuple(alias.name for alias in node.names)
             refs[ImportRef(node.module or "", names, node.level)] = None
-        elif isinstance(node, (ast.Assign, ast.AnnAssign)) and _is_pytest_plugins(node):
-            assert node.value is not None
+        elif (
+            isinstance(node, (ast.Assign, ast.AnnAssign))
+            and node.value is not None  # a bare annotation `pytest_plugins: list[str]`
+            and _is_pytest_plugins(node)
+        ):
             for plugin in _string_literals(node.value):
                 refs[ImportRef(plugin)] = None
     # Dynamic imports are expressions and need a full walk; only pay for it when needed.
@@ -87,6 +96,46 @@ def parse_imports(source: Source, filename: str = "<unknown>") -> tuple[ImportRe
                 if ref is not None:
                     refs[ref] = None
     return tuple(refs)
+
+
+# Before 3.11, CPython builds the AST recursively in C without a depth check: a deeply
+# nested expression (e.g. generated code) overflows the C stack and kills the process
+# instead of raising RecursionError. Large files are therefore parsed on a thread with
+# a much bigger stack.
+_NEEDS_BIG_STACK = sys.version_info < (3, 11)
+_BIG_FILE = 64 * 1024
+_BIG_STACK = 128 * 1024 * 1024  # the largest size Windows accepts is just under 256 MiB
+
+
+def _parse(source: Source, filename: str) -> ast.Module:
+    def parse() -> ast.Module:
+        with warnings.catch_warnings():
+            # e.g. SyntaxWarning for "\d": under PYTHONWARNINGS=error it would become a
+            # SyntaxError and push a perfectly valid file onto the lossy fallback.
+            warnings.simplefilter("ignore")
+            return ast.parse(source, filename=filename)
+
+    if not (_NEEDS_BIG_STACK and len(source) > _BIG_FILE):
+        return parse()
+    result: list[ast.Module] = []
+    error: list[BaseException] = []
+
+    def work() -> None:
+        try:
+            result.append(parse())
+        except BaseException as exc:  # re-raised in the calling thread
+            error.append(exc)
+
+    previous = threading.stack_size(_BIG_STACK)
+    try:
+        thread = threading.Thread(target=work, name="karma-parse")
+        thread.start()
+    finally:
+        threading.stack_size(previous)
+    thread.join()
+    if error:
+        raise error[0]
+    return result[0]
 
 
 _BLOCK_FIELDS = ("body", "orelse", "finalbody", "handlers", "cases")
@@ -147,16 +196,132 @@ def _string_literals(node: ast.expr) -> Iterator[str]:
             yield from _string_literals(element)
 
 
+# --------------------------------------------------------------------------- fallback scan
+
+# Statements after which `:` starts an inline block, as in `if X: import y`.
+_COMPOUND = frozenset(
+    {
+        "if",
+        "elif",
+        "else",
+        "try",
+        "except",
+        "finally",
+        "with",
+        "for",
+        "while",
+        "def",
+        "class",
+        "async",
+        "match",
+        "case",
+    }
+)
+_SKIP_TOKENS = frozenset(
+    {
+        tokenize.COMMENT,
+        tokenize.NL,
+        tokenize.ENCODING,
+        tokenize.INDENT,
+        tokenize.DEDENT,
+        tokenize.ERRORTOKEN,  # e.g. a stray NUL byte on Python < 3.12
+    }
+)
+_Token = tuple[int, str]
+
+
+def _scan_imports(source: Source) -> Iterator[ImportRef]:
+    """Extract imports without the grammar, for files ``ast`` cannot parse.
+
+    Works on tokens, so comments, ``;``-separated statements, one-line compound
+    statements, parenthesised and backslash-continued imports are all handled. If even
+    tokenizing fails (e.g. an unterminated string) a line-based regex is the last resort.
+    """
+    data = source if isinstance(source, bytes) else source.encode("utf-8")
+    try:
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            tokens = list(tokenize.tokenize(io.BytesIO(data).readline))
+    except (tokenize.TokenError, SyntaxError, UnicodeDecodeError, LookupError):
+        yield from _scan_lines(data.decode("utf-8", "replace"))
+        return
+
+    statement: list[_Token] = []
+    depth = 0
+    for kind, text, *_ in tokens:
+        if kind in _SKIP_TOKENS:
+            continue
+        if kind == tokenize.OP:
+            if text in ("(", "[", "{"):
+                depth += 1
+            elif text in (")", "]", "}"):
+                depth = max(depth - 1, 0)
+        ends = kind in (tokenize.NEWLINE, tokenize.ENDMARKER) or (
+            kind == tokenize.OP
+            and depth == 0
+            and (text == ";" or (text == ":" and bool(statement) and statement[0][1] in _COMPOUND))
+        )
+        if ends:
+            yield from _imports_in(statement)
+            statement = []
+        else:
+            statement.append((kind, text))
+
+
+def _imports_in(statement: list[_Token]) -> Iterator[ImportRef]:
+    words = [text for _, text in statement]
+    if not words:
+        return
+    if words[0] == "import":
+        for group in _split(words[1:], ","):
+            module = "".join(group[: group.index("as")] if "as" in group else group)
+            if module:
+                yield ImportRef(module)
+    elif words[0] == "from" and "import" in words:
+        split = words.index("import")
+        head = words[1:split]
+        level = 0
+        while head and set(head[0]) == {"."}:  # "." and "..." tokens
+            level += len(head.pop(0))
+        names = [g[0] for g in _split([w for w in words[split + 1 :] if w not in "()"], ",") if g]
+        yield ImportRef("".join(head), tuple(names), level)
+    elif words[0] == "pytest_plugins" and "=" in words:
+        for kind, text in statement[words.index("=") + 1 :]:
+            if kind == tokenize.STRING:
+                with contextlib.suppress(ValueError, SyntaxError):
+                    yield ImportRef(str(ast.literal_eval(text)))
+    for i, (_kind, text) in enumerate(statement[:-2]):
+        # importlib.import_module("x") / __import__("x") with a literal, absolute name
+        if text in ("import_module", "__import__") and statement[i + 1][1] == "(":
+            literal_kind, literal = statement[i + 2]
+            if literal_kind == tokenize.STRING:
+                with contextlib.suppress(ValueError, SyntaxError):
+                    name = ast.literal_eval(literal)
+                    if isinstance(name, str) and name and not name.startswith("."):
+                        yield ImportRef(name)
+
+
+def _split(words: list[str], separator: str) -> Iterator[list[str]]:
+    group: list[str] = []
+    for word in words:
+        if word == separator:
+            yield group
+            group = []
+        else:
+            group.append(word)
+    yield group
+
+
 _IMPORT_RE = re.compile(r"^[ \t]*import[ \t]+([\w.][\w. \t,]*)", re.MULTILINE)
 _FROM_RE = re.compile(
-    r"^[ \t]*from[ \t]+(\.*)([\w.]*)[ \t]+import[ \t]+(\([^)]*\)|(?:[^\n\\]|\\\n)+)",
+    r"^[ \t]*from[ \t]*(\.*)[ \t]*([\w.]*)[ \t]+import[ \t]+(\([^)]*\)|(?:[^\n\\]|\\\n)+)",
     re.MULTILINE,
 )
 
 
-def _scan_imports(source: Source) -> Iterator[ImportRef]:
-    """Best-effort regex extraction of imports, used only when ``ast.parse`` fails."""
-    text = source.decode("utf-8", "replace") if isinstance(source, bytes) else source
+def _scan_lines(text: str) -> Iterator[ImportRef]:
+    """Last resort when the source cannot even be tokenized."""
+    text = re.sub(r"#[^\n]*", "", text).replace(";", "\n")
     for match in _IMPORT_RE.finditer(text):
         for item in match.group(1).split(","):
             module = item.split(" as ")[0].strip()
@@ -164,7 +329,7 @@ def _scan_imports(source: Source) -> Iterator[ImportRef]:
                 yield ImportRef(module)
     for match in _FROM_RE.finditer(text):
         dots, module, names_blob = match.groups()
-        names_blob = names_blob.split("#")[0].strip("()").replace("\\\n", " ")
+        names_blob = names_blob.strip().strip("()").replace("\\\n", " ")
         names = tuple(n.split(" as ")[0].strip() for n in names_blob.split(",") if n.strip())
         yield ImportRef(module, names, len(dots))
 
@@ -199,6 +364,9 @@ class ModuleResolver:
 
     Importing ``a.b.c`` executes ``a/__init__.py`` and ``a/b/__init__.py`` too, so those
     are reported as dependencies as well. Namespace packages (no ``__init__.py``) work.
+
+    pytest's prepend mode also puts the import root of every ``conftest.py`` on
+    ``sys.path``, so directories holding a conftest above the importer are roots too.
     """
 
     def __init__(self, files: Iterable[str], source_roots: Sequence[str] = ("", "src")) -> None:
@@ -207,31 +375,59 @@ class ModuleResolver:
         self._packages = frozenset(
             _parent(f) for f in self._files if f.rpartition("/")[2] == "__init__.py"
         )
+        self._conftest_dirs = frozenset(
+            _parent(f) for f in self._files if f.rpartition("/")[2] == "conftest.py"
+        )
+        # package directory -> its direct submodules, for `from pkg import *`
+        self._children: dict[str, list[str]] = {}
+        for f in sorted(self._files):
+            directory, _, name = f.rpartition("/")
+            if name == "__init__.py":
+                if directory:
+                    self._children.setdefault(_parent(directory), []).append(f)
+            elif name.endswith(".py"):
+                self._children.setdefault(directory, []).append(f)
 
     def resolve(self, importer: str, refs: Iterable[ImportRef]) -> set[str]:
         """Return the repository files that ``importer`` depends on via ``refs``."""
-        roots = (*self._roots, self._import_root(importer))
+        roots = dict.fromkeys((*self._roots, *self._dynamic_roots(importer)))
         found: set[str] = set()
         for ref in refs:
             if ref.level:
                 found.update(self._resolve_relative(importer, ref))
                 continue
-            for root in dict.fromkeys(roots):
+            for root in roots:
                 found.update(self._resolve_absolute(ref, root))
         found.discard(importer)
         return found
 
-    def _import_root(self, importer: str) -> str:
+    def _dynamic_roots(self, importer: str) -> Iterator[str]:
+        """The importer's own import root, then those of conftest directories above it."""
+        yield self._import_root(_parent(importer))
         directory = _parent(importer)
+        while True:
+            if directory in self._conftest_dirs:
+                yield self._import_root(directory)
+            if not directory:
+                return
+            directory = _parent(directory)
+
+    def _import_root(self, directory: str) -> str:
+        """The first directory, from ``directory`` upwards, that is not a package."""
         while directory and directory in self._packages:
             directory = _parent(directory)
         return directory
 
     def _module_file(self, path: str) -> str | None:
-        for candidate in (f"{path}.py", _join(path, "__init__.py")):
+        # A package wins over a module of the same name, as in Python's own finder.
+        for candidate in (_join(path, "__init__.py"), f"{path}.py"):
             if candidate in self._files:
                 return candidate
         return None
+
+    def _star(self, package_dir: str) -> list[str]:
+        # `from pkg import *` imports whatever pkg.__all__ lists, which can be submodules.
+        return self._children.get(package_dir, []) if package_dir in self._packages else []
 
     def _resolve_absolute(self, ref: ImportRef, root: str) -> Iterator[str]:
         if not ref.module:
@@ -244,10 +440,12 @@ class ModuleResolver:
                 yield found
         # ``from a import b`` may import the submodule ``a/b.py``.
         for name in ref.names:
-            if name != "*":
-                found = self._module_file(_join(root, *parts, name))
-                if found:
-                    yield found
+            if name == "*":
+                yield from self._star(_join(root, *parts))
+                continue
+            found = self._module_file(_join(root, *parts, name))
+            if found:
+                yield found
 
     def _resolve_relative(self, importer: str, ref: ImportRef) -> Iterator[str]:
         package = _parent(importer)
@@ -265,7 +463,9 @@ class ModuleResolver:
             if found:
                 yield found
         for name in ref.names:
-            if name != "*":
-                found = self._module_file(_join(package, *parts, name))
-                if found:
-                    yield found
+            if name == "*":
+                yield from self._star(_join(package, *parts))
+                continue
+            found = self._module_file(_join(package, *parts, name))
+            if found:
+                yield found

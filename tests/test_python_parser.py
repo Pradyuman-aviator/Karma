@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import textwrap
+import warnings
 
 import pytest
 
@@ -87,7 +88,59 @@ class TestParseImports:
         source = "# -*- coding: latin-1 -*-\nimport caf\xe9\n".encode("latin-1")
         assert parse_imports(source) == (ImportRef("café"),)
 
-    def test_unparseable_file_falls_back_to_a_line_scan(self) -> None:
+    def test_unparseable_file_is_scanned_token_by_token(self) -> None:
+        refs = parse(
+            """
+            import os; import app  # two statements on one line
+            from pkg import (
+                a,  # a comment here used to swallow everything after it
+                b,
+            )
+            if TYPE_CHECKING: import typed_only
+            from.mod import y
+            from ..up import z as zed
+            import deep.pkg.mod as m, other \\
+                , third
+            pytest_plugins = ["plugin.one", "plugin.two"]
+            importlib.import_module("dyn.mod")
+            try:
+                pass
+            except ValueError, TypeError:  # Python 3.14 syntax: not parseable before
+                pass
+            """
+        )
+        assert refs == (
+            ImportRef("os"),
+            ImportRef("app"),
+            ImportRef("pkg", ("a", "b")),
+            ImportRef("typed_only"),
+            ImportRef("mod", ("y",), 1),
+            ImportRef("up", ("z",), 2),
+            ImportRef("deep.pkg.mod"),
+            ImportRef("other"),
+            ImportRef("third"),
+            ImportRef("plugin.one"),
+            ImportRef("plugin.two"),
+            ImportRef("dyn.mod"),
+        )
+
+    def test_warnings_as_errors_do_not_force_the_fallback(self) -> None:
+        # "\d" is a SyntaxWarning; under -W error it used to become a SyntaxError.
+        source = 'import re\nPATTERN = "\\d+"\nfrom pkg import (\n    a,  # c\n    b,\n)\n'
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            refs = parse_imports(source)
+        assert refs == (ImportRef("re"), ImportRef("pkg", ("a", "b")))
+
+    def test_pathologically_deep_files_do_not_crash(self) -> None:
+        source = "import app\nX = " + "+".join(["1"] * 100_000) + "\n"
+        assert parse_imports(source) == (ImportRef("app"),)
+
+    def test_annotation_only_pytest_plugins(self) -> None:
+        refs = parse("pytest_plugins: list[str]\npytest_plugins = ['fx']\n")
+        assert refs == (ImportRef("fx"),)
+
+    def test_untokenizable_file_falls_back_to_a_line_scan(self) -> None:
         refs = parse(
             """
             import alpha, beta as b
@@ -210,7 +263,10 @@ class TestModuleResolver:
             "pkg/sub/deep/__init__.py",
             "pkg/sub/deep/c.py",
         }
-        assert resolve(files, importer, "from .deep import *\n") == {"pkg/sub/deep/__init__.py"}
+        assert resolve(files, importer, "from .deep import *\n") == {
+            "pkg/sub/deep/__init__.py",
+            "pkg/sub/deep/c.py",  # may be in deep.__all__
+        }
 
     def test_relative_import_inside_package_init(self) -> None:
         files = {"pkg/__init__.py", "pkg/a.py"}
@@ -224,6 +280,33 @@ class TestModuleResolver:
 
     def test_a_file_never_depends_on_itself(self) -> None:
         assert resolve(set(), "loop.py", "import loop\n") == set()
+
+    def test_a_package_wins_over_a_module_of_the_same_name(self) -> None:
+        files = {"pkg/__init__.py", "pkg/mod.py", "pkg/mod/__init__.py"}
+        assert "pkg/mod/__init__.py" in resolve(files, "main.py", "from pkg.mod import X\n")
+        assert "pkg/mod.py" not in resolve(files, "main.py", "from pkg.mod import X\n")
+
+    def test_star_imports_include_submodules(self) -> None:
+        files = {"pkg/__init__.py", "pkg/sub.py", "pkg/inner/__init__.py", "other.py"}
+        assert resolve(files, "main.py", "from pkg import *\n") == {
+            "pkg/__init__.py",
+            "pkg/sub.py",
+            "pkg/inner/__init__.py",
+        }
+        assert resolve(files, "pkg/sub.py", "from . import *\n") == {
+            "pkg/__init__.py",
+            "pkg/inner/__init__.py",
+        }
+        assert resolve({"ns/a.py"}, "main.py", "from ns import *\n") == set()
+
+    def test_conftest_directories_are_import_roots(self) -> None:
+        # pytest (prepend mode) puts tests/ on sys.path because of tests/conftest.py.
+        files = {"tests/conftest.py", "tests/helpers.py", "tests/unit/test_x.py"}
+        assert resolve(files, "tests/unit/test_x.py", "from helpers import make\n") == {
+            "tests/helpers.py"
+        }
+        # ...but only for files below that conftest.
+        assert resolve(files, "other/test_y.py", "from helpers import make\n") == set()
 
     def test_deleted_modules_can_still_be_resolved(self) -> None:
         # build_graph passes deleted paths in so importers keep their edges.
