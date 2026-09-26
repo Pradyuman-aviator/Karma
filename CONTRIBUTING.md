@@ -27,12 +27,40 @@ venv\Scripts\activate           # Windows
 pip install -e ".[dev]"
 ```
 
-### 3. Run Tests
+### 3. Run the Checks
 ```bash
-python -m pytest tests/ -v
+python -m pytest          # tests, with a 90% coverage gate when run with --cov
+ruff check .              # lint
+ruff format .             # format
+mypy                      # strict type checking
 ```
 
-All tests should pass before you start making changes.
+All four should pass before you start making changes. CI runs them on Python 3.9–3.13 across Linux, macOS and Windows.
+
+Tests that touch git create throwaway repositories and never read your personal git config. Use the `repo` fixture and `tests/helpers.py` rather than mocking `subprocess`.
+
+---
+
+## 🧭 Project Layout
+
+```
+karma/
+├── git.py               # what changed: merge-base diffs, working tree, --staged, file listing
+├── languages/python.py  # parse imports (cacheable) and resolve them to repository files
+├── cache.py             # per-file import cache keyed by content digest
+├── graph.py             # dependency graph: build (parallel), query, export (json/dot/mermaid)
+├── config.py            # [tool.karma] in pyproject.toml
+├── selector.py          # which tests a change affects, and why
+├── runner.py            # run pytest, parse JUnit into per-test results
+├── reporter.py          # console output, GitHub summary/annotations/outputs
+└── cli.py               # `karma run | select | graph`
+action.yml, entrypoint.sh  # the composite GitHub Action
+```
+
+Two rules keep Karma trustworthy. Please preserve them:
+
+1. **Never skip a test that could fail.** When unsure, select more (see the run-all triggers in `config.py`) and fail loudly rather than select nothing.
+2. **stdout is for machines.** `karma select` output must stay pipeable; progress and diagnostics go to stderr through the `karma` logger.
 
 ---
 
@@ -81,9 +109,9 @@ Look for issues tagged **`good first issue`** — these are small, well-defined 
 
 Before submitting a pull request, make sure:
 
-- [ ] All existing tests pass (`python -m pytest tests/ -v`)
-- [ ] New code has corresponding tests
-- [ ] Code follows the existing style (no extra blank lines, clean comments)
+- [ ] `python -m pytest`, `ruff check .`, `ruff format --check .` and `mypy` all pass
+- [ ] New behaviour has tests, including the failure paths
+- [ ] User-visible changes are noted in `CHANGELOG.md`
 - [ ] PR description explains **what** and **why**
 
 ---

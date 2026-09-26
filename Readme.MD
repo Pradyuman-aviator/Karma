@@ -1,198 +1,218 @@
 # Karma ⚡
 
-> **Intelligent, Impact-Driven Test Selection for Accelerated CI/CD Pipelines**
+> **Run only the tests your change can break.** Static, explainable test selection for pytest. No setup, no prior runs, no SaaS.
 
-[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
-[![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)]()
-[![License](https://img.shields.io/badge/license-MIT-green.svg)]()
-[![Development Phase](https://img.shields.io/badge/Phase-3--Planned-blue.svg)]()
+[![CI](https://github.com/Pradyuman-aviator/Karma/actions/workflows/ci.yml/badge.svg)](https://github.com/Pradyuman-aviator/Karma/actions/workflows/ci.yml)
+[![Python](https://img.shields.io/badge/python-3.9%20%E2%80%93%203.13-blue.svg)](https://www.python.org/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+[![Typed: mypy strict](https://img.shields.io/badge/typing-mypy%20strict-informational.svg)](pyproject.toml)
 
----
-
-## 📌 Overview
-
-**Karma** is a smart test selection engine designed to drastically reduce CI/CD build times. Instead of executing an entire test suite on every code commit, Karma analyzes code diffs, builds dependency graphs, and intelligently runs **only the tests affected by your changes**.
-
-By cutting out redundant test execution, Karma accelerates developer feedback loops, lowers cloud infrastructure costs, and optimizes software delivery.
-
----
-
-## ✨ Key Features
-
-- 🎯 **Git Diff Analysis**: Parses modified files and changed line ranges directly from git diffs.
-- 🕸️ **AST & Dependency Mapping**: Constructs static dependency graphs connecting codebase modules to test suites.
-- 🚀 **Selective Test Execution**: Filters out unaffected tests and executes only the required subset.
-- 🧩 **Multi-Language Architecture**: Built with modular language parsers starting with Python support.
-- ⚙️ **GitHub Actions Integration**: Native CI plugin with smart caching, PR summaries, and automatic pass/fail reporting.
-
----
-
-## 🗺️ Project Roadmap & Phases
-
-Karma is being developed across five distinct phases:
-
-| Phase | Module / Target | Description | Status |
-| :---: | :--- | :--- | :---: |
-| **Phase 1** | **Git Diff & AST Analysis** | Analyze git diffs & build static code dependency graphs to select affected tests. | ✅ *Completed* |
-| **Phase 2** | **GitHub Actions Integration** | Seamless CI runner plugins & GitHub Workflow integration. | ✅ *Completed* |
-| **Phase 3** | **ML Prediction Layer** | AI/ML models to score test failure probabilities and prioritize high-risk tests. | 📅 *Planned* |
-| **Phase 4** | **Flaky Test Registry** | Quarantine flaky tests, track failure reliability, and avoid false-positive pipeline breaks. | 📅 *Planned* |
-| **Phase 5** | **LLM AI Copilot & Auto-Fix** | LLM-driven semantic test mapping, automated test generation, and failure diagnosis. | 📅 *Planned* |
-
----
-
-## 🛠️ How It Works
-
-```mermaid
-graph TD
-    A[Git Commit / Diff] --> B[Git Diff Parser]
-    B --> C[Language AST Parser]
-    C --> D[Dependency Graph Builder]
-    D --> E[Test Selector Engine]
-    E --> F[Run Affected Tests Only]
+```console
+$ karma run --explain
+karma: comparing the working tree against origin/main (merge base 3f9c2a1e04)
+karma: 3 of 214 test files selected (98.6% skipped) for 2 changed files
+tests/billing/test_invoice.py
+    ← billing/invoice.py
+    ← billing/tax.py  (changed)
+tests/billing/test_tax.py
+    ← billing/tax.py  (changed)
+tests/test_settings.py
+    ← settings.py  (changed)
+......................                                                  [100%]
 ```
 
-1. **Diff Extraction**: Karma extracts modified files and line-level changes from the active git branch.
-2. **Dependency Graph Construction**: The AST parser inspects imported modules and call chains to build a graph of affected code paths.
-3. **Smart Selection**: Karma maps the changed dependencies against test files and generates an optimal subset of tests to execute.
+Karma reads your git diff, builds a dependency graph from your imports, and runs **only the tests that can be affected**. Every selected test comes with the chain of imports that selected it, so you can check its reasoning.
 
 ---
 
-## 📂 Repository Structure
+## Why Karma
 
-```
-Karma/
-├── core/
-│   ├── git_diff.py          # Git diff parser & change detection
-│   ├── dep_graph.py         # Code & test dependency graph builder
-│   ├── test_selector.py     # Test selection & filtering engine
-│   ├── reporter.py          # CI result formatter & GitHub summary writer  [Phase 2]
-│   └── cache.py             # AST dependency graph caching layer           [Phase 2]
-├── languages/
-│   └── python_parser.py     # Python AST code analyzer
-├── tests/
-│   ├── test_git_diff_parser.py
-│   └── test_selector.py
-├── action.yml               # GitHub Action manifest (Docker)              [Phase 2]
-├── Dockerfile               # Container image for CI runner                [Phase 2]
-├── entrypoint.sh            # Docker Action entrypoint                     [Phase 2]
-├── cli.py                   # Command-line interface entrypoint
-├── requirements.txt         # Package dependencies
-├── .github/workflows/
-│   └── karma-ci.yml         # Example / dogfood CI workflow                [Phase 2]
-└── Readme.MD                # Project documentation
-```
+| | Karma | Changed-files-only plugins<br>(e.g. pytest-picked) | Coverage-based<br>(e.g. pytest-testmon) | Test-selection SaaS | Build systems<br>(Bazel, Pants) |
+| --- | :---: | :---: | :---: | :---: | :---: |
+| Follows dependencies (edit `app.py` → run its tests) | ✅ | ❌ | ✅ | ✅ | ✅ |
+| Works on the first run, no history or database | ✅ | ✅ | ❌ | ❌ | ✅ |
+| No overhead while tests run | ✅ | ✅ | ❌ (tracing) | varies | ✅ |
+| Data never leaves your machine | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Explains *why* each test was chosen | ✅ | ❌ | ❌ | partly | partly |
+| Adopt without changing your build | ✅ | ✅ | ✅ | ✅ | ❌ |
+
+**Honest trade-off:** Karma analyses code statically. It can't see an import built from a runtime string, or a data file a test reads, and coverage-based tools can. Karma's [safety net](#staying-safe) and [mappings](#configuration) cover these cases, and a periodic full run (`karma run --all`, e.g. nightly) closes the gap.
 
 ---
 
-## 🚀 Quick Start
-
-### Installation
-
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/Pradyuman-aviator/Karma.git
-   cd Karma
-   ```
-
-2. **Install dependencies:**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-### Usage
-
-Run Karma to analyze your branch changes and execute impacted tests:
+## Quick start
 
 ```bash
-karma run
+pip install git+https://github.com/Pradyuman-aviator/Karma.git
 ```
-
-Or invoke via Python CLI:
 
 ```bash
-python cli.py run
+karma run                 # run tests affected by your branch + uncommitted work
+karma run --explain       # ...and show why each test was selected
+karma select              # just print them:  pytest $(karma select)
+karma run -- -x -n auto   # everything after -- goes to pytest
 ```
 
-Select affected tests without executing them:
+Karma compares against the branch you'll merge into: `--base`, else `$KARMA_BASE`, else the pull request base on GitHub Actions, else `origin/HEAD`, else `main`/`master`.
 
-```bash
-python cli.py select --base main
-```
-
----
-
-## 🔗 CI Integration
-
-Karma ships as a **Docker-based GitHub Action**. On every pull request or push, it diffs against the base branch, selects affected tests, runs them with pytest, and fails the job if any selected test fails.
-
-### Reference workflow
-
-See [`.github/workflows/karma-ci.yml`](.github/workflows/karma-ci.yml) for the dogfood workflow used in this repository.
-
-### Use in any Python workflow
+### GitHub Actions
 
 ```yaml
-name: CI
-
-on:
-  pull_request:
-  push:
-    branches: [main]
-
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
-          fetch-depth: 0  # required for accurate base...HEAD diffs
-
-      - name: Run Karma
-        id: karma
-        uses: Pradyuman-aviator/Karma@main   # or pin to a tag/SHA
+          fetch-depth: 0            # optional, but saves Karma fetching history itself
+      - uses: actions/setup-python@v6
         with:
-          base-branch: ${{ github.event_name == 'pull_request' && format('origin/{0}', github.base_ref) || 'origin/main' }}
-
-      - name: Affected tests
-        run: echo "${{ steps.karma.outputs.test_files }}"
+          python-version: "3.13"
+      - run: pip install -e ".[test]"   # your project and its test dependencies
+      - uses: Pradyuman-aviator/Karma@main   # pin a tag or SHA in production
+        with:
+          args: --explain
 ```
 
-For a local checkout of this repo (dogfooding), use `uses: ./` instead of the remote ref.
+The action runs in **your** job's Python environment, so selected tests can import your dependencies. On a pull request it:
 
-### Inputs
+- posts a **job summary** with pass/fail counts, "*N of M test files selected (X% skipped)*", collapsible failure output, and the reason for each selection
+- adds **inline annotations** on the failing test lines
+- exits with pytest's exit code, so the job fails exactly when a selected test fails
 
 | Input | Default | Description |
 | --- | --- | --- |
-| `base-branch` | `main` | Git ref to diff against (prefer `origin/<branch>` in CI) |
-
-### Outputs
+| `base-branch` | PR base / previous commit | Git ref to compare against |
+| `command` | `run` | `run` or `select` (selection only) |
+| `python` | `python` | Interpreter with pytest and your dependencies |
+| `pytest-args` | | Extra pytest arguments, e.g. `-x -n auto` |
+| `working-directory` | `.` | Project directory within the repository |
+| `on-git-error` | `fail` | `run-all` runs the whole suite if changes can't be determined |
+| `args` | | Extra Karma arguments, e.g. `--explain` |
 
 | Output | Description |
 | --- | --- |
-| `test_files` | Space-separated list of affected test files |
-| `tests-run` | Number of affected test files executed |
+| `test_files` | Space-separated selected test files |
+| `tests-run` | Number of test files run |
+| `selected-count` / `total-count` | Selected vs. total test files |
+| `run-all` | `true` if a change triggered the full suite |
 
-### Exit behavior
+### Pre-commit hook
 
-- **0** — all affected tests passed, or none were affected
-- **1** — one or more affected tests failed
-
-### Notes
-
-- Ensure `actions/checkout` uses `fetch-depth: 0` (or otherwise fetch the base ref) so `git diff` can see the merge base.
-- Consumer application dependencies are not installed by the Action image. Install your project deps in a prior step if selected tests import your application packages.
-- Dependency graphs are cached in `.karma_cache.json` in the workspace between rebuilds when source hashes match.
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: karma
+        name: affected tests
+        entry: karma run --staged
+        language: system
+        pass_filenames: false
+```
 
 ---
 
-## 🤝 Contributing
+## How it works
 
-Contributions are welcome! Feel free to open issues or submit pull requests to help advance Karma through its roadmap.
+```mermaid
+graph LR
+    A[git diff vs merge base] --> C[Selector]
+    B[Import graph<br/>AST, cached per file] --> C
+    C -->|affected tests + reasons| D[pytest]
+    D -->|JUnit results| E[Console · Job summary · Annotations]
+```
+
+1. **What changed.** `git diff` from the *merge base* (exactly what your PR contains), plus uncommitted and untracked files when run locally. Deleted and renamed files are tracked.
+2. **What depends on what.** Every Python file is parsed once and cached by content hash. The resolver handles:
+   - absolute and relative imports, `from pkg import submodule`, and package `__init__` chains
+   - `src/` layouts and namespace packages
+   - pytest's sibling imports inside test directories
+   - `importlib.import_module("…")` and `pytest_plugins`
+   - files with syntax newer than your interpreter, via a fallback scan
+3. **What to run.** A breadth-first search from each changed file through reverse dependencies. It applies pytest's own rule that a `conftest.py` affects every test beneath it.
+
+### Staying safe
+
+A test selector must never skip a test that would fail. Karma leans toward running more:
+
+- Changes to `pyproject.toml`, `setup.py`/`setup.cfg`, `tox.ini`, `pytest.ini`, `requirements*.txt`, `constraints*.txt`, or lock files **run the whole suite**.
+- If git can't determine the changes (unknown ref, missing history), Karma **fails loudly** (exit 2) instead of passing with zero tests. `--on-git-error run-all` falls back to the full suite instead.
+- Changed files that no test depends on are listed, so nothing is dropped silently.
+
+### Performance
+
+The graph is cached per file by content hash, so a typical run re-parses only what changed. Cold starts parse in parallel across CPU cores. Measured on pandas' source tree (1,415 files, 8,140 import edges; Windows, 16 logical CPUs):
+
+| | Time |
+| --- | ---: |
+| Cold, one process | 3.7 s |
+| Cold, parallel | 1.2 s |
+| Warm cache | 0.34 s |
 
 ---
 
-## 📜 License
+## Configuration
 
-Distributed under the [MIT License](LICENSE).
+Optional, in `pyproject.toml`:
 
+```toml
+[tool.karma]
+test-patterns = ["test_*.py", "*_test.py"]  # default: pytest's python_files, else these
+source-roots = [".", "src"]                  # where your top-level packages live
+exclude = ["docs/*", "migrations/*"]         # never analysed
+extend-run-all-on = ["Dockerfile"]           # add to the full-suite triggers (run-all-on replaces them)
+pytest-args = ["-p", "no:cacheprovider"]     # always passed to pytest
+
+[tool.karma.mappings]                        # dependencies imports can't express
+"tests/fixtures/*.json" = ["tests/test_loader.py"]
+"app/templates/*" = ["app/render.py"]        # a module: its tests are selected too
+```
+
+Patterns without `/` match file names anywhere; patterns with `/` match the path from the project root. Unknown keys are rejected, so typos don't pass silently.
+
+## CLI reference
+
+| Command | |
+| --- | --- |
+| `karma run` | Select affected tests and run them with pytest |
+| `karma select` | Print the selection: `--format text` (default, space-separated), `lines`, or `json` |
+| `karma graph` | Print the dependency graph: `--format json`, `dot` (Graphviz), or `mermaid` |
+
+**What counts as changed** (`run` and `select`):
+
+- `--base REF`, with `--head REF` to compare a commit instead of the working tree
+- `--staged` for staged changes only
+- `--files PATH…` to skip git entirely
+- `--all` to select everything
+
+**Other options:** `--explain`, `--ci` (GitHub outputs, summary and annotations), `--repo DIR`, `--python EXE`, `--jobs N`, `--no-cache`, `--on-git-error {fail,run-all}`, `-v`/`-q`.
+
+**Exit codes:**
+
+| Code | Meaning |
+| --- | --- |
+| pytest's | Returned as-is, except "no tests collected" (5), which becomes 0 |
+| 2 | Karma error: bad ref, invalid config, … |
+| 130 | Interrupted |
+
+---
+
+## Roadmap
+
+| Phase | Area | Status |
+| :---: | --- | :---: |
+| 1 | Git diff & AST dependency analysis | ✅ |
+| 2 | GitHub Actions integration | ✅ |
+| 3.0 | Hardening: merge-base diffs, conftest/safety-net selection, explainability, per-test reporting, incremental parallel cache | ✅ |
+| 3 | ML prediction layer: rank tests by failure likelihood, using the per-test results Karma now records | 📅 |
+| 4 | Flaky-test registry: quarantine and track unreliable tests | 📅 |
+| 5 | LLM copilot: semantic test mapping, failure diagnosis | 📅 |
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). In short: `pip install -e ".[dev]"`, then `pytest`, `ruff check .`, and `mypy` must all pass.
+
+## License
+
+[MIT](LICENSE)
