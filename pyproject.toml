@@ -94,6 +94,9 @@ select = [
     "RUF",
 ]
 
+[tool.ruff.lint.isort]
+known-first-party = ["karma", "tests"]
+
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["B011"]
 
