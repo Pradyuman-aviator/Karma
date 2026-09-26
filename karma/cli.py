@@ -8,8 +8,9 @@ from karma.cache import CACHE_FILE, ImportCache
 from karma.errors import KarmaError
 from karma.git import get_changes
 from karma.reporter import Reporter, TestResult
-from karma.selector import get_affected_tests
-from karma.graph import DependencyGraph, build_graph
+from karma.config import load_config
+from karma.graph import build_graph
+from karma.selector import select_tests
 
 
 def _write_github_output(name: str, value: str) -> None:
@@ -20,9 +21,18 @@ def _write_github_output(name: str, value: str) -> None:
         f.write(f"{name}={value}\n")
 
 
-def _load_graph(repo: str, deleted: tuple[str, ...]) -> DependencyGraph:
-    root = Path(repo)
-    return build_graph(root, deleted=deleted, cache=ImportCache(root / CACHE_FILE))
+def _select(args: argparse.Namespace) -> tuple[str, list[str]]:
+    root = Path(args.repo).resolve()
+    config = load_config(root)
+    changes = get_changes(args.base, args.head, cwd=root)
+    graph = build_graph(
+        root,
+        source_roots=config.source_roots,
+        exclude=config.exclude,
+        deleted=changes.deleted,
+        cache=ImportCache(root / CACHE_FILE),
+    )
+    return str(root), list(select_tests(changes, graph, config).tests)
 
 
 def _run_pytest(test_files: list[str], repo: str) -> Reporter:
@@ -52,11 +62,7 @@ def _run_pytest(test_files: list[str], repo: str) -> Reporter:
 
 
 def cmd_run(args: argparse.Namespace) -> None:
-    repo = str(Path(args.repo).resolve())
-
-    changes = get_changes(args.base, args.head, cwd=Path(repo))
-    graph = _load_graph(repo, changes.deleted)
-    affected_tests = [t for t in get_affected_tests(list(changes.all), graph) if t in graph.files]
+    repo, affected_tests = _select(args)
 
     test_files_value = " ".join(affected_tests)
     _write_github_output("test_files", test_files_value)
@@ -84,11 +90,7 @@ def cmd_run(args: argparse.Namespace) -> None:
 
 def cmd_select(args: argparse.Namespace) -> None:
     """Select affected tests and print them (no execution)."""
-    repo = str(Path(args.repo).resolve())
-
-    changes = get_changes(args.base, args.head, cwd=Path(repo))
-    graph = _load_graph(repo, changes.deleted)
-    affected_tests = [t for t in get_affected_tests(list(changes.all), graph) if t in graph.files]
+    repo, affected_tests = _select(args)
 
     if affected_tests:
         print(" ".join(affected_tests))
