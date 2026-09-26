@@ -178,3 +178,31 @@ def test_missing_interpreter(suite: Path, caplog: pytest.LogCaptureFixture) -> N
     assert result.crashed
     assert result.exit_code == runner.EXIT_INTERNAL_ERROR
     assert "could not start pytest" in caplog.text
+
+
+def test_paths_are_rebased_when_pytest_rootdir_is_a_subdirectory(tmp_path: Path) -> None:
+    # Like Textualize/rich: tests/pytest.ini makes tests/ the rootdir, so pytest reports
+    # "test_x.py" rather than "tests/test_x.py".
+    tests = tmp_path / "tests"
+    tests.mkdir()
+    (tests / "pytest.ini").write_text("[pytest]\n", encoding="utf-8")
+    (tests / "test_x.py").write_text("def test_bad():\n    assert False\n", encoding="utf-8")
+
+    result = run_pytest(["tests/test_x.py"], cwd=tmp_path, args=["-p", "no:cacheprovider"])
+
+    (case,) = result.cases
+    assert case.file == "tests/test_x.py"
+    assert case.nodeid == "tests/test_x.py::test_bad"
+
+
+@pytest.mark.parametrize(
+    ("known", "expected"),
+    [
+        (["tests/test_x.py"], "tests/test_x.py"),
+        (["a/test_x.py", "b/test_x.py"], "test_x.py"),  # ambiguous: left alone
+        ([], "test_x.py"),
+    ],
+)
+def test_rebase_only_on_a_unique_match(tmp_path: Path, known: list[str], expected: str) -> None:
+    case = TestCase("test_x.py::test_a", Outcome.FAILED, file="test_x.py")
+    assert runner._rebase(case, tmp_path, known).file == expected

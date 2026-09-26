@@ -154,7 +154,13 @@ def cmd_run(args: argparse.Namespace) -> int:
     # For a full run, let pytest discover tests itself so its testpaths setting applies.
     targets = [] if selection.run_all else list(selection.tests)
     pytest_args = [*plan.config.pytest_args, *args.pytest_args]
-    result = run_pytest(targets, cwd=plan.root, python=args.python, args=pytest_args)
+    result = run_pytest(
+        targets,
+        cwd=plan.root,
+        python=args.python,
+        args=pytest_args,
+        known_tests=selection.tests,
+    )
 
     print_run_summary(result)
     if args.ci:

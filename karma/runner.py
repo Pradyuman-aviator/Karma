@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import dataclasses
 import enum
 import logging
 import subprocess
@@ -75,21 +76,42 @@ def run_pytest(
     cwd: Path,
     python: str = sys.executable,
     args: Sequence[str] = (),
+    known_tests: Sequence[str] = (),
 ) -> RunResult:
     """Run ``python -m pytest`` on ``tests`` (all tests if empty), streaming its output.
 
     Test paths are split across several pytest invocations only if they would exceed
-    the operating system's command-line length limit.
+    the operating system's command-line length limit. ``known_tests`` (paths relative to
+    ``cwd``) help map pytest's paths back when its rootdir is not ``cwd``.
     """
     started = time.monotonic()
     batches = _batches(list(tests), fixed_length=len(python) + sum(len(a) + 3 for a in args) + 200)
     results = [_run_once(batch, cwd=cwd, python=python, args=args) for batch in batches]
+    known = [*tests, *known_tests]
     return RunResult(
         exit_code=_combine_exit_codes([r.exit_code for r in results]),
-        cases=tuple(case for r in results for case in r.cases),
+        cases=tuple(_rebase(case, cwd, known) for r in results for case in r.cases),
         duration=time.monotonic() - started,
         crashed=any(r.crashed for r in results),
     )
+
+
+def _rebase(case: TestCase, cwd: Path, known: Sequence[str]) -> TestCase:
+    """Make ``case.file`` relative to ``cwd``.
+
+    pytest reports paths relative to its *rootdir*, which is wherever the nearest ini
+    file lives. With e.g. ``tests/pytest.ini`` it says ``test_x.py`` for
+    ``tests/test_x.py``, which would put GitHub annotations on a non-existent file.
+    """
+    file = case.file
+    if not file or (cwd / file).is_file():
+        return case
+    matches = {k for k in known if k.endswith("/" + file)}
+    if len(matches) != 1:
+        return case
+    (rebased,) = matches
+    nodeid = rebased + case.nodeid[len(file) :] if case.nodeid.startswith(file) else case.nodeid
+    return dataclasses.replace(case, file=rebased, nodeid=nodeid)
 
 
 def _batches(tests: list[str], fixed_length: int) -> list[list[str]]:
