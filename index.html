@@ -368,7 +368,9 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 }
 .spot:hover::before { opacity: 1; }
 .spot > * { position: relative; }
-.span-4 { grid-column: span 4; } .span-3 { grid-column: span 3; } .span-2 { grid-column: span 2; }
+.span-6 { grid-column: span 6; } .span-4 { grid-column: span 4; } .span-3 { grid-column: span 3; } .span-2 { grid-column: span 2; }
+.explain-card { display: grid; grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.4fr); gap: 22px; align-items: center; }
+@media (max-width: 960px) { .explain-card { grid-template-columns: minmax(0, 1fr); } }
 @media (max-width: 960px) { .span-4, .span-3, .span-2 { grid-column: span 6; } }
 .tile-tag { font: 500 11.5px/1 var(--mono); color: var(--muted); letter-spacing: 0.08em; text-transform: uppercase; }
 .mini-term { margin: 0; background: var(--term-bg); color: var(--term-ink); border-radius: 12px; padding: 14px; font: 12px/1.6 var(--mono); overflow-x: auto; white-space: pre; }
@@ -506,7 +508,6 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 /* Grids without a column template size to their widest child; keep wide tables and code inside the column. */
 .stack, .play-panel, .gh-summary, .case, .gauge { grid-template-columns: minmax(0, 1fr); }
 p code, li code, summary code { overflow-wrap: anywhere; }
-.gh-summary table { display: block; overflow-x: auto; }
 .tbl-title { font: 600 15px var(--sans); margin-bottom: 8px; }
 td code { white-space: nowrap; }
 
@@ -639,6 +640,9 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
 .gh-summary summary { cursor: pointer; font-size: 13.5px; }
 .gh-summary pre { margin: 8px 0 2px; background: var(--surface-2); border-radius: 6px; padding: 10px; font: 12px/1.5 var(--mono); overflow-x: auto; color: var(--ink); }
 .gh-summary h5 { margin: 6px 0 0; font: 600 1rem var(--sans); color: var(--ink); }
+.gh-summary ul { margin: 0; padding-left: 20px; display: grid; gap: 4px; font-size: 13.5px; }
+.gh-summary .add { color: var(--pass); } .gh-summary .del { color: var(--fail); }
+.gh-summary blockquote { margin: 0; padding: 8px 12px; border-left: 3px solid var(--line-strong); color: var(--ink-2); font-size: 13.5px; }
 .runs { display: inline-flex; gap: 4px; }
 .runs i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
 .runs .p { background: var(--pass); } .runs .f { background: var(--fail); } .runs .k { background: var(--flaky); }
@@ -836,6 +840,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
           <tr><td>Explains why each test runs</td><td class="karma-col yes">Yes</td><td class="no">No</td><td class="no">No</td><td class="part">Partly</td><td class="part">Partly</td></tr>
           <tr><td>Predicts likely failures</td><td class="karma-col yes">Yes, local</td><td class="no">No</td><td class="no">No</td><td class="yes">Yes</td><td class="no">No</td></tr>
           <tr><td>Flaky-test quarantine</td><td class="karma-col yes">Yes</td><td class="no">No</td><td class="no">No</td><td class="part">Varies</td><td class="part">Retries</td></tr>
+          <tr><td>Explains failures</td><td class="karma-col yes">Yes, local; AI optional</td><td class="no">No</td><td class="no">No</td><td class="part">Varies</td><td class="no">No</td></tr>
           <tr><td>Adopt without changing your build</td><td class="karma-col yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="yes">Yes</td><td class="no">No</td></tr>
         </tbody>
       </table>
@@ -938,7 +943,7 @@ input[type="range"] { width: 100%; accent-color: var(--accent); }
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Features</p>
-      <h2>Three layers: select, predict, stabilise.</h2>
+      <h2>Four layers: select, predict, stabilise, explain.</h2>
       <p class="lede">Each one works on its own and makes the others better.</p>
     </div>
     <div class="bento">
@@ -982,6 +987,25 @@ karma: retrying 1 failed test(s), attempt 1 of 2
 <span class="dim">$</span> karma flaky sync
 quarantine tests/test_net.py::test_timeout</pre>
       </article>
+      <article class="spot span-6">
+        <div class="explain-card">
+          <div>
+            <span class="tile-tag">Explain · local, AI optional</span>
+            <h3>Every failure points at the line that broke it.</h3>
+            <p class="muted" style="font-size:14px">Karma lines up the changed lines in the traceback, why the test ran and its history, all on your machine. Add <code>--ai</code> and a model turns that evidence into a cause and a fix: Claude with your own API key, or a model running locally with Ollama. Nothing is sent unless you ask, and <code>--show-prompt</code> shows exactly what would be.</p>
+          </div>
+<pre class="mini-term"><span class="dim">$</span> karma run --diagnose --ai anthropic
+tests/test_invoice.py::test_unknown_country
+  error      ValueError: unknown country 'XX'
+  ran for    tests/test_invoice.py <span class="acc">←</span> billing/invoice.py <span class="acc">←</span> billing/tax.py
+  history    first failure in 42 recorded runs
+  suspect    <span class="acc">billing/tax.py:6</span>  changed, and where the error was raised
+<span class="ok">             +    if country == "XX":</span>
+<span class="ok">             +        raise ValueError(f"unknown country {country!r}")</span>
+  ai         rate() now rejects "XX", which the test still passes in.
+             <span class="dim">(regression, high confidence, claude-sonnet-5)</span></pre>
+        </div>
+      </article>
       <article class="spot span-4">
         <span class="tile-tag">GitHub Action</span>
         <h3>Results land in the pull request.</h3>
@@ -1002,7 +1026,7 @@ quarantine tests/test_net.py::test_timeout</pre>
       <article class="spot span-3">
         <span class="tile-tag">Private by design</span>
         <h3>No account, no upload, no agent.</h3>
-        <p class="muted" style="font-size:14px">History lives in <code>.karma_cache/</code>, which hides itself from git. The GitHub Action keeps it between runs with <code>actions/cache</code>.</p>
+        <p class="muted" style="font-size:14px">History lives in <code>.karma_cache/</code>, which hides itself from git. The GitHub Action keeps it between runs with <code>actions/cache</code>. AI diagnosis is opt-in, and can run entirely on your machine.</p>
       </article>
       <article class="spot span-3">
         <span class="tile-tag">Understands pytest</span>
@@ -1076,6 +1100,16 @@ quarantine tests/test_net.py::test_timeout</pre>
         <details><summary><code>tests/test_invoice.py::test_total_with_vat</code></summary><pre>def test_total_with_vat():
 &gt;       assert invoice.total(100) == 121.0
 E       assert 119.0 == 121.0</pre></details>
+        <h5>🔎 Diagnosis</h5>
+        <p><b><code>tests/test_invoice.py::test_total_with_vat</code></b>: assert 119.0 == 121.0</p>
+        <ul>
+          <li><b>Why it ran:</b> <code>tests/test_invoice.py</code> ← <code>billing/invoice.py</code> ← <code>billing/tax.py</code> (changed)</li>
+          <li><b>History:</b> first failure in 42 recorded runs</li>
+          <li><b>Suspect:</b> <code>billing/tax.py:1</code>: changed; the test imports it indirectly (2 imports away)</li>
+        </ul>
+        <details><summary>The suspect change in <code>billing/tax.py</code></summary><pre><span class="del">-RATE = 0.21</span>
+<span class="add">+RATE = 0.19</span></pre></details>
+        <blockquote><b>🤖 claude-sonnet-5</b> (test-needs-update, high confidence)<br>RATE was lowered from 0.21 to 0.19, so every total drops by 2%. Fix: restore 0.21, or update the expected totals if 19% VAT is intended.</blockquote>
         <h5>⚠️ Flaky and quarantined tests</h5>
         <p>These failed but did not fail the build. Fix them, then remove any entries from the quarantine file (<code>karma flaky</code>).</p>
         <p style="font-size:13.5px">• <code>tests/test_net.py::test_timeout</code>: flaky. passed on retry 1: TimeoutError</p>
@@ -1319,14 +1353,14 @@ retries = 2
   <div class="wrap">
     <div class="section-head">
       <p class="eyebrow">Roadmap</p>
-      <h2>Four phases shipped. One to go.</h2>
+      <h2>All five phases shipped.</h2>
     </div>
     <ol class="roadmap" style="list-style:none;margin:0;padding:0">
       <li class="phase"><span class="mono">Phase 1</span><h3>Diff and dependency analysis</h3><span class="status done">Shipped</span></li>
       <li class="phase"><span class="mono">Phase 2</span><h3>GitHub Actions integration</h3><span class="status done">Shipped</span></li>
       <li class="phase"><span class="mono">Phase 3</span><h3>Failure prediction and prioritisation</h3><span class="status done">Shipped</span></li>
       <li class="phase"><span class="mono">Phase 4</span><h3>Flaky-test registry</h3><span class="status done">Shipped</span></li>
-      <li class="phase"><span class="mono">Phase 5</span><h3>LLM copilot: failure diagnosis, semantic mapping</h3><span class="status next">Planned</span></li>
+      <li class="phase"><span class="mono">Phase 5</span><h3>Failure diagnosis: suspect changes, history, optional AI</h3><span class="status done">Shipped</span></li>
     </ol>
   </div>
 </section>
@@ -1354,7 +1388,7 @@ retries = 2
 </div>
 
 <script id="karma-data" type="application/json">{
- "version": "3.2.0",
+ "version": "3.3.0",
  "commands": [
   {
    "name": "run",
@@ -1540,7 +1574,7 @@ retries = 2
      "kind": "flag",
      "choices": null,
      "default": null,
-     "help": "do not record results in .karma_cache/history.jsonl (used for --prioritize)",
+     "help": "do not record results in .karma_cache/ (the history --prioritize learns from, and the failures karma diagnose explains)",
      "group": "general"
     },
     {
@@ -1554,6 +1588,70 @@ retries = 2
      "default": "the Python running Karma",
      "help": "interpreter used to run pytest (default: the one running Karma)",
      "group": "general"
+    },
+    {
+     "flags": [
+      "--diagnose"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "after a failure, show the evidence: the changed lines in its traceback, why the test ran and its history (default: [tool.karma] diagnose)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--ai"
+     ],
+     "positional": false,
+     "metavar": "PROVIDER",
+     "kind": "choice",
+     "choices": [
+      "anthropic",
+      "ollama",
+      "openai"
+     ],
+     "default": null,
+     "help": "also ask a language model to explain failures: anthropic, ollama (a model on this machine) or openai (any OpenAI-compatible server). Off by default; it is sent each failure's traceback and the relevant diff (default: [tool.karma] ai)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--ai-model"
+     ],
+     "positional": false,
+     "metavar": "NAME",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "model to ask (default for anthropic: claude-sonnet-5; required for ollama and openai)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--ai-url"
+     ],
+     "positional": false,
+     "metavar": "URL",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "API base URL, e.g. http://localhost:1234/v1 for LM Studio (default: the provider's)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--no-ai"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "never ask a language model, even if configured",
+     "group": "failure diagnosis"
     }
    ],
    "actions": [],
@@ -1573,6 +1671,10 @@ retries = 2
     {
      "command": "karma run --retries 2",
      "what": "Re-run failures; a pass on retry is reported as flaky"
+    },
+    {
+     "command": "karma run --diagnose",
+     "what": "Explain each failure: the changed lines behind it"
     },
     {
      "command": "karma run --staged",
@@ -1775,6 +1877,252 @@ retries = 2
    ],
    "pytest_args": false,
    "help": "print the affected tests without running them"
+  },
+  {
+   "name": "diagnose",
+   "description": "Explain the failures of the last `karma run`, or of a JUnit report: the changed lines in each traceback, why the test ran and its history. Nothing leaves the machine unless --ai is given; --show-prompt prints what would be sent.",
+   "options": [
+    {
+     "flags": [
+      "--repo"
+     ],
+     "positional": false,
+     "metavar": "DIR",
+     "kind": "value",
+     "choices": null,
+     "default": ".",
+     "help": "project directory to analyse (default: .)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--no-cache"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "do not read or write the cache",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--jobs"
+     ],
+     "positional": false,
+     "metavar": "N",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "worker processes for parsing (default: CPU count)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--base"
+     ],
+     "positional": false,
+     "metavar": "REF",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "branch or commit the change will merge into (default: $KARMA_BASE, the pull request base on GitHub Actions, origin/HEAD, or main/master)",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--head"
+     ],
+     "positional": false,
+     "metavar": "REF",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "compare this commit instead of the working tree",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--staged"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "only changes staged for commit",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--files"
+     ],
+     "positional": false,
+     "metavar": "PATH",
+     "kind": "list",
+     "choices": null,
+     "default": null,
+     "help": "treat these files as changed; skip git",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--all"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "select every test",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--on-git-error"
+     ],
+     "positional": false,
+     "metavar": "ON_GIT_ERROR",
+     "kind": "choice",
+     "choices": [
+      "fail",
+      "run-all"
+     ],
+     "default": "fail",
+     "help": "if changes cannot be determined: fail (default) or run the full suite",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--report"
+     ],
+     "positional": false,
+     "metavar": "XML",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "diagnose this JUnit XML report (e.g. a CI artifact) instead of the last run",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--max"
+     ],
+     "positional": false,
+     "metavar": "N",
+     "kind": "value",
+     "choices": null,
+     "default": 3,
+     "help": "diagnose at most N distinct failures (default: 3)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--format"
+     ],
+     "positional": false,
+     "metavar": "FORMAT",
+     "kind": "choice",
+     "choices": [
+      "text",
+      "markdown",
+      "json"
+     ],
+     "default": "text",
+     "help": "text (default), markdown for a pull request comment, or json",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--ai"
+     ],
+     "positional": false,
+     "metavar": "PROVIDER",
+     "kind": "choice",
+     "choices": [
+      "anthropic",
+      "ollama",
+      "openai"
+     ],
+     "default": null,
+     "help": "also ask a language model to explain failures: anthropic, ollama (a model on this machine) or openai (any OpenAI-compatible server). Off by default; it is sent each failure's traceback and the relevant diff (default: [tool.karma] ai)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--ai-model"
+     ],
+     "positional": false,
+     "metavar": "NAME",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "model to ask (default for anthropic: claude-sonnet-5; required for ollama and openai)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--ai-url"
+     ],
+     "positional": false,
+     "metavar": "URL",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "API base URL, e.g. http://localhost:1234/v1 for LM Studio (default: the provider's)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--no-ai"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "never ask a language model, even if configured",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--show-prompt"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "print exactly what would be sent to the model, and send nothing",
+     "group": "failure diagnosis"
+    }
+   ],
+   "actions": [],
+   "examples": [
+    {
+     "command": "karma diagnose",
+     "what": "Explain the last run's failures, all locally"
+    },
+    {
+     "command": "karma diagnose --ai ollama --ai-model qwen2.5-coder",
+     "what": "Ask a model on your machine"
+    },
+    {
+     "command": "karma diagnose --ai anthropic",
+     "what": "Ask Claude (uses your ANTHROPIC_API_KEY)"
+    },
+    {
+     "command": "karma diagnose --ai anthropic --show-prompt",
+     "what": "See exactly what would be sent"
+    },
+    {
+     "command": "karma diagnose --report junit.xml --format markdown",
+     "what": "A CI report, as Markdown"
+    }
+   ],
+   "pytest_args": false,
+   "help": "explain why tests failed: the suspect changes, history, and optionally AI"
   },
   {
    "name": "graph",
@@ -2178,6 +2526,21 @@ retries = 2
     "name": "cache",
     "description": "`true` to keep `.karma_cache/` (import cache and test history) between runs with actions/cache, so history accumulates and graphs build faster.",
     "default": "true"
+   },
+   {
+    "name": "diagnose",
+    "description": "`true` to explain each failure in the job summary and on the diff: the changed lines in its traceback, why the test ran, and its history. Computed locally.",
+    "default": "false"
+   },
+   {
+    "name": "ai",
+    "description": "Also ask a language model to explain failures: `anthropic` (set `ANTHROPIC_API_KEY` in the step's `env` from a secret), `ollama` or `openai` (any OpenAI-compatible server). Off by default; the model is sent each failure's traceback and diff.",
+    "default": ""
+   },
+   {
+    "name": "ai-model",
+    "description": "Model for `ai`; the default for `anthropic` is claude-sonnet-5.",
+    "default": ""
    }
   ],
   "outputs": [
@@ -2279,6 +2642,30 @@ retries = 2
    "type": "string",
    "default": "\"karma-quarantine.toml\"",
    "description": "Where quarantined tests are listed"
+  },
+  {
+   "key": "diagnose",
+   "type": "bool",
+   "default": "false",
+   "description": "Explain failures after a run: suspect changes, history"
+  },
+  {
+   "key": "ai",
+   "type": "string",
+   "default": "off",
+   "description": "Also ask a language model: anthropic, ollama or openai"
+  },
+  {
+   "key": "ai-model",
+   "type": "string",
+   "default": "\"claude-sonnet-5\" for anthropic",
+   "description": "The model to ask"
+  },
+  {
+   "key": "ai-url",
+   "type": "string",
+   "default": "the provider's API",
+   "description": "API base URL, e.g. a server on this machine"
   }
  ],
  "benchmarks": {
@@ -4216,6 +4603,8 @@ document.querySelectorAll("#action-inputs td:first-child, #action-outputs td:fir
         with:
           prioritize: "true" # likeliest failures first
           retries: "2"       # flaky warns, broken fails
+          diagnose: "true"   # explain each failure
+          # ai: anthropic    # + env ANTHROPIC_API_KEY from a secret
           args: --explain` },
     { id: "gitlab", label: "GitLab CI", file: ".gitlab-ci.yml", note: "Runs in merge request pipelines and compares against the target branch. The JUnit report shows failures in the merge request.", code:
 `test:
@@ -4314,9 +4703,10 @@ workflows:
     () => [el("p", { class: "eyebrow", text: "Proof" }), el("h2", { text: "Broken on purpose, 47 times. Never missed a failure." }), figs([[`${caught - missed} / ${caught}`, "injected bugs caught"], [`${fmt(skipStarlette, 1)}%`, "test files skipped, starlette"], ["0", "failing tests missed"]]), el("p", { class: "lede", text: "Real modules of encode/starlette and Textualize/rich were broken one at a time; the full suite showed what really failed, and Karma had selected every one." })],
     () => [el("p", { class: "eyebrow", text: "Faster feedback" }), el("h2", { text: "The likeliest failure runs first." }), figs([[fmt(learned.first_failure, 1), "files until the first failure"], [fmt(alpha.first_failure, 1), "without prioritisation"], [fmt(orderings[0].first_failure, 1), "in random order"]]), el("p", { class: "lede", text: "A local logistic regression learns from your own history. It only reorders; it never skips." })],
     () => [el("p", { class: "eyebrow", text: "Flaky tests" }), el("h2", { text: "Flaky tests warn. Broken tests fail." }), figs([[fmt(flaky.tests), "tests checked"], [`${flaky.deterministic_failures}`, "real failures kept failing"], ["0", "false flaky alarms"]]), el("p", { class: "lede", text: "Retries confirm flakiness; a reviewed quarantine registry keeps flaky tests running without blocking merges, and releases them once they heal." })],
+    () => [el("p", { class: "eyebrow", text: "Failures explain themselves" }), el("h2", { text: "Every failure points at the line that broke it." }), el("pre", { class: "mini-term", style: "font-size:clamp(12px,1.1vw,15px);max-width:780px", text: "tests/test_invoice.py::test_unknown_country\n  error    ValueError: unknown country 'XX'\n  suspect  billing/tax.py:6  changed, and where the error was raised\n  ai       rate() now rejects \"XX\", which the test still passes in." }), el("p", { class: "lede", text: "The changed lines in the traceback, why the test ran and its history, lined up locally. Optional AI turns that into a cause and a fix: Claude with your own key, or a model on your machine." })],
     () => [el("p", { class: "eyebrow", text: "Versus the field" }), el("h2", { text: "Meta skips tests with ML. Karma orders them." }), el("p", { class: "lede", text: "Meta's predictive test selection halves testing cost and still reports over 99.9% of faulty changes, by skipping tests a model expects to pass. Karma lets dependencies decide what runs, and uses its model only for the order: a guarantee instead of a probability, from day one, on your own machine." })],
     () => [el("p", { class: "eyebrow", text: "Adoption" }), el("h2", { text: "One step in GitHub Actions. A few lines anywhere else." }), el("pre", { class: "mini-term", style: "font-size:clamp(12px,1.2vw,15px);max-width:720px", text: "- uses: Pradyuman-aviator/Karma@main\n  with:\n    prioritize: \"true\"\n    retries: \"2\"" }), el("p", { class: "lede", text: "GitLab, Jenkins, CircleCI and pre-commit work through the same karma command." })],
-    () => [el("p", { class: "eyebrow", text: "Next" }), el("h2", { text: "Four phases shipped. Next: an LLM copilot for failure diagnosis." }), el("p", { class: "lede", text: "Try it on your own project: pip install git+https://github.com/Pradyuman-aviator/Karma.git, then karma run --explain." }), el("p", { class: "muted", text: "Karma · MIT licence · github.com/Pradyuman-aviator/Karma" })],
+    () => [el("p", { class: "eyebrow", text: "Try it" }), el("h2", { text: "All five phases shipped: select, predict, stabilise, explain, in your pull request." }), el("p", { class: "lede", text: "Try it on your own project: pip install git+https://github.com/Pradyuman-aviator/Karma.git, then karma run --diagnose." }), el("p", { class: "muted", text: "Karma · MIT licence · github.com/Pradyuman-aviator/Karma" })],
   ];
   let index = 0;
   slides.forEach((_, i) => dots.append(el("button", { type: "button", "aria-label": `Slide ${i + 1}`, onclick: () => go(i) })));
