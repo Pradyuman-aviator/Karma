@@ -4,6 +4,25 @@ All notable changes to Karma are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.2.0] - 2026-09-27
+
+Phase 4 of the roadmap: the flaky-test registry.
+
+### Added
+- `--retries N` (config `retries`, action input `retries`): re-runs only the failed tests.
+  A test that fails and then passes is confirmed flaky and reported as a warning rather
+  than a failure (`--fail-on-flaky` for a strict policy). The action gains a
+  `flaky-tests` output.
+- Quarantine registry `karma-quarantine.toml` (config `quarantine-file`): quarantined
+  tests still run and are reported, but their failures do not fail the build.
+- `karma flaky`: list, `quarantine`, `release`, and `sync`. `sync` quarantines tests
+  confirmed flaky in at least N runs and releases ones that have passed their last M
+  runs.
+- The history records flaky tests and the results of quarantined tests; flaky failures
+  are kept out of the risk model's training.
+- Flaky and quarantined results appear in the console summary, the GitHub job summary,
+  and as `::warning` annotations.
+
 ## [3.1.0] - 2026-09-27
 
 Phase 3 of the roadmap: the prediction layer. Karma now learns which tests are likely

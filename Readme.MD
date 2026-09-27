@@ -90,6 +90,7 @@ The action runs in **your** job's Python environment, so selected tests can impo
 | `on-git-error` | `fail` | `run-all` runs the whole suite if changes can't be determined |
 | `args` | | Extra Karma arguments, e.g. `--explain` |
 | `prioritize` | `false` | `true` runs the tests most likely to fail first (see *Predict and prioritise*) |
+| `retries` | `0` | Re-run failed tests up to N times; a pass on retry is reported as flaky, not a failure |
 | `cache` | `true` | Keep `.karma_cache/` (import cache + test history) between runs with `actions/cache` |
 
 | Output | Description |
@@ -98,6 +99,7 @@ The action runs in **your** job's Python environment, so selected tests can impo
 | `tests-run` | Number of test files run |
 | `selected-count` / `total-count` | Selected vs. total test files |
 | `run-all` | `true` if a change triggered the full suite |
+| `flaky-tests` | Node ids of tests that failed, then passed on retry |
 
 ### Pre-commit hook
 
@@ -229,6 +231,50 @@ Injected faults are independent of each other, so there is little to learn beyon
 
 ---
 
+## Flaky tests
+
+A flaky test fails a build that is fine, and trains people to ignore red. Karma detects flaky tests, isolates them, and notices when they are fixed, without ever hiding a real failure.
+
+```console
+$ karma run --retries 2
+karma: retrying 1 failed test(s), attempt 1 of 2
+  passed         214
+  failed           0
+  flaky            1
+  FLAKY tests/net/test_client.py::test_timeout - passed on retry 1: TimeoutError
+```
+
+**Detect.** `--retries N` re-runs *only the failed tests*. A test that fails and then passes against the same code is **confirmed flaky**, which is far stronger evidence than a history of flip-flopping, since a real bug that got fixed flips too. A flaky test is reported as a warning and doesn't fail the build; use `--fail-on-flaky` for a strict policy. A test that fails every attempt is a real failure, and stays one.
+
+**Quarantine.** `karma-quarantine.toml` is committed with your code and reviewed like it:
+
+```toml
+[[quarantine]]
+id = "tests/net/test_client.py::test_timeout"
+reason = "passed on retry after failing, in 3 recorded runs"
+since = "2026-09-27"
+issue = "https://github.com/acme/app/issues/123"
+```
+
+Quarantined tests **still run and are still reported**, but their failures don't fail the build. Skipping them would hide whether they have been fixed. An `id` can be a test, a test with any parameters, a class, or a whole file.
+
+**Manage.**
+
+| Command | Does |
+| --- | --- |
+| `karma flaky` | Quarantined tests with their recent results (`. . F .`), and confirmed flaky tests not yet quarantined |
+| `karma flaky quarantine ID --reason ... --issue ...` | Quarantine a test |
+| `karma flaky release ID` | Take it out of quarantine |
+| `karma flaky sync` | Quarantine tests confirmed flaky in ≥2 runs; release those that passed their last 10 runs (`--dry-run` to preview) |
+
+`karma flaky sync` is built to run as a scheduled CI job that opens a pull request, so the registry maintains itself and every change to it is reviewed.
+
+**Stays out of the model.** Flaky and quarantined failures are recorded as such, so the risk model behind `--prioritize` doesn't learn noise as "this test finds bugs".
+
+**Validated.** On starlette's full suite (1,277 tests) with `--retries 2`, the 14 tests that fail deterministically on Windows were retried, stayed failed, and none was misclassified as flaky.
+
+---
+
 ## Configuration
 
 Optional, in `pyproject.toml`:
@@ -257,6 +303,7 @@ Patterns without `/` match file names anywhere; patterns with `/` match the path
 | `karma select` | Print the selection: `--format text` (default, space-separated), `lines`, or `json` |
 | `karma graph` | Print the dependency graph: `--format json`, `dot` (Graphviz), or `mermaid` |
 | `karma history` | Most-failing, flaky and slowest tests from the recorded history; `--import` JUnit reports |
+| `karma flaky` | The quarantine registry: `quarantine`, `release`, `sync` |
 
 **What counts as changed** (`run` and `select`):
 
@@ -265,7 +312,7 @@ Patterns without `/` match file names anywhere; patterns with `/` match the path
 - `--files PATH…` to skip git entirely
 - `--all` to select everything
 
-**Other options:** `--explain`, `--prioritize`, `--no-history` (run), `--ci` (GitHub outputs, summary and annotations), `--repo DIR`, `--python EXE`, `--jobs N`, `--no-cache`, `--on-git-error {fail,run-all}`, `-v`/`-q`.
+**Other options:** `--explain`, `--prioritize`, `--retries N`, `--fail-on-flaky`, `--no-history` (run), `--ci` (GitHub outputs, summary and annotations), `--repo DIR`, `--python EXE`, `--jobs N`, `--no-cache`, `--on-git-error {fail,run-all}`, `-v`/`-q`.
 
 **Exit codes:**
 
@@ -285,7 +332,7 @@ Patterns without `/` match file names anywhere; patterns with `/` match the path
 | 2 | GitHub Actions integration | ✅ |
 | 3.0 | Hardening: merge-base diffs, conftest/safety-net selection, explainability, per-test reporting, incremental parallel cache | ✅ |
 | 3 | ML prediction layer: predict failures from local history and run the likeliest first (`--prioritize`, `karma history`) | ✅ |
-| 4 | Flaky-test registry: quarantine and track unreliable tests. Flaky candidates are already detected in `karma history` | 🚧 |
+| 4 | Flaky-test registry: confirm flakiness with retries, quarantine in a reviewed registry, release healed tests (`--retries`, `karma flaky`) | ✅ |
 | 5 | LLM copilot: semantic test mapping, failure diagnosis | 📅 |
 
 ## Contributing
