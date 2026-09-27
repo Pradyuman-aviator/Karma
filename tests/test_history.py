@@ -127,3 +127,34 @@ class TestStorage:
         data = {"t": 1, "tests": {"t.py": ["passed", 0, "far"]}}
         with pytest.raises(TypeError):
             Run.from_json(data)
+
+
+class TestImport:
+    def test_merge_keeps_time_order_and_rewrites_the_file(self, tmp_path: Path) -> None:
+        path = tmp_path / "history.jsonl"
+        stored = History.load(path)
+        stored.append(run(10, **{"t.py": PASSED}))
+        stored.merge([run(5, **{"t.py": FAILED}), run(20, **{"t.py": PASSED})])
+
+        assert [r.timestamp for r in History.load(path).runs] == [5.0, 10.0, 20.0]
+
+    def test_run_from_report_rebases_rootdir_relative_paths(self, tmp_path: Path) -> None:
+        (tmp_path / "tests").mkdir()
+        (tmp_path / "tests" / "test_x.py").write_text("", encoding="utf-8")
+        report = tmp_path / "report.xml"
+        report.write_text(
+            '<testsuites><testsuite><testcase classname="test_x" name="t" file="test_x.py">'
+            '<failure message="boom"/></testcase></testsuite></testsuites>',
+            encoding="utf-8",
+        )
+
+        imported = history_module.run_from_report(report, tmp_path)
+
+        assert imported.tests == {"tests/test_x.py": TestRecord(FAILED, 0.0, None)}
+        assert imported.changed == ()
+
+    def test_empty_reports_are_rejected(self, tmp_path: Path) -> None:
+        report = tmp_path / "empty.xml"
+        report.write_text("<testsuites/>", encoding="utf-8")
+        with pytest.raises(ValueError, match="no test results"):
+            history_module.run_from_report(report, tmp_path)

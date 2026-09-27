@@ -168,6 +168,41 @@ class RiskModel:
 
 
 @dataclass(frozen=True)
+class TestSummary:
+    __test__ = False  # not a pytest test class, despite the name
+
+    test: str
+    runs: int
+    failures: int
+    flips: int
+    duration: float | None
+
+    @property
+    def failure_rate(self) -> float:
+        return self.failures / self.runs if self.runs else 0.0
+
+    @property
+    def flip_rate(self) -> float:
+        return self.flips / (self.runs - 1) if self.runs > 1 else 0.0
+
+    @property
+    def flaky(self) -> bool:
+        """Flips back and forth often: the signature of a flaky test (or a hot spot)."""
+        return self.runs >= 5 and self.failures >= 2 and self.flip_rate >= 0.3
+
+
+def summarize(history: History) -> list[TestSummary]:
+    """Per-test statistics over the whole history."""
+    evidence = Evidence()
+    for run in history.runs:
+        evidence.update(run)
+    return [
+        TestSummary(test, s.runs, s.failures, s.flips, s.duration)
+        for test, s in sorted(evidence.tests.items())
+    ]
+
+
+@dataclass(frozen=True)
 class Risk:
     test: str
     probability: float

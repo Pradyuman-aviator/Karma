@@ -148,3 +148,23 @@ class TestEvidence:
 @pytest.mark.parametrize("z", [-1000.0, -5.0, 0.0, 5.0, 1000.0])
 def test_sigmoid_is_numerically_stable(z: float) -> None:
     assert 0.0 <= risk_module._sigmoid(z) <= 1.0
+
+
+class TestSummaries:
+    def test_statistics_and_flakiness(self) -> None:
+        outcomes = [PASSED, FAILED, PASSED, FAILED, PASSED, FAILED]
+        runs = [((), {"tests/test_flaky.py": o, "tests/test_ok.py": PASSED}) for o in outcomes]
+
+        summaries = {s.test: s for s in risk_module.summarize(history(*runs))}
+
+        flaky = summaries["tests/test_flaky.py"]
+        assert (flaky.runs, flaky.failures, flaky.flips) == (6, 3, 5)
+        assert flaky.failure_rate == 0.5
+        assert flaky.flaky
+        assert not summaries["tests/test_ok.py"].flaky
+        assert summaries["tests/test_ok.py"].flip_rate == 0.0
+
+    def test_a_single_run_is_never_flaky(self) -> None:
+        (only,) = risk_module.summarize(history(((), {"t.py": FAILED})))
+        assert only.flip_rate == 0.0
+        assert not only.flaky

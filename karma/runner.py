@@ -11,9 +11,11 @@ import tempfile
 import time
 import xml.etree.ElementTree as ET
 from collections import Counter
-from collections.abc import Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
+
+from karma.git import list_files
 
 log = logging.getLogger(__name__)
 
@@ -98,6 +100,16 @@ def run_pytest(
         duration=time.monotonic() - started,
         crashed=any(r.crashed for r in results),
     )
+
+
+def rebase_cases(
+    cases: Iterable[TestCase], cwd: Path, known: Sequence[str] | None = None
+) -> list[TestCase]:
+    """Make report paths relative to ``cwd`` (see :func:`_rebase`); ``known`` defaults to
+    every Python file under ``cwd``."""
+    if known is None:
+        known = list_files(cwd)
+    return [_rebase(case, cwd, known) for case in cases]
 
 
 def _rebase(case: TestCase, cwd: Path, known: Sequence[str]) -> TestCase:

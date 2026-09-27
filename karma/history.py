@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from karma.cache import CACHE_DIR, prepare_directory
-from karma.runner import Outcome, RunResult, TestCase
+from karma.runner import Outcome, RunResult, TestCase, parse_junit, rebase_cases
 from karma.selector import Selection
 
 log = logging.getLogger(__name__)
@@ -129,6 +129,18 @@ class History:
         except OSError as exc:
             log.warning("could not record test history in %s: %s", self.path, exc)
 
+    def merge(self, runs: Iterable[Run]) -> None:
+        """Add runs from anywhere in time (e.g. imported reports), keeping time order."""
+        self.runs = sorted([*self.runs, *runs], key=lambda run: run.timestamp)[-MAX_RUNS:]
+        if self.path is None:
+            return
+        try:
+            prepare_directory(self.path.parent)
+            text = "".join(json.dumps(r.to_json()) + "\n" for r in self.runs)
+            self.path.write_text(text, encoding="utf-8")
+        except OSError as exc:
+            log.warning("could not record test history in %s: %s", self.path, exc)
+
 
 def default_history_path(root: Path) -> Path:
     return root / CACHE_DIR / HISTORY_FILE
@@ -162,6 +174,20 @@ def _record(cases: Iterable[TestCase], distance: int | None) -> TestRecord:
 def _distance(test: str, selection: Selection) -> int | None:
     chain = selection.reasons.get(test)
     return len(chain) - 1 if chain else None
+
+
+def run_from_report(path: Path, root: Path) -> Run:
+    """A run recorded from an existing JUnit XML report (e.g. an old CI artifact)."""
+    cases = rebase_cases(parse_junit(path), root)
+    if not cases:
+        raise ValueError(f"{path} contains no test results")
+    grouped: dict[str, list[TestCase]] = {}
+    for case in cases:
+        grouped.setdefault(file_of(case), []).append(case)
+    return Run(
+        timestamp=path.stat().st_mtime,
+        tests={test: _record(group, None) for test, group in grouped.items()},
+    )
 
 
 def run_from(

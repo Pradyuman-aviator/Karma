@@ -7,6 +7,7 @@ import contextlib
 import json
 import logging
 import sys
+import time
 from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
@@ -17,7 +18,7 @@ from karma.config import Config, load_config
 from karma.errors import GitError, KarmaError
 from karma.git import ChangeSet, default_base, get_changes, verify_ref
 from karma.graph import DependencyGraph, build_graph
-from karma.history import History, default_history_path, run_from
+from karma.history import History, default_history_path, run_from, run_from_report
 from karma.reporter import (
     append_step_summary,
     describe_selection,
@@ -28,7 +29,7 @@ from karma.reporter import (
     run_markdown,
     write_github_outputs,
 )
-from karma.risk import Risk, assess
+from karma.risk import Risk, assess, summarize
 from karma.runner import EXIT_NO_TESTS_COLLECTED, EXIT_OK, RunResult, run_pytest
 from karma.selector import Selection, is_test_file, select_tests
 
@@ -36,7 +37,7 @@ log = logging.getLogger("karma")
 
 EXIT_KARMA_ERROR = 2
 EXIT_INTERRUPTED = 130
-COMMANDS = ("run", "select", "graph")
+COMMANDS = ("run", "select", "graph", "history")
 
 
 @dataclass(frozen=True)
@@ -229,6 +230,74 @@ def _record_history(plan: Plan, result: RunResult) -> None:
     history.append(run_from(result, plan.selection, commit))
 
 
+def cmd_history(args: argparse.Namespace) -> int:
+    root = _resolve_root(args.repo)
+    history = History.load(default_history_path(root))
+    if args.import_reports:
+        imported = []
+        for report in args.import_reports:
+            try:
+                imported.append(run_from_report(Path(report), root))
+            except (OSError, ValueError) as exc:
+                raise KarmaError(f"cannot import {report}: {exc}") from None
+        history.merge(imported)
+        log.info("imported %s", plural(len(imported), "report"))
+
+    summaries = summarize(history)
+    failing = sorted(
+        (s for s in summaries if s.failures),
+        key=lambda s: (-s.failure_rate, -s.failures, s.test),
+    )[: args.top]
+    flaky = sorted((s for s in summaries if s.flaky), key=lambda s: (-s.flip_rate, s.test))
+    slowest = sorted(
+        (s for s in summaries if s.duration),
+        key=lambda s: (-(s.duration or 0.0), s.test),
+    )[: args.top]
+
+    if args.format == "json":
+        print(
+            json.dumps(
+                {
+                    "runs": len(history.runs),
+                    "tests": {
+                        s.test: {
+                            "runs": s.runs,
+                            "failures": s.failures,
+                            "flips": s.flips,
+                            "duration": s.duration,
+                            "flaky": s.flaky,
+                        }
+                        for s in summaries
+                    },
+                },
+                indent=2,
+            )
+        )
+        return EXIT_OK
+    if not history.runs:
+        print("No test history yet: `karma run` records it in .karma_cache/history.jsonl.")
+        return EXIT_OK
+    first, last = (
+        time.strftime("%Y-%m-%d", time.localtime(run.timestamp))
+        for run in (history.runs[0], history.runs[-1])
+    )
+    print(f"{plural(len(history.runs), 'recorded run')} ({first} to {last})")
+    width = max((len(s.test) for s in summaries), default=0) + 2
+    if failing:
+        print("\nMost failures:")
+        for s in failing:
+            print(f"  {s.test:<{width}}{s.failures} of {s.runs} runs ({s.failure_rate:.0%})")
+    if flaky:
+        print("\nFlaky candidates (outcome flips back and forth):")
+        for s in flaky:
+            print(f"  {s.test:<{width}}flipped {s.flips} times in {s.runs} runs")
+    if slowest:
+        print("\nSlowest:")
+        for s in slowest:
+            print(f"  {s.test:<{width}}{s.duration:.2f}s")
+    return EXIT_OK
+
+
 def cmd_graph(args: argparse.Namespace) -> int:
     root = _resolve_root(args.repo)
     graph = _build_graph(root, load_config(root), args)
@@ -347,6 +416,21 @@ def build_parser() -> argparse.ArgumentParser:
     _add_analysis_options(graph)
     graph.add_argument("--format", choices=("json", "dot", "mermaid"), default="json")
     graph.set_defaults(func=cmd_graph)
+
+    history = commands.add_parser(
+        "history",
+        help="show the recorded test history; import JUnit reports into it",
+        description="Summarise .karma_cache/history.jsonl, the data --prioritize learns "
+        "from. --import seeds it from existing JUnit XML reports (e.g. CI artifacts).",
+    )
+    _add_verbosity(history, argparse.SUPPRESS)
+    history.add_argument("--repo", default=".", metavar="DIR", help="project directory")
+    history.add_argument(
+        "--import", dest="import_reports", nargs="+", metavar="REPORT", help="JUnit XML reports"
+    )
+    history.add_argument("--format", choices=("text", "json"), default="text")
+    history.add_argument("--top", type=int, default=10, metavar="N", help="rows per list")
+    history.set_defaults(func=cmd_history)
     return parser
 
 

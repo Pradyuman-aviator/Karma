@@ -478,3 +478,45 @@ class TestPrioritize:
         project.write("pyproject.toml", '[tool.karma]\nprioritize = "yes"\n')
         assert karma_main(project, "select") == cli.EXIT_KARMA_ERROR
         assert "prioritize must be true or false" in capsys.readouterr().err
+
+
+class TestHistoryCommand:
+    def test_empty_history(self, project: GitRepo, capsys: pytest.CaptureFixture[str]) -> None:
+        assert karma_main(project, "history") == 0
+        assert "No test history yet" in capsys.readouterr().out
+
+    def test_summary_after_runs(self, project: GitRepo, capfd: pytest.CaptureFixture[str]) -> None:
+        project.write("app/util.py", "def double(x):\n    return 0\n")
+        karma_main(project, "run", "--base", "main")
+        project.write("app/util.py", "def double(x):\n    return x + x  # fixed\n")
+        karma_main(project, "run", "--base", "main")
+        capfd.readouterr()
+
+        assert karma_main(project, "history") == 0
+        out = capfd.readouterr().out
+        assert "2 recorded runs" in out
+        assert re.search(r"tests/test_core.py\s+1 of 2 runs \(50%\)", out)
+        assert "Slowest:" in out
+
+        karma_main(project, "history", "--format", "json")
+        data = json.loads(capfd.readouterr().out)
+        assert data["runs"] == 2
+        assert data["tests"]["tests/test_core.py"]["failures"] == 1
+
+    def test_import_reports(self, project: GitRepo, capsys: pytest.CaptureFixture[str]) -> None:
+        report = project.path / "old.xml"
+        report.write_text(
+            '<testsuites><testsuite><testcase classname="tests.test_other" name="test_value" '
+            'file="tests/test_other.py"><failure message="x"/></testcase></testsuite></testsuites>',
+            encoding="utf-8",
+        )
+
+        assert karma_main(project, "history", "--import", str(report)) == 0
+
+        out = capsys.readouterr().out
+        assert "1 recorded run" in out
+        assert re.search(r"tests/test_other.py\s+1 of 1 runs", out)
+
+    def test_import_errors(self, project: GitRepo, capsys: pytest.CaptureFixture[str]) -> None:
+        assert karma_main(project, "history", "--import", "missing.xml") == cli.EXIT_KARMA_ERROR
+        assert "cannot import missing.xml" in capsys.readouterr().err
