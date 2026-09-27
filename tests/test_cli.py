@@ -544,3 +544,141 @@ def test_history_lists_flaky_and_slowest_tests(
     out = capsys.readouterr().out
     assert re.search(r"Flaky candidates.*\n\s+tests/test_flaky.py\s+flipped 5 times in 6 runs", out)
     assert re.search(r"Slowest:\n\s+tests/test_slow.py\s+7.25s", out)
+
+
+class TestFlaky:
+    @pytest.fixture
+    def flaky_project(
+        self, project: GitRepo, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> GitRepo:
+        """A test that fails the first time it runs and passes after (a real flake)."""
+        monkeypatch.setenv("KARMA_TEST_MARKER", str(tmp_path / "ran-once"))
+        project.write(
+            "tests/test_flaky.py",
+            "import os, pathlib\n\n"
+            "def test_sometimes():\n"
+            "    marker = pathlib.Path(os.environ['KARMA_TEST_MARKER'])\n"
+            "    if not marker.exists():\n"
+            "        marker.write_text('x')\n"
+            "        raise AssertionError('first attempt fails')\n",
+        )
+        project.write("tests/test_bad.py", "def test_bad():\n    assert False, 'always'\n")
+        return project
+
+    def test_retries_detect_flaky_tests(
+        self, flaky_project: GitRepo, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        assert (
+            karma_main(flaky_project, "run", "--files", "tests/test_flaky.py", "--retries", "1")
+            == 0
+        )
+
+        err = capfd.readouterr().err
+        assert re.search(r"flaky\s+1", err)
+        assert "FLAKY tests/test_flaky.py::test_sometimes - passed on retry 1" in err
+        history = (flaky_project.path / ".karma_cache" / "history.jsonl").read_text(
+            encoding="utf-8"
+        )
+        assert json.loads(history)["flaky"] == ["tests/test_flaky.py::test_sometimes"]
+
+    def test_without_retries_a_flake_fails(
+        self, flaky_project: GitRepo, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        assert karma_main(flaky_project, "run", "--files", "tests/test_flaky.py") == 1
+
+    def test_fail_on_flaky(self, flaky_project: GitRepo, capfd: pytest.CaptureFixture[str]) -> None:
+        code = karma_main(
+            flaky_project,
+            "run",
+            "--files",
+            "tests/test_flaky.py",
+            "--retries",
+            "1",
+            "--fail-on-flaky",
+        )
+        assert code == 1
+        assert "failing because of --fail-on-flaky" in capfd.readouterr().err
+
+    def test_real_failures_are_retried_and_still_fail(
+        self, flaky_project: GitRepo, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        assert (
+            karma_main(flaky_project, "run", "--files", "tests/test_bad.py", "--retries", "2") == 1
+        )
+        assert "retrying 1 failed test(s), attempt 2 of 2" in capfd.readouterr().err
+
+    def test_quarantine_workflow(
+        self,
+        flaky_project: GitRepo,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capfd: pytest.CaptureFixture[str],
+    ) -> None:
+        assert (
+            karma_main(
+                flaky_project,
+                "flaky",
+                "quarantine",
+                "tests/test_bad.py::test_bad",
+                "--reason",
+                "known",
+            )
+            == 0
+        )
+        registry = (flaky_project.path / "karma-quarantine.toml").read_text(encoding="utf-8")
+        assert 'id = "tests/test_bad.py::test_bad"' in registry
+
+        monkeypatch.setenv("GITHUB_WORKSPACE", str(flaky_project.path))
+        monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(tmp_path / "summary.md"))
+        assert karma_main(flaky_project, "run", "--files", "tests/test_bad.py", "--ci") == 0
+
+        out, err = capfd.readouterr()
+        assert "QUARANTINED tests/test_bad.py::test_bad" in err
+        assert "::warning file=tests/test_bad.py" in out
+        summary = (tmp_path / "summary.md").read_text(encoding="utf-8")
+        assert "Quarantined failures | 1" in summary
+        assert "Flaky and quarantined tests" in summary
+
+        karma_main(flaky_project, "flaky")
+        listing = capfd.readouterr().out
+        assert "tests/test_bad.py::test_bad  (known)" in listing
+        assert "last runs: F" in listing
+
+        assert karma_main(flaky_project, "flaky", "release", "tests/test_bad.py::test_bad") == 0
+        assert karma_main(flaky_project, "run", "--files", "tests/test_bad.py") == 1
+
+    def test_sync_quarantines_confirmed_flakes(
+        self, flaky_project: GitRepo, tmp_path: Path, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        karma_main(flaky_project, "run", "--files", "tests/test_flaky.py", "--retries", "1")
+        capfd.readouterr()
+
+        karma_main(flaky_project, "flaky", "--format", "json")
+        listing = json.loads(capfd.readouterr().out)
+        assert listing["confirmed_flaky"] == [
+            {"id": "tests/test_flaky.py::test_sometimes", "flaky_runs": 1}
+        ]
+
+        assert karma_main(flaky_project, "flaky", "sync", "--min-flakes", "1", "--dry-run") == 0
+        assert "quarantine tests/test_flaky.py::test_sometimes" in capfd.readouterr().out
+        assert not (flaky_project.path / "karma-quarantine.toml").exists()
+
+        karma_main(flaky_project, "flaky", "sync", "--min-flakes", "1")
+        assert "test_sometimes" in (flaky_project.path / "karma-quarantine.toml").read_text(
+            encoding="utf-8"
+        )
+        karma_main(flaky_project, "flaky", "sync", "--min-flakes", "1")
+        assert "quarantine is up to date" in capfd.readouterr().out
+
+    def test_release_of_an_unknown_test(
+        self, project: GitRepo, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        assert karma_main(project, "flaky", "release", "nope") == cli.EXIT_KARMA_ERROR
+        assert "not quarantined: nope" in capsys.readouterr().err
+
+    def test_invalid_retries_config(
+        self, project: GitRepo, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        project.write("pyproject.toml", "[tool.karma]\nretries = -1\n")
+        assert karma_main(project, "select") == cli.EXIT_KARMA_ERROR
+        assert "retries must be a whole number" in capsys.readouterr().err

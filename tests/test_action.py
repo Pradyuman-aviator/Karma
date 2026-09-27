@@ -241,3 +241,13 @@ def test_prioritize_input(upstream: GitRepo, tmp_path: Path) -> None:
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "--prioritize" in proc.stdout  # the echoed command
     assert "prioritised by risk using built-in priors" in proc.stderr
+
+
+def test_retries_input(upstream: GitRepo, tmp_path: Path) -> None:
+    clone = shallow_clone(upstream, tmp_path)
+
+    proc, outputs = run_action(clone, tmp_path, GITHUB_BASE_REF="main", INPUT_RETRIES="2")
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "--retries 2" in proc.stdout  # the echoed command
+    assert output_value(outputs, "flaky-tests") == ""

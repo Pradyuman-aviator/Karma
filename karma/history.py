@@ -26,6 +26,8 @@ HISTORY_FILE = "history.jsonl"
 MAX_RUNS = 500  # older runs are dropped; recent behaviour matters most
 
 PASSED, FAILED, SKIPPED = "passed", "failed", "skipped"
+#: the file's only failures were flaky or quarantined: not evidence of a real bug
+FLAKY = "flaky"
 
 
 @dataclass(frozen=True)
@@ -47,9 +49,13 @@ class Run:
     tests: Mapping[str, TestRecord]
     changed: tuple[str, ...] = ()
     commit: str | None = None
+    #: node ids that failed and then passed on retry in this run
+    flaky: tuple[str, ...] = ()
+    #: outcomes of quarantined tests in this run (to see when they have healed)
+    watched: Mapping[str, str] = field(default_factory=dict)
 
     def to_json(self) -> dict[str, Any]:
-        return {
+        data: dict[str, Any] = {
             "t": round(self.timestamp, 3),
             "commit": self.commit,
             "changed": list(self.changed),
@@ -58,6 +64,11 @@ class Run:
                 for path, rec in sorted(self.tests.items())
             },
         }
+        if self.flaky:
+            data["flaky"] = list(self.flaky)
+        if self.watched:
+            data["watched"] = dict(sorted(self.watched.items()))
+        return data
 
     @classmethod
     def from_json(cls, data: Mapping[str, Any]) -> Run:
@@ -70,6 +81,8 @@ class Run:
             tests=tests,
             changed=tuple(str(p) for p in data.get("changed", ())),
             commit=data.get("commit"),
+            flaky=tuple(str(n) for n in data.get("flaky", ())),
+            watched={str(k): str(v) for k, v in data.get("watched", {}).items()},
         )
 
 
@@ -164,6 +177,8 @@ def _record(cases: Iterable[TestCase], distance: int | None) -> TestRecord:
     duration = sum(case.duration for case in cases)
     if any(o in (Outcome.FAILED, Outcome.ERROR) for o in outcomes):
         outcome = FAILED
+    elif any(o in (Outcome.FLAKY, Outcome.QUARANTINED) for o in outcomes):
+        outcome = FLAKY
     elif any(o is Outcome.PASSED for o in outcomes):
         outcome = PASSED
     else:
@@ -191,11 +206,17 @@ def run_from_report(path: Path, root: Path) -> Run:
 
 
 def run_from(
-    result: RunResult, selection: Selection, commit: str | None, now: float | None = None
+    result: RunResult,
+    selection: Selection,
+    commit: str | None,
+    now: float | None = None,
+    watched: Mapping[str, str] | None = None,
 ) -> Run:
     return Run(
         timestamp=time.time() if now is None else now,
         tests=records_from(result, selection),
         changed=selection.changed,
         commit=commit,
+        flaky=tuple(c.nodeid for c in result.cases if c.outcome is Outcome.FLAKY),
+        watched=dict(watched or {}),
     )

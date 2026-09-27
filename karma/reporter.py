@@ -92,10 +92,13 @@ def print_run_summary(result: RunResult, stream: TextIO | None = None) -> None:
         (Outcome.FAILED, "failed"),
         (Outcome.ERROR, "errors"),
         (Outcome.SKIPPED, "skipped"),
+        (Outcome.FLAKY, "flaky"),
+        (Outcome.QUARANTINED, "quarantined"),
     ):
-        print(f"  {label:<8} {counts[outcome]:>6}", file=stream)
-    print(f"  {'time':<8} {result.duration:>5.1f}s", file=stream)
-    for case in result.problems[:MAX_SUMMARY_ROWS]:
+        if counts[outcome] or outcome not in (Outcome.FLAKY, Outcome.QUARANTINED):
+            print(f"  {label:<11} {counts[outcome]:>6}", file=stream)
+    print(f"  {'time':<11} {result.duration:>5.1f}s", file=stream)
+    for case in (*result.problems, *result.warnings)[:MAX_SUMMARY_ROWS]:
         detail = f" - {case.message}" if case.message else ""
         print(f"  {case.outcome.value.upper()} {case.nodeid}{detail}", file=stream)
     if result.crashed:
@@ -136,7 +139,10 @@ def append_step_summary(markdown: str) -> None:
 
 
 def emit_annotations(cases: Iterable[TestCase], root: Path, stream: TextIO | None = None) -> None:
-    """Emit ``::error`` workflow commands so failures show inline on the pull request."""
+    """Emit workflow commands so results show inline on the pull request.
+
+    Real failures are ``::error``; flaky and quarantined failures are ``::warning``.
+    """
     stream = stream or sys.stdout
     workspace = Path(os.environ.get("GITHUB_WORKSPACE") or root)
     for case in list(cases)[:MAX_ANNOTATIONS]:
@@ -150,7 +156,10 @@ def emit_annotations(cases: Iterable[TestCase], root: Path, stream: TextIO | Non
             if case.line:
                 props.insert(1, f"line={case.line}")
         message = case.details or case.message or f"{case.nodeid} {case.outcome.value}"
-        print(f"::error {','.join(props)}::{_escape_data(message)}", file=stream)
+        if case.outcome is Outcome.FLAKY:
+            message = f"{case.message} (flaky: does not fail the build)"
+        level = "warning" if case.outcome in (Outcome.FLAKY, Outcome.QUARANTINED) else "error"
+        print(f"::{level} {','.join(props)}::{_escape_data(message)}", file=stream)
 
 
 def _code(text: str) -> str:
@@ -224,6 +233,16 @@ def run_markdown(
             f"| ❌ Failed | {counts[Outcome.FAILED]} |",
             f"| ⚠️ Errors | {counts[Outcome.ERROR]} |",
             f"| ⏭️ Skipped | {counts[Outcome.SKIPPED]} |",
+            *(
+                [f"| 🔁 Flaky (passed on retry) | {counts[Outcome.FLAKY]} |"]
+                if counts[Outcome.FLAKY]
+                else []
+            ),
+            *(
+                [f"| 🧪 Quarantined failures | {counts[Outcome.QUARANTINED]} |"]
+                if counts[Outcome.QUARANTINED]
+                else []
+            ),
             f"| ⏱️ Time | {result.duration:.1f}s |",
             "",
         ]
@@ -246,4 +265,17 @@ def run_markdown(
                 ]
             if len(problems) > MAX_SUMMARY_ROWS:
                 parts += [f"… and {len(problems) - MAX_SUMMARY_ROWS} more.", ""]
+        warnings = result.warnings
+        if warnings:
+            parts += [
+                "### ⚠️ Flaky and quarantined tests",
+                "",
+                "These failed but did not fail the build. Fix them, then remove any entries "
+                "from the quarantine file (`karma flaky`).",
+                "",
+            ]
+            for case in warnings[:MAX_SUMMARY_ROWS]:
+                label = "flaky" if case.outcome is Outcome.FLAKY else "quarantined"
+                parts.append(f"- {_code(case.nodeid)}: {label}. {html.escape(case.message)}")
+            parts.append("")
     return "\n".join(parts) + "\n"

@@ -11,7 +11,7 @@ import tempfile
 import time
 import xml.etree.ElementTree as ET
 from collections import Counter
-from collections.abc import Iterable, Sequence
+from collections.abc import Callable, Iterable, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -36,6 +36,10 @@ class Outcome(str, enum.Enum):
     FAILED = "failed"
     ERROR = "error"
     SKIPPED = "skipped"
+    #: failed, then passed when retried: flaky, not broken
+    FLAKY = "flaky"
+    #: failed, but listed in the quarantine registry, so it does not fail the build
+    QUARANTINED = "quarantined"
 
 
 @dataclass(frozen=True)
@@ -68,8 +72,55 @@ class RunResult:
         return tuple(c for c in self.cases if c.outcome in (Outcome.FAILED, Outcome.ERROR))
 
     @property
+    def warnings(self) -> tuple[TestCase, ...]:
+        """Failures that do not fail the build: flaky or quarantined tests."""
+        return tuple(c for c in self.cases if c.outcome in (Outcome.FLAKY, Outcome.QUARANTINED))
+
+    @property
     def ok(self) -> bool:
         return self.exit_code in (EXIT_OK, EXIT_NO_TESTS_COLLECTED)
+
+    def settled(self) -> RunResult:
+        """Recompute the exit code once flaky/quarantined failures are accounted for.
+
+        pytest said 1 ("tests failed"); if every failure turned out to be flaky or
+        quarantined, the run passed. Other exit codes (usage errors, crashes) stand.
+        """
+        if self.exit_code == EXIT_TESTS_FAILED and not self.problems and self.warnings:
+            return dataclasses.replace(self, exit_code=EXIT_OK)
+        return self
+
+
+def rerun_failures(
+    result: RunResult, retries: int, rerun: Callable[[list[str]], RunResult]
+) -> RunResult:
+    """Retry failed tests up to ``retries`` times; those that pass become ``FLAKY``.
+
+    Only the failing tests are re-run (by pytest node id), so retrying is cheap.
+    A test that never passes stays failed; nothing is hidden.
+    """
+    cases = {case.nodeid: case for case in result.cases}
+    failing = [case.nodeid for case in result.problems]
+    for attempt in range(1, retries + 1):
+        if not failing:
+            break
+        log.info("retrying %d failed test(s), attempt %d of %d", len(failing), attempt, retries)
+        retry = rerun(failing)
+        if retry.crashed:  # e.g. a node id pytest could not find: keep the failures
+            break
+        outcomes = {case.nodeid: case.outcome for case in retry.cases}
+        still_failing = []
+        for nodeid in failing:
+            if outcomes.get(nodeid) is Outcome.PASSED:
+                cases[nodeid] = dataclasses.replace(
+                    cases[nodeid],
+                    outcome=Outcome.FLAKY,
+                    message=f"passed on retry {attempt}: {cases[nodeid].message}".rstrip(": "),
+                )
+            else:
+                still_failing.append(nodeid)
+        failing = still_failing
+    return dataclasses.replace(result, cases=tuple(cases.values())).settled()
 
 
 def run_pytest(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import contextlib
+import datetime
 import json
 import logging
 import sys
@@ -16,6 +17,16 @@ from karma import __version__
 from karma.cache import ImportCache, default_cache_path
 from karma.config import Config, load_config
 from karma.errors import GitError, KarmaError
+from karma.flaky import Entry as FlakyEntry
+from karma.flaky import (
+    Registry,
+    apply_quarantine,
+    confirmed_flakes,
+    plan_sync,
+    watched_cases,
+    watched_outcomes,
+)
+from karma.flaky import to_json as flaky_to_json
 from karma.git import ChangeSet, default_base, get_changes, verify_ref
 from karma.graph import DependencyGraph, build_graph
 from karma.history import History, default_history_path, run_from, run_from_report
@@ -30,14 +41,22 @@ from karma.reporter import (
     write_github_outputs,
 )
 from karma.risk import Risk, assess, summarize
-from karma.runner import EXIT_NO_TESTS_COLLECTED, EXIT_OK, RunResult, run_pytest
+from karma.runner import (
+    EXIT_NO_TESTS_COLLECTED,
+    EXIT_OK,
+    EXIT_TESTS_FAILED,
+    Outcome,
+    RunResult,
+    rerun_failures,
+    run_pytest,
+)
 from karma.selector import Selection, is_test_file, select_tests
 
 log = logging.getLogger("karma")
 
 EXIT_KARMA_ERROR = 2
 EXIT_INTERRUPTED = 130
-COMMANDS = ("run", "select", "graph", "history")
+COMMANDS = ("run", "select", "graph", "history", "flaky")
 
 
 @dataclass(frozen=True)
@@ -122,7 +141,8 @@ def _plan(args: argparse.Namespace) -> Plan:
     return Plan(root, config, selection, base)
 
 
-def _github_outputs(selection: Selection, tests_run: int) -> None:
+def _github_outputs(selection: Selection, tests_run: int, result: RunResult | None = None) -> None:
+    flaky = [c.nodeid for c in result.cases if c.outcome is Outcome.FLAKY] if result else []
     write_github_outputs(
         {
             "test_files": " ".join(selection.tests),
@@ -130,6 +150,7 @@ def _github_outputs(selection: Selection, tests_run: int) -> None:
             "selected-count": str(len(selection.tests)),
             "total-count": str(selection.total_tests),
             "run-all": str(selection.run_all).lower(),
+            "flaky-tests": " ".join(flaky),
         }
     )
 
@@ -207,13 +228,34 @@ def cmd_run(args: argparse.Namespace) -> int:
         report=plan.config.junitxml,
     )
 
+    # Flakiness: re-run only what failed; a pass on retry means flaky, not broken.
+    retries = plan.config.retries if args.retries is None else args.retries
+    if retries and result.problems:
+        result = rerun_failures(
+            result,
+            retries,
+            lambda nodeids: run_pytest(
+                nodeids,
+                cwd=plan.root,
+                python=args.python,
+                args=pytest_args,
+                known_tests=selection.tests,
+            ),
+        )
+    registry = Registry.load(plan.root / plan.config.quarantine_file)
+    result = apply_quarantine(result, registry)
+
     print_run_summary(result)
     if not args.no_history and result.cases:
-        _record_history(plan, result)
+        _record_history(plan, result, watched_cases(result, registry))
     if args.ci:
-        _github_outputs(selection, tests_run=len(selection.tests))
-        emit_annotations(result.problems, plan.root)
+        _github_outputs(selection, tests_run=len(selection.tests), result=result)
+        emit_annotations((*result.problems, *result.warnings), plan.root)
         append_step_summary(run_markdown(selection, result, plan.base, risks))
+    flaky = [c for c in result.cases if c.outcome is Outcome.FLAKY]
+    if flaky and (args.fail_on_flaky or plan.config.fail_on_flaky) and result.exit_code == EXIT_OK:
+        log.error("%s flaky: failing because of --fail-on-flaky", plural(len(flaky), "test"))
+        return EXIT_TESTS_FAILED
     # "No tests collected" is fine for a targeted run (e.g. -m deselected them), but a
     # full run that collects nothing must fail, exactly as plain pytest does.
     if result.exit_code == EXIT_NO_TESTS_COLLECTED and not selection.run_all:
@@ -221,13 +263,85 @@ def cmd_run(args: argparse.Namespace) -> int:
     return result.exit_code
 
 
-def _record_history(plan: Plan, result: RunResult) -> None:
+def _record_history(plan: Plan, result: RunResult, watched: dict[str, str]) -> None:
     try:
         commit: str | None = verify_ref("HEAD", plan.root)
     except GitError:
         commit = None
     history = History.load(default_history_path(plan.root))
-    history.append(run_from(result, plan.selection, commit))
+    history.append(run_from(result, plan.selection, commit, watched=watched))
+
+
+def cmd_flaky(args: argparse.Namespace) -> int:
+    root = _resolve_root(args.repo)
+    config = load_config(root)
+    registry = Registry.load(root / config.quarantine_file)
+    history = History.load(default_history_path(root))
+    action = args.action or "list"
+
+    if action == "quarantine":
+        for test_id in args.ids:
+            entry = FlakyEntry(test_id, args.reason, datetime.date.today().isoformat(), args.issue)
+            if registry.add(entry):
+                print(f"quarantined {test_id}")
+            else:
+                log.warning("%s is already quarantined", test_id)
+        registry.save()
+        return EXIT_OK
+    if action == "release":
+        missing = [test_id for test_id in args.ids if not registry.remove(test_id)]
+        for test_id in args.ids:
+            if test_id not in missing:
+                print(f"released {test_id}")
+        registry.save()
+        if missing:
+            raise KarmaError(f"not quarantined: {', '.join(missing)}")
+        return EXIT_OK
+    if action == "sync":
+        plan = plan_sync(registry, history, min_flakes=args.min_flakes, heal_after=args.heal_after)
+        for entry in plan.quarantine:
+            print(f"quarantine {entry.id}  ({entry.reason})")
+        for entry in plan.release:
+            print(f"release    {entry.id}  (passed its last {args.heal_after} runs)")
+        if not (plan.quarantine or plan.release):
+            print("quarantine is up to date")
+        elif not args.dry_run:
+            for entry in plan.quarantine:
+                registry.add(entry)
+            for entry in plan.release:
+                registry.remove(entry.id)
+            registry.save()
+        return EXIT_OK
+
+    # list
+    flakes = [f for f in confirmed_flakes(history) if not registry.match(f.id)]
+    if args.format == "json":
+        print(
+            json.dumps(
+                {
+                    "quarantined": flaky_to_json(registry.entries),
+                    "confirmed_flaky": [{"id": f.id, "flaky_runs": f.flaky_runs} for f in flakes],
+                },
+                indent=2,
+            )
+        )
+        return EXIT_OK
+    print(f"Quarantined ({len(registry.entries)}) in {config.quarantine_file}:")
+    for entry in registry.entries:
+        outcomes = list(watched_outcomes(history, entry))[-10:]
+        recent = " ".join("." if o == "passed" else "F" for o in outcomes) or "no runs yet"
+        details = ", ".join(x for x in (entry.reason, entry.issue) if x)
+        print(
+            f"  {entry.id}" + (f"  ({details})" if details else "") + f"\n      last runs: {recent}"
+        )
+    if not registry.entries:
+        print("  (none)")
+    print(f"\nConfirmed flaky, not quarantined ({len(flakes)}):")
+    for flake in flakes:
+        print(f"  {flake.id}  (passed on retry in {plural(flake.flaky_runs, 'run')})")
+    if not flakes:
+        print("  (none; run tests with --retries to detect flaky tests)")
+    return EXIT_OK
 
 
 def cmd_history(args: argparse.Namespace) -> int:
@@ -384,6 +498,18 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_selection_options(run)
     run.add_argument(
+        "--retries",
+        type=int,
+        metavar="N",
+        help="re-run failed tests up to N times; a pass on retry marks a test flaky "
+        "(default: [tool.karma] retries, else 0)",
+    )
+    run.add_argument(
+        "--fail-on-flaky",
+        action="store_true",
+        help="fail the run if a test is flaky (by default flaky tests only warn)",
+    )
+    run.add_argument(
         "--no-history",
         action="store_true",
         help="do not record results in .karma_cache/history.jsonl (used for --prioritize)",
@@ -431,6 +557,50 @@ def build_parser() -> argparse.ArgumentParser:
     history.add_argument("--format", choices=("text", "json"), default="text")
     history.add_argument("--top", type=int, default=10, metavar="N", help="rows per list")
     history.set_defaults(func=cmd_history)
+
+    flaky = commands.add_parser(
+        "flaky",
+        help="list, quarantine and release flaky tests",
+        description="Manage the quarantine registry (karma-quarantine.toml): quarantined "
+        "tests still run, but their failures do not fail the build.",
+    )
+    _add_verbosity(flaky, argparse.SUPPRESS)
+    flaky.add_argument("--repo", default=".", metavar="DIR", help="project directory")
+    flaky.add_argument("--format", choices=("text", "json"), default="text")
+    flaky.set_defaults(func=cmd_flaky, action=None)
+    actions = flaky.add_subparsers(dest="action", metavar="<action>")
+
+    def action_parser(name: str, help_text: str) -> argparse.ArgumentParser:
+        sub = actions.add_parser(name, help=help_text)
+        # Accept the shared options after the action too (`karma flaky sync --repo x`).
+        _add_verbosity(sub, argparse.SUPPRESS)
+        sub.add_argument("--repo", default=argparse.SUPPRESS, metavar="DIR", help="project")
+        return sub
+
+    quarantine = action_parser("quarantine", "quarantine tests by pytest node id")
+    quarantine.add_argument("ids", nargs="+", metavar="ID")
+    quarantine.add_argument("--reason", default="", help="why it is quarantined")
+    quarantine.add_argument("--issue", default="", help="link to the tracking issue")
+    release = action_parser("release", "take tests out of quarantine")
+    release.add_argument("ids", nargs="+", metavar="ID")
+    sync = action_parser(
+        "sync", "quarantine confirmed flaky tests and release healed ones, from the history"
+    )
+    sync.add_argument(
+        "--min-flakes",
+        type=int,
+        default=2,
+        metavar="N",
+        help="confirmed flaky in at least N runs (default: 2)",
+    )
+    sync.add_argument(
+        "--heal-after",
+        type=int,
+        default=10,
+        metavar="N",
+        help="release after passing N runs in a row (default: 10)",
+    )
+    sync.add_argument("--dry-run", action="store_true", help="show changes, write nothing")
     return parser
 
 

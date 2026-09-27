@@ -9,6 +9,7 @@ Example::
     extend-run-all-on = ["Dockerfile"]            # also run everything when these change
     pytest-args = ["-p", "no:cacheprovider"]
     prioritize = true                             # run the likeliest failures first
+    retries = 2                                   # re-run failures; pass-on-retry = flaky
 
     [tool.karma.mappings]                         # dependencies imports can't express
     "tests/fixtures/*.json" = ["tests/test_loader.py"]
@@ -89,6 +90,9 @@ class Config:
     mappings: tuple[tuple[str, tuple[str, ...]], ...] = ()
     pytest_args: tuple[str, ...] = ()
     prioritize: bool = False
+    retries: int = 0
+    fail_on_flaky: bool = False
+    quarantine_file: str = "karma-quarantine.toml"
     # Derived from pytest's own configuration and command line:
     testpaths: tuple[str, ...] = ()
     norecursedirs: tuple[str, ...] = DEFAULT_NORECURSEDIRS
@@ -121,7 +125,15 @@ _LIST_KEYS = {
     "exclude": "exclude",
     "pytest-args": "pytest_args",
 }
-_KNOWN_KEYS = {*_LIST_KEYS, "extend-run-all-on", "mappings", "prioritize"}
+_KNOWN_KEYS = {
+    *_LIST_KEYS,
+    "extend-run-all-on",
+    "mappings",
+    "prioritize",
+    "retries",
+    "fail-on-flaky",
+    "quarantine-file",
+}
 
 
 def load_config(root: Path) -> Config:
@@ -157,10 +169,20 @@ def load_config(root: Path) -> Config:
             *base,
             *_string_list(table["extend-run-all-on"], "extend-run-all-on"),
         )
-    if "prioritize" in table:
-        if not isinstance(table["prioritize"], bool):
-            raise ConfigError("[tool.karma] prioritize must be true or false")
-        values["prioritize"] = table["prioritize"]
+    for key, field_name in (("prioritize", "prioritize"), ("fail-on-flaky", "fail_on_flaky")):
+        if key in table:
+            if not isinstance(table[key], bool):
+                raise ConfigError(f"[tool.karma] {key} must be true or false")
+            values[field_name] = table[key]
+    if "retries" in table:
+        retries = table["retries"]
+        if isinstance(retries, bool) or not isinstance(retries, int) or retries < 0:
+            raise ConfigError("[tool.karma] retries must be a whole number >= 0")
+        values["retries"] = retries
+    if "quarantine-file" in table:
+        if not isinstance(table["quarantine-file"], str):
+            raise ConfigError("[tool.karma] quarantine-file must be a string")
+        values["quarantine_file"] = table["quarantine-file"]
     if "mappings" in table:
         values["mappings"] = _mappings(table["mappings"])
     config = Config(**values)

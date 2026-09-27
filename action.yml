@@ -44,6 +44,12 @@ inputs:
       history. Combine with `pytest-args: -x` to stop at the first failure.
     required: false
     default: "false"
+  retries:
+    description: >-
+      Re-run failed tests up to this many times. A test that passes on retry is reported
+      as flaky (a warning, not a failure) and recorded for `karma flaky sync`.
+    required: false
+    default: "0"
   cache:
     description: >-
       `true` to keep `.karma_cache/` (import cache and test history) between runs with
@@ -67,6 +73,9 @@ outputs:
   run-all:
     description: "`true` when a change (e.g. to pyproject.toml) selected the whole suite"
     value: ${{ steps.karma.outputs.run-all }}
+  flaky-tests:
+    description: Space-separated node ids of tests that failed, then passed on retry
+    value: ${{ steps.karma.outputs.flaky-tests }}
 
 runs:
   using: composite
@@ -95,6 +104,7 @@ runs:
         INPUT_ON_GIT_ERROR: ${{ inputs.on-git-error }}
         INPUT_ARGS: ${{ inputs.args }}
         INPUT_PRIORITIZE: ${{ inputs.prioritize }}
+        INPUT_RETRIES: ${{ inputs.retries }}
         KARMA_EVENT_BEFORE: ${{ github.event.before }}
         KARMA_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       run: bash "$KARMA_ACTION_PATH/entrypoint.sh"
