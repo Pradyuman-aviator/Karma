@@ -407,3 +407,74 @@ class TestHistoryRecording:
         project.write("app/other.py", "VALUE = 1  # edit\n")
         karma_main(project, "run", "--base", "main", "--no-history")
         assert not (project.path / ".karma_cache" / "history.jsonl").exists()
+
+
+class TestPrioritize:
+    @pytest.fixture
+    def three(self, project: GitRepo) -> GitRepo:
+        """Change app/util.py: test_core imports it via app/core.py, test_util directly."""
+        project.checkout("main")  # an existing test, not part of this change
+        project.write(
+            "tests/test_util.py",
+            "from app.util import double\n\ndef test_d():\n    assert double(2) == 4\n",
+        )
+        project.commit("add test_util")
+        project.checkout("feature")
+        project.git("merge", "-q", "main")
+        project.write("app/util.py", "def double(x):\n    return x + x\n")
+        return project
+
+    def test_select_orders_by_risk_and_explains(
+        self, three: GitRepo, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        karma_main(three, "select", "--base", "main", "--prioritize", "--format", "json")
+        data = json.loads(capsys.readouterr().out)
+
+        assert data["tests"] == ["tests/test_util.py", "tests/test_core.py"]  # nearest first
+        assert data["risk"]["tests/test_util.py"]["reasons"] == ["imports app/util.py (changed)"]
+        assert (
+            data["risk"]["tests/test_util.py"]["probability"]
+            > data["risk"]["tests/test_core.py"]["probability"]
+        )
+
+        karma_main(three, "select", "--base", "main", "--prioritize", "--explain")
+        assert re.search(
+            r"tests/test_util.py  \(risk \d+%: imports app/util.py", capsys.readouterr().out
+        )
+
+    def test_it_learns_from_history(
+        self, three: GitRepo, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        # test_core fails in a recorded run...
+        three.write("app/core.py", "from app.util import double\n\ndef quad(x):\n    return 0\n")
+        assert karma_main(three, "run", "--base", "main") == 1
+        three.write(
+            "app/core.py",
+            "from app.util import double\n\ndef quad(x):\n    return double(double(x))\n",
+        )
+        capfd.readouterr()
+
+        # ...so next time it runs first, although test_util is nearer the change.
+        assert karma_main(three, "run", "--base", "main", "--prioritize", "--", "-v") == 0
+
+        out, err = capfd.readouterr()
+        assert out.index("test_core.py::test_quad") < out.index("test_util.py::test_d")
+        assert "prioritised by risk using 1 recorded run" in err
+
+    def test_config_switch_and_full_runs(
+        self, three: GitRepo, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        three.write(
+            "pyproject.toml",
+            '[tool.karma]\nprioritize = true\n[tool.pytest.ini_options]\npythonpath = ["."]\n',
+        )
+        karma_main(three, "select", "--files", "app/util.py")
+        assert capsys.readouterr().out.split() == ["tests/test_util.py", "tests/test_core.py"]
+
+        karma_main(three, "select", "--all")  # full runs keep pytest's own order
+        assert "pytest decides the order" in capsys.readouterr().err
+
+    def test_invalid_config(self, project: GitRepo, capsys: pytest.CaptureFixture[str]) -> None:
+        project.write("pyproject.toml", '[tool.karma]\nprioritize = "yes"\n')
+        assert karma_main(project, "select") == cli.EXIT_KARMA_ERROR
+        assert "prioritize must be true or false" in capsys.readouterr().err

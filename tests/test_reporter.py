@@ -154,3 +154,21 @@ class TestGitHub:
 def test_plural() -> None:
     assert reporter.plural(1, "file") == "1 file"
     assert reporter.plural(0, "file") == "0 files"
+
+
+def test_risk_in_explanation_and_summary() -> None:
+    from karma.risk import Risk
+
+    risks = [
+        Risk("tests/test_b.py", 0.6, ("the test itself changed",)),
+        Risk("tests/test_a.py", 0.1, ()),
+    ]
+    text = reporter.format_explanation(SELECTION, io.StringIO(), risks)
+    assert text.index("tests/test_b.py  (risk 60%: the test itself changed)") < text.index(
+        "tests/test_a.py  (risk 10%)"
+    )
+
+    markdown = reporter.selection_markdown(SELECTION, risks=risks)
+    assert "Ordered by predicted risk" in markdown
+    assert "| Test file | Selected because of | Risk |" in markdown
+    assert "| risk 60%: the test itself changed |" in markdown

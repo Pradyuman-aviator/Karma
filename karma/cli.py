@@ -23,10 +23,12 @@ from karma.reporter import (
     describe_selection,
     emit_annotations,
     format_explanation,
+    plural,
     print_run_summary,
     run_markdown,
     write_github_outputs,
 )
+from karma.risk import Risk, assess
 from karma.runner import EXIT_NO_TESTS_COLLECTED, EXIT_OK, RunResult, run_pytest
 from karma.selector import Selection, is_test_file, select_tests
 
@@ -134,15 +136,40 @@ def _github_outputs(selection: Selection, tests_run: int) -> None:
 # --------------------------------------------------------------------------- commands
 
 
+def _risks(args: argparse.Namespace, plan: Plan) -> list[Risk] | None:
+    """Predicted risk per selected test, if prioritisation is on (else ``None``)."""
+    if not (args.prioritize or plan.config.prioritize) or not plan.selection.tests:
+        return None
+    if plan.selection.run_all:
+        log.info("full run: pytest decides the order (prioritisation applies to targeted runs)")
+        return None
+    history = History.load(default_history_path(plan.root))
+    risks = assess(plan.selection, history)
+    log.info(
+        "prioritised by risk using %s",
+        plural(len(history.runs), "recorded run") if history.runs else "built-in priors",
+    )
+    return risks
+
+
 def cmd_select(args: argparse.Namespace) -> int:
     plan = _plan(args)
     selection = plan.selection
+    risks = _risks(args, plan)
+    ordered = [risk.test for risk in risks] if risks else list(selection.tests)
     if args.explain:
-        sys.stdout.write(format_explanation(selection, sys.stdout))
+        sys.stdout.write(format_explanation(selection, sys.stdout, risks))
     elif args.format == "json":
-        print(json.dumps(selection.to_dict(), indent=2))
-    elif selection.tests:
-        print(("\n" if args.format == "lines" else " ").join(selection.tests))
+        data = selection.to_dict()
+        if risks:
+            data["tests"] = ordered
+            data["risk"] = {
+                r.test: {"probability": round(r.probability, 4), "reasons": list(r.reasons)}
+                for r in risks
+            }
+        print(json.dumps(data, indent=2))
+    elif ordered:
+        print(("\n" if args.format == "lines" else " ").join(ordered))
     if args.ci:
         _github_outputs(selection, tests_run=0)
     return EXIT_OK
@@ -151,8 +178,9 @@ def cmd_select(args: argparse.Namespace) -> int:
 def cmd_run(args: argparse.Namespace) -> int:
     plan = _plan(args)
     selection = plan.selection
+    risks = _risks(args, plan)
     if args.explain:
-        sys.stderr.write(format_explanation(selection, sys.stderr))
+        sys.stderr.write(format_explanation(selection, sys.stderr, risks))
 
     # A full run always goes to pytest, even if Karma recognised no test files itself:
     # pytest's discovery is the authority, and an empty "full run" must never pass.
@@ -164,7 +192,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         return EXIT_OK
 
     # For a full run, let pytest discover tests itself so its testpaths setting applies.
-    targets = [] if selection.run_all else list(selection.tests)
+    if selection.run_all:
+        targets: list[str] = []
+    else:  # the likeliest failures first, so they are found in the first seconds
+        targets = [r.test for r in risks] if risks else list(selection.tests)
     pytest_args = [*plan.config.pytest_args, *args.pytest_args]
     result = run_pytest(
         targets,
@@ -181,7 +212,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.ci:
         _github_outputs(selection, tests_run=len(selection.tests))
         emit_annotations(result.problems, plan.root)
-        append_step_summary(run_markdown(selection, result, plan.base))
+        append_step_summary(run_markdown(selection, result, plan.base, risks))
     # "No tests collected" is fine for a targeted run (e.g. -m deselected them), but a
     # full run that collects nothing must fail, exactly as plain pytest does.
     if result.exit_code == EXIT_NO_TESTS_COLLECTED and not selection.run_all:
@@ -256,6 +287,11 @@ def _add_selection_options(parser: argparse.ArgumentParser) -> None:
         help="if changes cannot be determined: fail (default) or run the full suite",
     )
     parser.add_argument("--explain", action="store_true", help="show why each test was selected")
+    parser.add_argument(
+        "--prioritize",
+        action="store_true",
+        help="order tests by predicted risk of failure, learned from local history",
+    )
     parser.add_argument(
         "--ci", action="store_true", help="write GitHub Actions outputs, summary and annotations"
     )

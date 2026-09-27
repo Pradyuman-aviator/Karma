@@ -6,10 +6,11 @@ import html
 import os
 import secrets
 import sys
-from collections.abc import Iterable
+from collections.abc import Iterable, Sequence
 from pathlib import Path
 from typing import TextIO
 
+from karma.risk import Risk
 from karma.runner import Outcome, RunResult, TestCase
 from karma.selector import Selection
 
@@ -45,19 +46,29 @@ def describe_selection(selection: Selection) -> str:
     )
 
 
-def format_explanation(selection: Selection, stream: TextIO | None = None) -> str:
+def format_risk(risk: Risk) -> str:
+    reasons = f": {'; '.join(risk.reasons)}" if risk.reasons else ""
+    return f"risk {risk.probability:.0%}{reasons}"
+
+
+def format_explanation(
+    selection: Selection, stream: TextIO | None = None, risks: Sequence[Risk] | None = None
+) -> str:
     """Why each test was selected, one indented dependency chain per test.
 
     ``stream`` is where the text will be written; it decides whether arrows can be
-    drawn with Unicode.
+    drawn with Unicode. With ``risks``, tests are listed in risk order with their risk.
     """
     arrow = "←" if _can_encode(stream or sys.stdout, "←") else "<-"
     if selection.run_all:
         return f"All tests selected: {selection.run_all_reason}\n"
+    by_test = {risk.test: risk for risk in risks or ()}
+    order = [risk.test for risk in risks] if risks else list(selection.tests)
     lines: list[str] = []
-    for test in selection.tests:
+    for test in order:
         chain = selection.reasons.get(test, (test,))
-        lines.append(test)
+        risk = by_test.get(test)
+        lines.append(f"{test}  ({format_risk(risk)})" if risk else test)
         if len(chain) == 1:
             lines.append("    (changed)")
         for i, step in enumerate(chain[1:], start=1):
@@ -146,7 +157,9 @@ def _code(text: str) -> str:
     return f"<code>{html.escape(text)}</code>"
 
 
-def selection_markdown(selection: Selection, base: str | None = None) -> str:
+def selection_markdown(
+    selection: Selection, base: str | None = None, risks: Sequence[Risk] | None = None
+) -> str:
     lines = []
     if selection.run_all:
         reason = html.escape(str(selection.run_all_reason))
@@ -159,17 +172,26 @@ def selection_markdown(selection: Selection, base: str | None = None) -> str:
             f"{plural(len(selection.changed), 'changed file')}{against}."
         )
     if selection.reasons:
+        by_test = {risk.test: risk for risk in risks or ()}
+        order = [risk.test for risk in risks] if risks else list(selection.tests)
+        risk_header = (" | Risk", " | ---") if risks else ("", "")
         lines += [
             "",
             "<details><summary>Why were these tests selected?</summary>",
             "",
-            "| Test file | Selected because of |",
-            "| --- | --- |",
         ]
-        for test in selection.tests[:MAX_SUMMARY_ROWS]:
+        if risks:
+            lines += ["Ordered by predicted risk: the likeliest failures ran first.", ""]
+        lines += [
+            f"| Test file | Selected because of{risk_header[0]} |",
+            f"| --- | ---{risk_header[1]} |",
+        ]
+        for test in order[:MAX_SUMMARY_ROWS]:
             chain = selection.reasons.get(test, (test,))
             cause = " ← ".join(_code(p) for p in chain[1:]) or "changed directly"
-            lines.append(f"| {_code(test)} | {cause} |")
+            risk = by_test.get(test)
+            risk_cell = f" | {html.escape(format_risk(risk))}" if risk else ""
+            lines.append(f"| {_code(test)} | {cause}{risk_cell} |")
         if len(selection.tests) > MAX_SUMMARY_ROWS:
             lines.append(f"| … and {len(selection.tests) - MAX_SUMMARY_ROWS} more | |")
         lines += ["", "</details>"]
@@ -179,7 +201,12 @@ def selection_markdown(selection: Selection, base: str | None = None) -> str:
     return "\n".join(lines) + "\n"
 
 
-def run_markdown(selection: Selection, result: RunResult | None, base: str | None = None) -> str:
+def run_markdown(
+    selection: Selection,
+    result: RunResult | None,
+    base: str | None = None,
+    risks: Sequence[Risk] | None = None,
+) -> str:
     """The full GitHub step summary for a ``karma run``."""
     if result is None:
         heading = "⚡ Karma: no tests affected"
@@ -187,7 +214,7 @@ def run_markdown(selection: Selection, result: RunResult | None, base: str | Non
         heading = f"⚡ Karma: ✅ {plural(result.counts[Outcome.PASSED], 'test')} passed"
     else:
         heading = f"⚡ Karma: ❌ {plural(len(result.problems), 'test')} failed"
-    parts = [f"## {heading}", "", selection_markdown(selection, base)]
+    parts = [f"## {heading}", "", selection_markdown(selection, base, risks)]
     if result is not None:
         counts = result.counts
         parts += [

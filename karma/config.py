@@ -8,6 +8,7 @@ Example::
     exclude = ["docs/*", "migrations/*"]          # never selected as tests (still analysed)
     extend-run-all-on = ["Dockerfile"]            # also run everything when these change
     pytest-args = ["-p", "no:cacheprovider"]
+    prioritize = true                             # run the likeliest failures first
 
     [tool.karma.mappings]                         # dependencies imports can't express
     "tests/fixtures/*.json" = ["tests/test_loader.py"]
@@ -87,6 +88,7 @@ class Config:
     exclude: tuple[str, ...] = ()
     mappings: tuple[tuple[str, tuple[str, ...]], ...] = ()
     pytest_args: tuple[str, ...] = ()
+    prioritize: bool = False
     # Derived from pytest's own configuration and command line:
     testpaths: tuple[str, ...] = ()
     norecursedirs: tuple[str, ...] = DEFAULT_NORECURSEDIRS
@@ -119,7 +121,7 @@ _LIST_KEYS = {
     "exclude": "exclude",
     "pytest-args": "pytest_args",
 }
-_KNOWN_KEYS = {*_LIST_KEYS, "extend-run-all-on", "mappings"}
+_KNOWN_KEYS = {*_LIST_KEYS, "extend-run-all-on", "mappings", "prioritize"}
 
 
 def load_config(root: Path) -> Config:
@@ -155,6 +157,10 @@ def load_config(root: Path) -> Config:
             *base,
             *_string_list(table["extend-run-all-on"], "extend-run-all-on"),
         )
+    if "prioritize" in table:
+        if not isinstance(table["prioritize"], bool):
+            raise ConfigError("[tool.karma] prioritize must be true or false")
+        values["prioritize"] = table["prioritize"]
     if "mappings" in table:
         values["mappings"] = _mappings(table["mappings"])
     config = Config(**values)
