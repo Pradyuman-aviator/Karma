@@ -10,6 +10,9 @@ Example::
     pytest-args = ["-p", "no:cacheprovider"]
     prioritize = true                             # run the likeliest failures first
     retries = 2                                   # re-run failures; pass-on-retry = flaky
+    diagnose = true                               # explain failures from the evidence
+    ai = "ollama"                                 # ...and ask a model (opt-in)
+    ai-model = "qwen2.5-coder"
 
     [tool.karma.mappings]                         # dependencies imports can't express
     "tests/fixtures/*.json" = ["tests/test_loader.py"]
@@ -50,6 +53,8 @@ else:  # pragma: no cover - exercised on Python < 3.11 only
     except ImportError:
         tomllib = None
 
+#: language model providers for failure diagnosis (see karma.ai)
+AI_PROVIDERS = ("anthropic", "ollama", "openai")
 DEFAULT_TEST_PATTERNS = ("test_*.py", "*_test.py")
 DEFAULT_SOURCE_ROOTS = (".", "src")
 # Changes to these can affect any test (dependencies, pytest configuration, ...),
@@ -93,6 +98,10 @@ class Config:
     retries: int = 0
     fail_on_flaky: bool = False
     quarantine_file: str = "karma-quarantine.toml"
+    diagnose: bool = False
+    ai: str | None = None
+    ai_model: str | None = None
+    ai_url: str | None = None
     # Derived from pytest's own configuration and command line:
     testpaths: tuple[str, ...] = ()
     norecursedirs: tuple[str, ...] = DEFAULT_NORECURSEDIRS
@@ -133,6 +142,10 @@ _KNOWN_KEYS = {
     "retries",
     "fail-on-flaky",
     "quarantine-file",
+    "diagnose",
+    "ai",
+    "ai-model",
+    "ai-url",
 }
 
 
@@ -169,11 +182,22 @@ def load_config(root: Path) -> Config:
             *base,
             *_string_list(table["extend-run-all-on"], "extend-run-all-on"),
         )
-    for key, field_name in (("prioritize", "prioritize"), ("fail-on-flaky", "fail_on_flaky")):
+    for key, field_name in (
+        ("prioritize", "prioritize"),
+        ("fail-on-flaky", "fail_on_flaky"),
+        ("diagnose", "diagnose"),
+    ):
         if key in table:
             if not isinstance(table[key], bool):
                 raise ConfigError(f"[tool.karma] {key} must be true or false")
             values[field_name] = table[key]
+    for key, field_name in (("ai", "ai"), ("ai-model", "ai_model"), ("ai-url", "ai_url")):
+        if key in table:
+            if not isinstance(table[key], str) or not table[key].strip():
+                raise ConfigError(f"[tool.karma] {key} must be a non-empty string")
+            values[field_name] = table[key].strip()
+    if values.get("ai") is not None and values["ai"] not in AI_PROVIDERS:
+        raise ConfigError(f"[tool.karma] ai must be one of: {', '.join(AI_PROVIDERS)}")
     if "retries" in table:
         retries = table["retries"]
         if isinstance(retries, bool) or not isinstance(retries, int) or retries < 0:

@@ -13,7 +13,7 @@ import pytest
 
 import karma
 from karma import cli
-from tests.helpers import GitRepo
+from tests.helpers import FakeAPI, GitRepo, anthropic_reply
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -682,3 +682,163 @@ class TestFlaky:
         project.write("pyproject.toml", "[tool.karma]\nretries = -1\n")
         assert karma_main(project, "select") == cli.EXIT_KARMA_ERROR
         assert "retries must be a whole number" in capsys.readouterr().err
+
+
+class TestDiagnose:
+    """`karma run --diagnose` and `karma diagnose`, on a change that breaks a test."""
+
+    SUSPECT = "app/util.py:2  changed; the test imports it indirectly (2 imports away)"
+
+    @pytest.fixture
+    def broken(self, project: GitRepo) -> GitRepo:
+        project.write("app/util.py", "def double(x):\n    return x * 3\n")
+        project.commit("triple it")
+        return project
+
+    def test_run_diagnose(self, broken: GitRepo, capfd: pytest.CaptureFixture[str]) -> None:
+        assert karma_main(broken, "run", "--diagnose") == 1
+        err = capfd.readouterr().err
+        assert "karma diagnosis" in err
+        assert "tests/test_core.py::test_quad" in err
+        assert "error      assert 9 == 4" in err
+        assert self.SUSPECT in err
+        assert "+    return x * 3" in err
+
+    def test_only_when_asked(self, broken: GitRepo, capfd: pytest.CaptureFixture[str]) -> None:
+        assert karma_main(broken, "run") == 1
+        assert "karma diagnosis" not in capfd.readouterr().err
+
+    def test_config_switch(self, broken: GitRepo, capfd: pytest.CaptureFixture[str]) -> None:
+        broken.write(
+            "pyproject.toml",
+            '[tool.karma]\npytest-args = ["-p", "no:cacheprovider"]\ndiagnose = true\n'
+            '[tool.pytest.ini_options]\npythonpath = ["."]\n',
+        )
+        assert karma_main(broken, "run") == 1
+        assert self.SUSPECT in capfd.readouterr().err
+
+    def test_the_error_raised_by_the_change(
+        self, project: GitRepo, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        project.write("app/util.py", "def double(x):\n    raise RuntimeError('nope')\n")
+        project.commit("raise")
+        assert karma_main(project, "run", "--diagnose") == 1
+        assert "app/util.py:2  changed, and where the error was raised" in capfd.readouterr().err
+
+    def test_diagnose_the_last_run(
+        self, broken: GitRepo, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        karma_main(broken, "run")
+        capfd.readouterr()
+
+        assert karma_main(broken, "diagnose") == 0
+        out = capfd.readouterr().out  # the report goes to stdout
+        assert "karma diagnosis" in out.splitlines()[0]
+        assert "\ntests/test_core.py::test_quad\n" in out
+        assert self.SUSPECT in out
+
+        assert karma_main(broken, "diagnose", "--format", "json") == 0
+        (data,) = json.loads(capfd.readouterr().out)
+        assert data["test"] == "tests/test_core.py::test_quad"
+        assert (data["suspects"][0]["file"], data["suspects"][0]["line"]) == ("app/util.py", 2)
+        # The run being diagnosed is not part of its own history.
+        assert data["history"] is None
+
+        assert karma_main(broken, "diagnose", "--format", "markdown") == 0
+        markdown = capfd.readouterr().out
+        assert "Diagnosis" in markdown
+        assert "<code>app/util.py:2</code>" in markdown
+
+    def test_fixed_failures_are_forgotten(
+        self, broken: GitRepo, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        karma_main(broken, "run")
+        broken.write("app/util.py", "def double(x):\n    return x * 2\n")  # fixed, uncommitted
+        assert karma_main(broken, "run") == 0  # nothing left to run
+        capfd.readouterr()
+        assert karma_main(broken, "diagnose", "--format", "json") == 0
+        assert json.loads(capfd.readouterr().out) == []
+
+    def test_no_history_saves_nothing(self, broken: GitRepo) -> None:
+        karma_main(broken, "run", "--no-history")
+        assert not (broken.path / ".karma_cache" / "last-failures.json").exists()
+
+    def test_a_junit_report_from_ci(
+        self, broken: GitRepo, tmp_path: Path, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        # pytest's default JUnit format (xunit2) records no file: Karma finds it anyway.
+        report = tmp_path / "report.xml"
+        karma_main(broken, "run", "--no-history", "--", f"--junitxml={report}")
+        capfd.readouterr()
+        assert karma_main(broken, "diagnose", "--report", str(report)) == 0
+        out = capfd.readouterr().out
+        assert "\ntests/test_core.py::test_quad\n" in out
+        assert self.SUSPECT in out
+
+    def test_invalid_options(self, project: GitRepo, capsys: pytest.CaptureFixture[str]) -> None:
+        assert karma_main(project, "diagnose", "--report", "missing.xml") == cli.EXIT_KARMA_ERROR
+        assert "'missing.xml' is not a file" in capsys.readouterr().err
+        assert karma_main(project, "diagnose", "--max", "0") == cli.EXIT_KARMA_ERROR
+        assert "--max must be at least 1" in capsys.readouterr().err
+
+    def test_show_prompt_sends_nothing(
+        self, broken: GitRepo, capfd: pytest.CaptureFixture[str]
+    ) -> None:
+        karma_main(broken, "run")
+        capfd.readouterr()
+        # No API key and no server: --show-prompt needs neither.
+        assert karma_main(broken, "diagnose", "--ai", "anthropic", "--show-prompt") == 0
+        out = capfd.readouterr().out
+        assert "[system]" in out
+        assert "Failing test: tests/test_core.py::test_quad (failed)" in out
+        assert "+    return x * 3" in out
+
+    def test_a_missing_key(self, broken: GitRepo, capfd: pytest.CaptureFixture[str]) -> None:
+        # karma run: a warning; the tests decide the exit code, and the evidence is shown.
+        assert karma_main(broken, "run", "--ai", "anthropic") == 1
+        err = capfd.readouterr().err
+        assert "no AI explanation: --ai anthropic needs an API key" in err
+        assert self.SUSPECT in err
+        # karma diagnose --ai: asked for explicitly, so an error.
+        assert karma_main(broken, "diagnose", "--ai", "anthropic") == cli.EXIT_KARMA_ERROR
+        assert "set ANTHROPIC_API_KEY" in capfd.readouterr().err
+        # --no-ai wins over the command line and the configuration.
+        assert karma_main(broken, "diagnose", "--ai", "anthropic", "--no-ai") == 0
+
+    def test_ai_explanation_in_ci(
+        self,
+        broken: GitRepo,
+        api: FakeAPI,
+        tmp_path: Path,
+        monkeypatch: pytest.MonkeyPatch,
+        capfd: pytest.CaptureFixture[str],
+    ) -> None:
+        answer = {
+            "summary": "double() now triples its argument.",
+            "cause": "quad(1) is 9 instead of 4.",
+            "fix": "Return x * 2 in app/util.py.",
+            "kind": "regression",
+            "confidence": "high",
+            "file": "app/core.py",
+            "line": 4,
+        }
+        api.answer(anthropic_reply(json.dumps(answer)))
+        summary = tmp_path / "summary.md"
+        monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(summary))
+        monkeypatch.setenv("GITHUB_WORKSPACE", str(broken.path))
+        monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-ant-test-key")
+
+        assert karma_main(broken, "run", "--ci", "--ai", "anthropic", "--ai-url", api.url) == 1
+
+        captured = capfd.readouterr()
+        assert "double() now triples its argument." in captured.err
+        title = "title=Karma%3A may have broken tests/test_core.py%3A%3Atest_quad"
+        assert f"::notice file=app/util.py,line=2,{title}::" in captured.out
+        assert f"::notice file=app/core.py,line=4,{title}::double() now triples" in captured.out
+        text = summary.read_text(encoding="utf-8")
+        assert "### 🔎 Diagnosis" in text
+        assert "🤖 claude-sonnet-5" in text
+        assert "Fix: Return x * 2 in app/util.py." in text
+        (request,) = api.requests
+        assert request["headers"]["x-api-key"] == "sk-ant-test-key"
+        assert "sk-ant-test-key" not in json.dumps(request["body"])

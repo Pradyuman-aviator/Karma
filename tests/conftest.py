@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from tests.helpers import GitRepo
+from tests.helpers import FakeAPI, GitRepo
 
 
 @pytest.fixture(autouse=True)
@@ -35,6 +35,10 @@ def _hermetic_git(
         "GITHUB_STEP_SUMMARY",
         "GITHUB_WORKSPACE",
         "KARMA_BASE",
+        # AI diagnosis: a developer's real keys must never reach a test (or the network).
+        "ANTHROPIC_API_KEY",
+        "OPENAI_API_KEY",
+        "OLLAMA_HOST",
     ):
         monkeypatch.delenv(var, raising=False)
 
@@ -46,6 +50,14 @@ def _restore_karma_logger() -> Iterator[None]:
     saved = (logger.handlers[:], logger.propagate, logger.level)
     yield
     logger.handlers[:], logger.propagate, logger.level = saved
+
+
+@pytest.fixture
+def api() -> Iterator[FakeAPI]:
+    """A local fake of a language model API (see :class:`tests.helpers.FakeAPI`)."""
+    fake = FakeAPI()
+    yield fake
+    fake.close()
 
 
 @pytest.fixture

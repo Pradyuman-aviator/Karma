@@ -32,7 +32,7 @@ def test_the_site_is_generated_from_the_current_source() -> None:
 def test_every_command_and_action_input_is_documented() -> None:
     data = embedded_data()
     commands = {c["name"]: c for c in data["commands"]}  # type: ignore[index, union-attr]
-    assert list(commands) == ["run", "select", "graph", "history", "flaky"]
+    assert list(commands) == ["run", "select", "diagnose", "graph", "history", "flaky"]
     assert [a["name"] for a in commands["flaky"]["actions"]] == [
         "flaky quarantine",
         "flaky release",
@@ -40,8 +40,12 @@ def test_every_command_and_action_input_is_documented() -> None:
     ]
     run_flags = {flag for option in commands["run"]["options"] for flag in option["flags"]}
     assert {"--prioritize", "--retries", "--fail-on-flaky", "--explain", "--staged"} <= run_flags
+    diagnose_flags = {
+        flag for option in commands["diagnose"]["options"] for flag in option["flags"]
+    }
+    assert {"--ai", "--ai-model", "--show-prompt", "--report"} <= diagnose_flags
     inputs = {i["name"] for i in data["action"]["inputs"]}  # type: ignore[index]
-    assert {"base-branch", "prioritize", "retries", "cache"} <= inputs
+    assert {"base-branch", "prioritize", "retries", "cache", "diagnose", "ai"} <= inputs
 
 
 def test_the_page_only_loads_allowed_resources() -> None:

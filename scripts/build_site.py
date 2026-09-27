@@ -32,7 +32,7 @@ SAMPLES = ROOT / "docs" / "samples.json"
 START = '<script id="karma-data" type="application/json">'
 END = "</script>"
 
-COMMAND_ORDER = ["run", "select", "graph", "history", "flaky"]
+COMMAND_ORDER = ["run", "select", "diagnose", "graph", "history", "flaky"]
 
 EXAMPLES: dict[str, list[tuple[str, str]]] = {
     "run": [
@@ -40,8 +40,16 @@ EXAMPLES: dict[str, list[tuple[str, str]]] = {
         ("karma run --explain", "Show why each test was selected"),
         ("karma run --prioritize -- -x", "Likeliest failures first; stop at the first one"),
         ("karma run --retries 2", "Re-run failures; a pass on retry is reported as flaky"),
+        ("karma run --diagnose", "Explain each failure: the changed lines behind it"),
         ("karma run --staged", "Only what is staged for commit (pre-commit hook)"),
         ("karma run --all", "The whole suite, still recorded in the history"),
+    ],
+    "diagnose": [
+        ("karma diagnose", "Explain the last run's failures, all locally"),
+        ("karma diagnose --ai ollama --ai-model qwen2.5-coder", "Ask a model on your machine"),
+        ("karma diagnose --ai anthropic", "Ask Claude (uses your ANTHROPIC_API_KEY)"),
+        ("karma diagnose --ai anthropic --show-prompt", "See exactly what would be sent"),
+        ("karma diagnose --report junit.xml --format markdown", "A CI report, as Markdown"),
     ],
     "select": [
         ("pytest $(karma select)", "Hand the selection to your own pytest command"),
@@ -90,6 +98,10 @@ CONFIG_DOCS: dict[str, tuple[str, str, str]] = {
     "retries": ("int", "0", "Re-run failed tests; a pass on retry means flaky"),
     "fail-on-flaky": ("bool", "false", "Fail the run when a test is flaky"),
     "quarantine-file": ("string", '"karma-quarantine.toml"', "Where quarantined tests are listed"),
+    "diagnose": ("bool", "false", "Explain failures after a run: suspect changes, history"),
+    "ai": ("string", "off", "Also ask a language model: anthropic, ollama or openai"),
+    "ai-model": ("string", '"claude-sonnet-5" for anthropic', "The model to ask"),
+    "ai-url": ("string", "the provider's API", "API base URL, e.g. a server on this machine"),
 }
 
 

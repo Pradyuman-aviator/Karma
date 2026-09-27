@@ -54,15 +54,21 @@ karma/
 ├── config.py            # [tool.karma] in pyproject.toml
 ├── selector.py          # which tests a change affects, and why
 ├── runner.py            # run pytest, parse JUnit into per-test results
+├── history.py           # the local record of past runs (.karma_cache/history.jsonl)
+├── risk.py              # predict failures from the history; order by risk
+├── flaky.py             # the quarantine registry, and when to quarantine or release
+├── diagnose.py          # the evidence behind a failure: suspect changes, history
+├── ai.py                # optional: a language model's explanation of that evidence
 ├── reporter.py          # console output, GitHub summary/annotations/outputs
-└── cli.py               # `karma run | select | graph`
+└── cli.py               # `karma run | select | diagnose | graph | history | flaky`
 action.yml, entrypoint.sh  # the composite GitHub Action
 ```
 
-Two rules keep Karma trustworthy. Please preserve them:
+Three rules keep Karma trustworthy. Please preserve them:
 
 1. **Never skip a test that could fail.** When unsure, select more (see the run-all triggers in `config.py`) and fail loudly rather than select nothing.
 2. **stdout is for machines.** `karma select` output must stay pipeable; progress and diagnostics go to stderr through the `karma` logger.
+3. **Nothing leaves the machine unless asked.** Only `--ai` (or `[tool.karma] ai`) may make a network request, and `karma diagnose --show-prompt` must always show exactly what it would send. Tests use `tests/helpers.FakeAPI`, never a real API.
 
 ---
 
@@ -120,14 +126,15 @@ Before submitting a pull request, make sure:
 
 ## 🗺️ Roadmap — Where You Can Help
 
-| Phase | Area | Skills Needed |
-| :---: | :--- | :--- |
-| **Phase 3** | ML Prediction Layer | Python, scikit-learn, data analysis |
-| **Phase 3** | Training data pipeline | Git history parsing, pandas |
-| **Phase 4** | Flaky Test Registry | Python, SQLite/JSON storage |
-| **Phase 5** | LLM Integration | OpenAI/Anthropic APIs, prompt engineering |
-| **Any** | Language Parsers | AST knowledge (JS, Java, Go, Rust) |
-| **Any** | Tests & Docs | pytest, markdown |
+All five phases have shipped (see the README's roadmap). Where help goes furthest now:
+
+| Area | Skills Needed |
+| :--- | :--- |
+| Language parsers beyond Python (JS/TS, Java, Go, Rust) | AST knowledge |
+| Failure diagnosis: sharper suspects, more AI providers | Python, tracebacks, LLM APIs |
+| CI integrations: summaries and annotations beyond GitHub | GitLab/Jenkins/CircleCI APIs |
+| Validation on more real projects (`scripts/safety_check.py`) | pytest, patience |
+| Tests & Docs | pytest, markdown |
 
 ---
 

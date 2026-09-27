@@ -4,9 +4,36 @@ All notable changes to Karma are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [3.3.0] - 2026-09-27
+
+Phase 5 of the roadmap: failure diagnosis. With it, every phase is shipped.
 
 ### Added
+- **Failure diagnosis** (`karma run --diagnose`, config `diagnose`, action input
+  `diagnose`). For each failure Karma lines up the evidence it already has: the
+  *suspects* (the changed lines the traceback passes through, from where the error was
+  raised outwards; otherwise the changed files the test imports, nearest first), why
+  the test ran, and its history. Failures with the same error and suspects are
+  grouped. It is computed locally. In CI it is added to the job summary, and each
+  suspect line gets an annotation on the pull request's diff.
+- `karma diagnose`: explain the last run's failures without running anything again,
+  or those of any JUnit report (`--report`, including pytest's default xunit2 format,
+  which records no file). `--format text|markdown|json`, `--max N`.
+- **Optional AI explanations** (`--ai anthropic|ollama|openai`, `--ai-model`, `--ai-url`;
+  config `ai`, `ai-model`, `ai-url`; action inputs `ai`, `ai-model`). A language model
+  turns the evidence into a summary, a cause, a fix, a kind (regression, test needs an
+  update, flaky, environment) and a confidence.
+  - Anthropic's API (default model `claude-sonnet-5`, with your own `ANTHROPIC_API_KEY`),
+    Ollama on your machine, or any OpenAI-compatible server (LM Studio, llama.cpp,
+    vLLM, OpenAI).
+  - Off unless asked for: without it Karma makes no network requests. `--no-ai`
+    overrides the configuration.
+  - `karma diagnose --show-prompt` prints exactly what would be sent, and sends
+    nothing. Credentials (API keys, tokens, private keys, quoted passwords) are
+    redacted from the prompt.
+  - At most 3 distinct failures per run, about 6,000 tokens of evidence each, asked in
+    parallel, with one retry on rate limits. An AI error never changes the result of
+    `karma run`.
 - Website, live at https://pradyuman-aviator.github.io/Karma/ (`docs/index.html`,
   published to the `gh-pages` branch by the new Website workflow whenever it changes on
   `main`, after checking it matches the source):
@@ -23,13 +50,17 @@ All notable changes to Karma are documented here. The format follows
   - an interactive explorer that builds any `karma` command
   - setup for GitHub Actions, GitLab CI, Jenkins, CircleCI and pre-commit
   - the Action and configuration reference
-  - pitch mode: a ten-slide walkthrough for presenting (arrow keys, full screen)
+  - pitch mode: a slide walkthrough for presenting (arrow keys, full screen)
   - a social preview card (`docs/og.png`) and icon, so shared links show the pitch
 
   Commands, Action inputs/outputs, configuration keys and the risk model's weights
   are generated from the source by `scripts/build_site.py`, which also embeds the
   benchmark results and the playground graphs (`docs/samples.json`); a test fails if
   the page drifts.
+
+### Changed
+- `--no-history` also skips saving the run's failures for `karma diagnose`.
+- CI lints the workflows and `action.yml` with actionlint.
 
 ### Fixed
 - `--format` of `graph`, `history` and `flaky` had no help text.

@@ -29,6 +29,14 @@ jobs:
       - run: ruff format --check .
       - run: mypy
 
+  actionlint:
+    name: Lint workflows and the action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      # Also checks action.yml, through the dogfood job's `uses: ./`.
+      - run: docker run --rm -v "$PWD:/repo" -w /repo rhysd/actionlint:1.7.12 -color
+
   test:
     name: Test (${{ matrix.os }}, Python ${{ matrix.python }})
     runs-on: ${{ matrix.os }}
@@ -75,6 +83,7 @@ jobs:
         with:
           args: --explain
           prioritize: "true"
+          diagnose: "true"
       - name: Show outputs
         run: |
           echo "selected: ${{ steps.karma.outputs.selected-count }} of ${{ steps.karma.outputs.total-count }}"

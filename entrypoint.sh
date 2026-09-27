@@ -89,8 +89,12 @@ cmd=("$PYTHON" "$ACTION_PATH/cli.py" "${INPUT_COMMAND:-run}" --ci --head HEAD
   --on-git-error "${INPUT_ON_GIT_ERROR:-fail}")
 if [[ -n "$BASE" ]]; then cmd+=(--base "$BASE"); fi
 if [[ "${INPUT_PRIORITIZE:-false}" == "true" ]]; then cmd+=(--prioritize); fi
-if [[ "${INPUT_RETRIES:-0}" =~ ^[1-9][0-9]*$ && "${INPUT_COMMAND:-run}" == "run" ]]; then
-  cmd+=(--retries "$INPUT_RETRIES")
+if [[ "${INPUT_COMMAND:-run}" == "run" ]]; then
+  if [[ "${INPUT_RETRIES:-0}" =~ ^[1-9][0-9]*$ ]]; then cmd+=(--retries "$INPUT_RETRIES"); fi
+  if [[ "${INPUT_DIAGNOSE:-false}" == "true" ]]; then cmd+=(--diagnose); fi
+  # The `=` form: a value can never be taken for an option of its own.
+  if [[ -n "${INPUT_AI:-}" ]]; then cmd+=("--ai=${INPUT_AI}"); fi
+  if [[ -n "${INPUT_AI_MODEL:-}" ]]; then cmd+=("--ai-model=${INPUT_AI_MODEL}"); fi
 fi
 # ${arr[@]+...} keeps `set -u` happy with empty arrays on old bash versions.
 cmd+=(${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"})

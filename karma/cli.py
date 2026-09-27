@@ -1,4 +1,5 @@
-"""Command-line interface: ``karma run``, ``karma select`` and ``karma graph``."""
+"""Command-line interface: ``karma run``, ``select``, ``diagnose``, ``graph``, ``history``
+and ``flaky``."""
 
 from __future__ import annotations
 
@@ -13,9 +14,19 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from karma import __version__
+from karma import __version__, ai
 from karma.cache import ImportCache, default_cache_path
-from karma.config import Config, load_config
+from karma.config import AI_PROVIDERS, Config, load_config
+from karma.diagnose import (
+    MAX_DIAGNOSES,
+    Diagnosis,
+    diagnose,
+    infer_test_files,
+    load_failures,
+    relevant_files,
+    save_failures,
+)
+from karma.diagnose import to_json as diagnoses_to_json
 from karma.errors import GitError, KarmaError
 from karma.flaky import Entry as FlakyEntry
 from karma.flaky import (
@@ -27,13 +38,16 @@ from karma.flaky import (
     watched_outcomes,
 )
 from karma.flaky import to_json as flaky_to_json
-from karma.git import ChangeSet, default_base, get_changes, verify_ref
+from karma.git import ChangeSet, default_base, diff_text, get_changes, verify_ref
 from karma.graph import DependencyGraph, build_graph
 from karma.history import History, default_history_path, run_from, run_from_report
 from karma.reporter import (
     append_step_summary,
     describe_selection,
+    diagnosis_markdown,
     emit_annotations,
+    emit_diagnosis_annotations,
+    format_diagnoses,
     format_explanation,
     plural,
     print_run_summary,
@@ -47,6 +61,9 @@ from karma.runner import (
     EXIT_TESTS_FAILED,
     Outcome,
     RunResult,
+    TestCase,
+    parse_junit,
+    rebase_cases,
     rerun_failures,
     run_pytest,
 )
@@ -56,7 +73,7 @@ log = logging.getLogger("karma")
 
 EXIT_KARMA_ERROR = 2
 EXIT_INTERRUPTED = 130
-COMMANDS = ("run", "select", "graph", "history", "flaky")
+COMMANDS = ("run", "select", "diagnose", "graph", "history", "flaky")
 
 
 @dataclass(frozen=True)
@@ -67,6 +84,8 @@ class Plan:
     config: Config
     selection: Selection
     base: str | None
+    changes: ChangeSet
+    graph: DependencyGraph
 
 
 # --------------------------------------------------------------------------- selection
@@ -138,7 +157,7 @@ def _plan(args: argparse.Namespace) -> Plan:
             " ".join(config.test_patterns),
         )
     log.info("%s", describe_selection(selection))
-    return Plan(root, config, selection, base)
+    return Plan(root, config, selection, base, changes, graph)
 
 
 def _github_outputs(selection: Selection, tests_run: int, result: RunResult | None = None) -> None:
@@ -153,6 +172,63 @@ def _github_outputs(selection: Selection, tests_run: int, result: RunResult | No
             "flaky-tests": " ".join(flaky),
         }
     )
+
+
+# --------------------------------------------------------------------------- diagnosis
+
+
+def _diagnose(
+    plan: Plan, failures: Sequence[TestCase], limit: int, exclude_run: float | None = None
+) -> list[Diagnosis]:
+    """The local evidence about ``failures``: suspects, import chains and history.
+
+    ``exclude_run`` is the timestamp of the run that produced the failures, if it is
+    already in the history: the history should only speak of the runs before it.
+    """
+    paths = relevant_files(failures, plan.selection, plan.changes, plan.root, plan.graph)
+    try:
+        diff = diff_text(plan.changes, paths, plan.root)
+    except GitError as exc:
+        log.warning("could not read the diff, so suspects are whole files: %s", exc)
+        diff = ""
+    history = History.load(default_history_path(plan.root))
+    if exclude_run is not None:
+        history.runs = [r for r in history.runs if abs(r.timestamp - exclude_run) > 0.0005]
+    return diagnose(
+        failures,
+        selection=plan.selection,
+        changes=plan.changes,
+        root=plan.root,
+        diff=diff,
+        graph=plan.graph,
+        history=history,
+        limit=limit,
+    )
+
+
+def _ai_provider(args: argparse.Namespace, config: Config) -> str | None:
+    return None if args.no_ai else (args.ai or config.ai)
+
+
+def _ai_settings(args: argparse.Namespace, config: Config) -> ai.Settings | None:
+    """The language model to ask, if one was requested (``--ai`` or ``[tool.karma] ai``)."""
+    provider = _ai_provider(args, config)
+    if not provider:
+        return None
+    return ai.configure(provider, args.ai_model or config.ai_model, args.ai_url or config.ai_url)
+
+
+def _explain(
+    diagnoses: list[Diagnosis], settings: ai.Settings, root: Path
+) -> tuple[list[Diagnosis], list[str]]:
+    where = "it stays on this machine" if settings.local else "this is sent over the network"
+    log.info(
+        "asking %s to explain %s, from each traceback and the diff involved (%s)",
+        settings.label,
+        plural(len(diagnoses), "failure"),
+        where,
+    )
+    return ai.explain(diagnoses, settings, root)
 
 
 # --------------------------------------------------------------------------- commands
@@ -208,6 +284,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     # pytest's discovery is the authority, and an empty "full run" must never pass.
     if not selection.tests and not selection.run_all:
         log.info("no affected tests; nothing to run")
+        if not args.no_history:
+            save_failures(plan.root, [])  # earlier failures are gone with their change
         if args.ci:
             _github_outputs(selection, tests_run=0)
             append_step_summary(run_markdown(selection, None, plan.base))
@@ -246,12 +324,31 @@ def cmd_run(args: argparse.Namespace) -> int:
     result = apply_quarantine(result, registry)
 
     print_run_summary(result)
-    if not args.no_history and result.cases:
-        _record_history(plan, result, watched_cases(result, registry))
+    diagnoses: list[Diagnosis] = []
+    wanted = args.diagnose or plan.config.diagnose or _ai_provider(args, plan.config)
+    if result.problems and wanted:
+        # Before recording this run: the history should describe the runs before it.
+        diagnoses = _diagnose(plan, result.problems, MAX_DIAGNOSES)
+        try:
+            settings = _ai_settings(args, plan.config)
+        except KarmaError as exc:  # e.g. no API key: the evidence still stands
+            log.warning("no AI explanation: %s", exc)
+            settings = None
+        if settings is not None:
+            diagnoses, errors = _explain(diagnoses, settings, plan.root)
+            for error in errors:
+                log.warning("no AI explanation: %s", error)
+        sys.stderr.write(format_diagnoses(diagnoses, sys.stderr))
+    if not args.no_history:
+        recorded = (
+            _record_history(plan, result, watched_cases(result, registry)) if result.cases else None
+        )
+        save_failures(plan.root, result.problems, recorded_at=recorded)
     if args.ci:
         _github_outputs(selection, tests_run=len(selection.tests), result=result)
         emit_annotations((*result.problems, *result.warnings), plan.root)
-        append_step_summary(run_markdown(selection, result, plan.base, risks))
+        emit_diagnosis_annotations(diagnoses, plan.root)
+        append_step_summary(run_markdown(selection, result, plan.base, risks, diagnoses))
     flaky = [c for c in result.cases if c.outcome is Outcome.FLAKY]
     if flaky and (args.fail_on_flaky or plan.config.fail_on_flaky) and result.exit_code == EXIT_OK:
         log.error("%s flaky: failing because of --fail-on-flaky", plural(len(flaky), "test"))
@@ -263,13 +360,68 @@ def cmd_run(args: argparse.Namespace) -> int:
     return result.exit_code
 
 
-def _record_history(plan: Plan, result: RunResult, watched: dict[str, str]) -> None:
+def _record_history(plan: Plan, result: RunResult, watched: dict[str, str]) -> float:
+    """Append this run to the history; returns its timestamp."""
     try:
         commit: str | None = verify_ref("HEAD", plan.root)
     except GitError:
         commit = None
     history = History.load(default_history_path(plan.root))
-    history.append(run_from(result, plan.selection, commit, watched=watched))
+    run = run_from(result, plan.selection, commit, watched=watched)
+    history.append(run)
+    return run.timestamp
+
+
+def cmd_diagnose(args: argparse.Namespace) -> int:
+    if args.max < 1:
+        raise KarmaError("--max must be at least 1")
+    root = _resolve_root(args.repo)
+    if args.report:
+        report = Path(args.report)
+        if not report.is_file():
+            raise KarmaError(f"--report {args.report!r} is not a file")
+        cases = rebase_cases(parse_junit(report), root)
+        failures = [c for c in cases if c.outcome in (Outcome.FAILED, Outcome.ERROR)]
+        source, recorded_at = args.report, None
+    else:
+        failures, recorded_at = load_failures(root)
+        source = "the last `karma run`"
+    if not failures:
+        log.info("no failures in %s: nothing to diagnose", source)
+        if args.format == "json":
+            print("[]")
+        return EXIT_OK
+
+    plan = _plan(args)
+    failures = infer_test_files(failures, plan.graph.files)
+    diagnoses = _diagnose(plan, failures, args.max, exclude_run=recorded_at)
+    if args.show_prompt:
+        for d in diagnoses:
+            print(f"{'=' * 12} what would be sent about {d.case.nodeid} {'=' * 12}")
+            print(f"[system]\n{ai.SYSTEM}\n\n[user]\n{ai.build_prompt(d, plan.root)}\n")
+        return EXIT_OK
+    errors: list[str] = []
+    try:
+        settings = _ai_settings(args, plan.config)
+    except KarmaError as exc:
+        if args.ai:  # asked for on the command line: an error, not a warning
+            raise
+        log.warning("no AI explanation ([tool.karma] ai): %s", exc)
+        settings = None
+    if settings is not None:
+        diagnoses, errors = _explain(diagnoses, settings, plan.root)
+        for error in errors:
+            log.error("no AI explanation: %s", error)
+    if args.format == "json":
+        print(json.dumps(diagnoses_to_json(diagnoses), indent=2))
+    elif args.format == "markdown":
+        # A console that cannot encode "←" gets "&#8592;", which Markdown renders the same.
+        encoding = getattr(sys.stdout, "encoding", None) or "utf-8"
+        markdown = diagnosis_markdown(diagnoses)
+        sys.stdout.write(markdown.encode(encoding, "xmlcharrefreplace").decode(encoding))
+    else:
+        sys.stdout.write(format_diagnoses(diagnoses, sys.stdout).lstrip("\n"))
+    return EXIT_KARMA_ERROR if errors else EXIT_OK
 
 
 def cmd_flaky(args: argparse.Namespace) -> int:
@@ -447,6 +599,58 @@ def _add_analysis_options(parser: argparse.ArgumentParser) -> None:
 
 def _add_selection_options(parser: argparse.ArgumentParser) -> None:
     _add_analysis_options(parser)
+    _add_change_options(parser)
+    parser.add_argument("--explain", action="store_true", help="show why each test was selected")
+    parser.add_argument(
+        "--prioritize",
+        action="store_true",
+        help="order tests by predicted risk of failure, learned from local history",
+    )
+    parser.add_argument(
+        "--ci", action="store_true", help="write GitHub Actions outputs, summary and annotations"
+    )
+
+
+def _add_diagnosis_options(parser: argparse.ArgumentParser, command: str) -> None:
+    group = parser.add_argument_group("failure diagnosis")
+    if command == "run":
+        group.add_argument(
+            "--diagnose",
+            action="store_true",
+            help="after a failure, show the evidence: the changed lines in its traceback, "
+            "why the test ran and its history (default: [tool.karma] diagnose)",
+        )
+    group.add_argument(
+        "--ai",
+        choices=AI_PROVIDERS,
+        metavar="PROVIDER",
+        help="also ask a language model to explain failures: anthropic, ollama (a model "
+        "on this machine) or openai (any OpenAI-compatible server). Off by default; it is "
+        "sent each failure's traceback and the relevant diff (default: [tool.karma] ai)",
+    )
+    group.add_argument(
+        "--ai-model",
+        metavar="NAME",
+        help=f"model to ask (default for anthropic: {ai.DEFAULT_MODEL['anthropic']}; "
+        "required for ollama and openai)",
+    )
+    group.add_argument(
+        "--ai-url",
+        metavar="URL",
+        help="API base URL, e.g. http://localhost:1234/v1 for LM Studio (default: the provider's)",
+    )
+    group.add_argument(
+        "--no-ai", action="store_true", help="never ask a language model, even if configured"
+    )
+    if command == "diagnose":
+        group.add_argument(
+            "--show-prompt",
+            action="store_true",
+            help="print exactly what would be sent to the model, and send nothing",
+        )
+
+
+def _add_change_options(parser: argparse.ArgumentParser) -> None:
     source = parser.add_argument_group("what counts as changed")
     source.add_argument(
         "--base",
@@ -468,15 +672,6 @@ def _add_selection_options(parser: argparse.ArgumentParser) -> None:
         choices=("fail", "run-all"),
         default="fail",
         help="if changes cannot be determined: fail (default) or run the full suite",
-    )
-    parser.add_argument("--explain", action="store_true", help="show why each test was selected")
-    parser.add_argument(
-        "--prioritize",
-        action="store_true",
-        help="order tests by predicted risk of failure, learned from local history",
-    )
-    parser.add_argument(
-        "--ci", action="store_true", help="write GitHub Actions outputs, summary and annotations"
     )
 
 
@@ -512,7 +707,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument(
         "--no-history",
         action="store_true",
-        help="do not record results in .karma_cache/history.jsonl (used for --prioritize)",
+        help="do not record results in .karma_cache/ (the history --prioritize learns "
+        "from, and the failures karma diagnose explains)",
     )
     run.add_argument(
         "--python",
@@ -520,6 +716,7 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="EXE",
         help="interpreter used to run pytest (default: the one running Karma)",
     )
+    _add_diagnosis_options(run, "run")
     run.set_defaults(func=cmd_run)
 
     select = commands.add_parser(
@@ -535,6 +732,36 @@ def build_parser() -> argparse.ArgumentParser:
         help="text: space-separated (default); lines: one per line; json: full details",
     )
     select.set_defaults(func=cmd_select)
+
+    diagnosis = commands.add_parser(
+        "diagnose",
+        help="explain why tests failed: the suspect changes, history, and optionally AI",
+        description="Explain the failures of the last `karma run`, or of a JUnit report: "
+        "the changed lines in each traceback, why the test ran and its history. Nothing "
+        "leaves the machine unless --ai is given; --show-prompt prints what would be sent.",
+    )
+    _add_analysis_options(diagnosis)
+    _add_change_options(diagnosis)
+    diagnosis.add_argument(
+        "--report",
+        metavar="XML",
+        help="diagnose this JUnit XML report (e.g. a CI artifact) instead of the last run",
+    )
+    diagnosis.add_argument(
+        "--max",
+        type=int,
+        default=MAX_DIAGNOSES,
+        metavar="N",
+        help=f"diagnose at most N distinct failures (default: {MAX_DIAGNOSES})",
+    )
+    diagnosis.add_argument(
+        "--format",
+        choices=("text", "markdown", "json"),
+        default="text",
+        help="text (default), markdown for a pull request comment, or json",
+    )
+    _add_diagnosis_options(diagnosis, "diagnose")
+    diagnosis.set_defaults(func=cmd_diagnose)
 
     graph = commands.add_parser(
         "graph", help="print the dependency graph", description="Print the dependency graph."

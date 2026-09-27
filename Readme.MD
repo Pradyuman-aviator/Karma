@@ -36,6 +36,7 @@ Karma reads your git diff, builds a dependency graph from your imports, and runs
 | No overhead while tests run | ✅ | ✅ | ❌ (tracing) | varies | ✅ |
 | Data never leaves your machine | ✅ | ✅ | ✅ | ❌ | ✅ |
 | Explains *why* each test was chosen | ✅ | ❌ | ❌ | partly | partly |
+| Points each failure at the change behind it | ✅ (AI optional) | ❌ | ❌ | varies | ❌ |
 | Adopt without changing your build | ✅ | ✅ | ✅ | ✅ | ❌ |
 
 **Honest trade-off:** Karma analyses code statically. It can't see an import built from a runtime string, or a data file a test reads, and coverage-based tools can. Karma's [safety net](#staying-safe) and [mappings](#configuration) cover these cases, and a periodic full run (`karma run --all`, e.g. nightly) closes the gap.
@@ -51,6 +52,7 @@ pip install git+https://github.com/Pradyuman-aviator/Karma.git
 ```bash
 karma run                 # run tests affected by your branch + uncommitted work
 karma run --explain       # ...and show why each test was selected
+karma run --diagnose      # ...and point each failure at the change that broke it
 karma select              # just print them:  pytest $(karma select)
 karma run -- -x -n auto   # everything after -- goes to pytest
 ```
@@ -80,6 +82,7 @@ The action runs in **your** job's Python environment, so selected tests can impo
 
 - posts a **job summary** with pass/fail counts, "*N of M test files selected (X% skipped)*", collapsible failure output, and the reason for each selection
 - adds **inline annotations** on the failing test lines
+- with `diagnose: "true"`, explains each failure in the summary and marks the **changed line behind it** on the diff (see *Diagnose failures*)
 - exits with pytest's exit code, so the job fails exactly when a selected test fails
 
 | Input | Default | Description |
@@ -94,6 +97,9 @@ The action runs in **your** job's Python environment, so selected tests can impo
 | `prioritize` | `false` | `true` runs the tests most likely to fail first (see *Predict and prioritise*) |
 | `retries` | `0` | Re-run failed tests up to N times; a pass on retry is reported as flaky, not a failure |
 | `cache` | `true` | Keep `.karma_cache/` (import cache + test history) between runs with `actions/cache` |
+| `diagnose` | `false` | `true` explains each failure: the changed lines in its traceback, why it ran, its history |
+| `ai` | | Also ask a language model: `anthropic` (with `ANTHROPIC_API_KEY` in the step's `env`), `ollama` or `openai` |
+| `ai-model` | | Model for `ai` (default for `anthropic`: `claude-sonnet-5`) |
 
 | Output | Description |
 | --- | --- |
@@ -277,6 +283,72 @@ Quarantined tests **still run and are still reported**, but their failures don't
 
 ---
 
+## Diagnose failures
+
+A red test tells you *that* something broke. Karma tells you *where to look*: for each failure it lines up the changed lines in the traceback, why the test ran, and its history.
+
+```console
+$ karma run --diagnose
+─────────────────── karma diagnosis ───────────────────
+
+tests/test_invoice.py::test_unknown_country
+  error      ValueError: unknown country 'XX'
+  ran for    tests/test_invoice.py ← billing/invoice.py ← billing/tax.py  (changed)
+  history    first failure in 42 recorded runs
+  suspect    billing/tax.py:6  changed, and where the error was raised
+              def rate(country):
+             +    if country == "XX":
+             +        raise ValueError(f"unknown country {country!r}")
+                  return RATE
+
+tests/test_invoice.py::test_total_with_vat
+  error      assert 119.0 == 121.0
+  ran for    tests/test_invoice.py ← billing/invoice.py ← billing/tax.py  (changed)
+  suspect    billing/tax.py:1  changed; the test imports it indirectly (2 imports away)
+             -RATE = 0.21
+             +RATE = 0.19
+  same       also fails this way: tests/test_invoice.py::TestGroup::test_nested
+```
+
+- **Suspects come from evidence, not guesses.** First the changed lines the traceback passes through, from where the error was raised outwards; otherwise the changed files the test imports, nearest first. Failures with the same error and the same suspects are grouped.
+- **All local.** Nothing leaves your machine. In CI the diagnosis goes into the job summary, and each suspect line gets an annotation on the pull request's diff.
+- **Now, later, or from CI.** `karma diagnose` explains the last run's failures without running anything again, and `--report junit.xml` explains any JUnit report, such as a CI artifact. Use `--format markdown` for a pull request comment, or `json` for tools.
+
+### Optional: ask an AI
+
+With `--ai`, a language model turns that evidence into a cause and a fix:
+
+```console
+$ karma diagnose --ai anthropic
+  ...
+  ai         rate() now rejects "XX", which the test still passes in.
+             (regression, high confidence, claude-sonnet-5)
+             fix: Handle unknown countries in rate(), or use a supported one in the test.
+```
+
+| Provider | What runs | What it needs |
+| --- | --- | --- |
+| `anthropic` | Claude, on Anthropic's API (default model `claude-sonnet-5`) | Your own `ANTHROPIC_API_KEY` |
+| `ollama` | A model on your machine: nothing leaves it | `ollama serve`, and `--ai-model`, e.g. `qwen2.5-coder` |
+| `openai` | Any OpenAI-compatible server: LM Studio, llama.cpp, vLLM, OpenAI | `--ai-url` and `--ai-model`; `OPENAI_API_KEY` if the server wants one |
+
+- **Opt-in, always.** Without `--ai` (or `ai = "..."` in `[tool.karma]`), Karma makes no network requests at all. It never ships or stores an API key: it uses yours, and `--no-ai` switches a configured provider off.
+- **You see exactly what is sent.** `karma diagnose --show-prompt` prints the prompt and sends nothing: the failing test and its error, the traceback, why it ran, the diff of the changed files involved, and the test's source. Anything that looks like a credential (API keys, tokens, private keys, quoted passwords) is redacted first.
+- **Bounded.** At most 3 distinct failures per run (`--max`), about 6,000 tokens of evidence each, asked in parallel. A failed AI request never changes the result of `karma run`: you still get the local evidence.
+
+In GitHub Actions:
+
+```yaml
+      - uses: Pradyuman-aviator/Karma@main
+        with:
+          diagnose: "true"
+          ai: anthropic          # optional
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+```
+
+---
+
 ## Configuration
 
 Optional, in `pyproject.toml`:
@@ -289,6 +361,10 @@ exclude = ["examples/*"]                     # never selected as tests (still an
 extend-run-all-on = ["Dockerfile"]           # add to the full-suite triggers (run-all-on replaces them)
 pytest-args = ["-p", "no:cacheprovider"]     # always passed to pytest
 prioritize = true                            # run the likeliest failures first
+retries = 2                                  # re-run failures; a pass on retry means flaky
+diagnose = true                              # explain failures after a run
+ai = "ollama"                                # optional: ask a model (anthropic, ollama, openai)
+ai-model = "qwen2.5-coder"                   # and which one (ai-url for a custom server)
 
 [tool.karma.mappings]                        # dependencies imports can't express
 "tests/fixtures/*.json" = ["tests/test_loader.py"]
@@ -303,18 +379,19 @@ Patterns without `/` match file names anywhere; patterns with `/` match the path
 | --- | --- |
 | `karma run` | Select affected tests and run them with pytest |
 | `karma select` | Print the selection: `--format text` (default, space-separated), `lines`, or `json` |
+| `karma diagnose` | Explain the last run's failures (or a JUnit `--report`): `--format text`, `markdown`, or `json` |
 | `karma graph` | Print the dependency graph: `--format json`, `dot` (Graphviz), or `mermaid` |
 | `karma history` | Most-failing, flaky and slowest tests from the recorded history; `--import` JUnit reports |
 | `karma flaky` | The quarantine registry: `quarantine`, `release`, `sync` |
 
-**What counts as changed** (`run` and `select`):
+**What counts as changed** (`run`, `select` and `diagnose`):
 
 - `--base REF`, with `--head REF` to compare a commit instead of the working tree
 - `--staged` for staged changes only
 - `--files PATH…` to skip git entirely
 - `--all` to select everything
 
-**Other options:** `--explain`, `--prioritize`, `--retries N`, `--fail-on-flaky`, `--no-history` (run), `--ci` (GitHub outputs, summary and annotations), `--repo DIR`, `--python EXE`, `--jobs N`, `--no-cache`, `--on-git-error {fail,run-all}`, `-v`/`-q`.
+**Other options:** `--explain`, `--prioritize`, `--retries N`, `--fail-on-flaky`, `--no-history`, `--diagnose` (run), `--ai PROVIDER`, `--ai-model NAME`, `--ai-url URL`, `--no-ai` (run and diagnose), `--show-prompt`, `--report XML`, `--max N` (diagnose), `--ci` (GitHub outputs, summary and annotations), `--repo DIR`, `--python EXE`, `--jobs N`, `--no-cache`, `--on-git-error {fail,run-all}`, `-v`/`-q`.
 
 **Exit codes:**
 
@@ -335,7 +412,7 @@ Patterns without `/` match file names anywhere; patterns with `/` match the path
 | 3.0 | Hardening: merge-base diffs, conftest/safety-net selection, explainability, per-test reporting, incremental parallel cache | ✅ |
 | 3 | ML prediction layer: predict failures from local history and run the likeliest first (`--prioritize`, `karma history`) | ✅ |
 | 4 | Flaky-test registry: confirm flakiness with retries, quarantine in a reviewed registry, release healed tests (`--retries`, `karma flaky`) | ✅ |
-| 5 | LLM copilot: semantic test mapping, failure diagnosis | 📅 |
+| 5 | Failure diagnosis: the changed lines behind each failure, from its traceback and the diff, with its history; optionally explained by an AI, in the cloud or on your machine (`--diagnose`, `karma diagnose`, `--ai`) | ✅ |
 
 ## Contributing
 

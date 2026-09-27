@@ -2,11 +2,13 @@ from __future__ import annotations
 
 import io
 import re
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
 from karma import reporter
+from karma.diagnose import Diagnosis, Explanation, Hunk, Suspect
 from karma.runner import Outcome, RunResult, TestCase
 from karma.selector import Selection
 
@@ -172,3 +174,113 @@ def test_risk_in_explanation_and_summary() -> None:
     assert "Ordered by predicted risk" in markdown
     assert "| Test file | Selected because of | Risk |" in markdown
     assert "| risk 60%: the test itself changed |" in markdown
+
+
+# --------------------------------------------------------------------------- diagnosis
+
+HUNK = Hunk("app/core.py", 1, 3, "@@ -1,2 +1,3 @@\n import os\n-X = 1\n+X = 2\n+Y = ```3```")
+DIAGNOSIS = Diagnosis(
+    case=FAILED,
+    chain=("tests/test_a.py", "app/core.py"),
+    history="first failure in 9 recorded runs",
+    suspects=(
+        Suspect("app/core.py", 2, "changed; the test imports it", HUNK),
+        Suspect("app/extra.py", None, "changed; the test imports it"),
+    ),
+    same_failure=("tests/test_a.py::test_y",),
+)
+EXPLANATION = Explanation(
+    summary="X changed from 1 to 2.",
+    cause="The test expects <1>.",
+    fix="Set X = 1.",
+    kind="regression",
+    confidence="high",
+    path="app/core.py",
+    line=2,
+    model="claude-sonnet-5",
+)
+EXPLAINED = replace(DIAGNOSIS, explanation=EXPLANATION)
+
+
+class TestDiagnosisOutput:
+    def test_console(self) -> None:
+        stream = io.TextIOWrapper(io.BytesIO(), encoding="utf-8")
+        text = reporter.format_diagnoses([EXPLAINED], stream)
+        assert "karma diagnosis" in text
+        assert "  error      assert <1> == 2" in text
+        assert "  ran for    tests/test_a.py ← app/core.py  (changed)" in text
+        assert "  suspect    app/core.py:2  changed; the test imports it" in text
+        assert "             +X = 2" in text  # the suspect's diff
+        assert "             app/extra.py  changed; the test imports it" in text
+        assert "  same       also fails this way: tests/test_a.py::test_y" in text
+        assert "  ai         X changed from 1 to 2." in text
+        assert "(regression, high confidence, claude-sonnet-5)" in text
+        assert "             fix: Set X = 1." in text
+        assert "look at app/core.py:2" in text
+
+    def test_console_without_unicode_or_suspects(self) -> None:
+        bare = Diagnosis(case=FAILED, chain=("tests/test_a.py", "app/core.py"))
+        text = reporter.format_diagnoses([bare], io.StringIO())
+        assert "tests/test_a.py <- app/core.py" in text
+        assert "-" * 17 + " karma diagnosis" in text
+        assert f"suspect    {reporter.NO_SUSPECT}" in text
+
+    def test_long_hunks_are_cut_around_the_suspect(self) -> None:
+        body = "\n".join(f" line {n}" for n in range(1, 41))
+        hunk = Hunk("a.py", 1, 41, f"@@ -1,40 +1,41 @@\n{body}\n+new line 41")
+        excerpt = reporter._hunk_excerpt(hunk, 41)
+        assert len(excerpt) == reporter.MAX_HUNK_LINES
+        assert excerpt[-1] == "+new line 41"
+
+    def test_markdown(self) -> None:
+        text = reporter.diagnosis_markdown([EXPLAINED])
+        assert text.startswith("### 🔎 Diagnosis\n")
+        assert "**<code>tests/test_a.py::test_x</code>**: assert &lt;1&gt; == 2" in text
+        assert "- **Why it ran:** <code>tests/test_a.py</code> ← <code>app/core.py</code>" in text
+        assert "- **Suspect:** <code>app/core.py:2</code>: changed; the test imports it" in text
+        assert "- **Fails the same way:** <code>tests/test_a.py::test_y</code>" in text
+        # The diff holds ``` itself, so its fence is longer.
+        assert "````diff\n@@ -1,2 +1,3 @@" in text
+        assert "> **🤖 claude-sonnet-5** (regression, high confidence)" in text
+        assert "> The test expects &lt;1&gt;." in text
+        assert "> Fix: Set X = 1." in text
+        assert reporter.diagnosis_markdown([]) == ""
+
+    def test_run_markdown_includes_the_diagnosis(self) -> None:
+        text = reporter.run_markdown(SELECTION, RESULT, diagnoses=[DIAGNOSIS])
+        assert text.index("### Failures") < text.index("### 🔎 Diagnosis")
+
+    def test_annotations(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+        (tmp_path / "app").mkdir()
+        (tmp_path / "app" / "core.py").write_text("X = 2\n", encoding="utf-8")
+        (tmp_path / "app" / "other.py").write_text("Y = 1\n", encoding="utf-8")
+        monkeypatch.setenv("GITHUB_WORKSPACE", str(tmp_path.parent))
+        prefix = f"{tmp_path.name}/app"
+
+        stream = io.StringIO()
+        reporter.emit_diagnosis_annotations([EXPLAINED], tmp_path, stream)
+        (notice,) = stream.getvalue().splitlines()  # the AI agrees: one notice, both texts
+        assert notice.startswith(f"::notice file={prefix}/core.py,line=2,title=Karma%3A may")
+        assert "changed; the test imports it. assert <1> == 2%0AX changed from 1 to 2." in notice
+
+        elsewhere = replace(EXPLANATION, path="app/other.py", line=1)
+        stream = io.StringIO()
+        reporter.emit_diagnosis_annotations(
+            [replace(EXPLAINED, explanation=elsewhere)], tmp_path, stream
+        )
+        assert [line.split(",")[0] for line in stream.getvalue().splitlines()] == [
+            f"::notice file={prefix}/core.py",
+            f"::notice file={prefix}/other.py",
+        ]
+
+        for path in ("app/missing.py", "../outside.py"):  # a model can name any file
+            invented = replace(EXPLANATION, path=path, line=1)
+            stream = io.StringIO()
+            reporter.emit_diagnosis_annotations(
+                [replace(EXPLAINED, explanation=invented)], tmp_path, stream
+            )
+            assert len(stream.getvalue().splitlines()) == 1
+
+        stream = io.StringIO()
+        reporter.emit_diagnosis_annotations([Diagnosis(case=FAILED)], tmp_path, stream)
+        assert stream.getvalue() == ""

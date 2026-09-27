@@ -63,9 +63,30 @@ def test_run_all_on_replaces_and_extend_appends(tmp_path: Path) -> None:
     assert load_config(tmp_path).run_all_on == ("a.cfg", "b.cfg")
 
 
+def test_diagnosis_settings(tmp_path: Path) -> None:
+    write(
+        tmp_path,
+        "pyproject.toml",
+        '[tool.karma]\ndiagnose = true\nai = "ollama"\nai-model = " qwen2.5-coder "\n'
+        'ai-url = "http://localhost:11434/v1"\n',
+    )
+    config = load_config(tmp_path)
+    assert (config.diagnose, config.ai, config.ai_model, config.ai_url) == (
+        True,
+        "ollama",
+        "qwen2.5-coder",
+        "http://localhost:11434/v1",
+    )
+    assert (Config().diagnose, Config().ai) == (False, None)  # off unless asked for
+
+
 @pytest.mark.parametrize(
     ("content", "message"),
     [
+        ('[tool.karma]\ndiagnose = "yes"\n', "diagnose must be true or false"),
+        ('[tool.karma]\nai = "gpt"\n', "ai must be one of: anthropic, ollama, openai"),
+        ("[tool.karma]\nai-model = 3\n", "ai-model must be a non-empty string"),
+        ('[tool.karma]\nai-url = " "\n', "ai-url must be a non-empty string"),
         ("[tool.karma]\ntest-pattern = []\n", "unknown .* test-pattern"),
         ("[tool.karma]\nexclude = [1, 2]\n", "exclude must be a list of strings"),
         ("[tool.karma]\nmappings = []\n", r"mappings\] must be a table"),

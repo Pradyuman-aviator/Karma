@@ -8,7 +8,7 @@ import pytest
 
 from karma import git
 from karma.errors import GitError
-from karma.git import ChangeSet, get_changes, list_files, to_relative
+from karma.git import ChangeSet, diff_text, get_changes, list_files, to_relative
 from tests.helpers import GitRepo
 
 
@@ -288,3 +288,59 @@ class TestCaseSensitivity:
         repo.write("tests/TestUsage.txt", ">>> import app\n")
         repo.commit("doctest")
         assert list_files(repo.path, ("test*.txt",)) == ["tests/TestUsage.txt"]
+
+
+class TestDiffText:
+    """The diff behind a change set, for the same comparison that produced it."""
+
+    @pytest.fixture
+    def feature(self, repo: GitRepo) -> GitRepo:
+        repo.write("app.py", "A = 1\n")
+        repo.commit("base")
+        repo.branch("feature")
+        repo.write("app.py", "A = 2\n")
+        repo.commit("committed change")
+        repo.write("app.py", "A = 3\n")  # and an uncommitted one
+        return repo
+
+    def test_working_tree(self, feature: GitRepo) -> None:
+        feature.write("new.py", "B = 1\nC = 2\n")  # untracked
+        changes = get_changes("main", cwd=feature.path)
+        assert changes.untracked == ("new.py",)
+        text = diff_text(changes, ["app.py", "new.py"], feature.path)
+        assert "-A = 1\n+A = 3\n" in text
+        assert (
+            "new file (untracked)\n--- /dev/null\n+++ b/new.py\n@@ -0,0 +1,2 @@\n+B = 1\n+C = 2\n"
+            in text
+        )
+
+    def test_commit_range(self, feature: GitRepo) -> None:
+        changes = get_changes("main", "HEAD", cwd=feature.path)
+        text = diff_text(changes, ["app.py"], feature.path)
+        assert "-A = 1\n+A = 2\n" in text  # the commits only, not the working tree
+
+    def test_staged(self, feature: GitRepo) -> None:
+        feature.git("add", "app.py")
+        changes = get_changes(cwd=feature.path, staged=True)
+        assert "-A = 2\n+A = 3\n" in diff_text(changes, ["app.py"], feature.path)
+
+    def test_nothing_to_compare(self, feature: GitRepo) -> None:
+        assert (
+            diff_text(ChangeSet.from_paths(["app.py"], feature.path), ["app.py"], feature.path)
+            == ""
+        )
+        assert diff_text(get_changes("main", cwd=feature.path), [], feature.path) == ""
+
+    def test_unusual_paths_and_binary_files(self, feature: GitRepo) -> None:
+        feature.write("tests/[a].py", "X = 1\n")
+        feature.commit("glob-like name")
+        (feature.path / "blob.bin").write_bytes(b"\x00\x01binary")
+        changes = get_changes("main", cwd=feature.path)
+        text = diff_text(changes, ["tests/[a].py", "blob.bin"], feature.path)
+        assert "+++ b/tests/[a].py\n@@ -0,0 +1 @@\n+X = 1" in text
+        assert "Binary files /dev/null and b/blob.bin differ" in text
+
+    def test_change_sets_compare_by_their_files_only(self, feature: GitRepo) -> None:
+        assert get_changes("main", "HEAD", cwd=feature.path) == ChangeSet(
+            modified=("app.py",), merge_base=feature.git("rev-parse", "main")
+        )

@@ -12,7 +12,7 @@ import os
 import subprocess
 import sys
 from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 from karma.errors import GitError
@@ -57,6 +57,11 @@ class ChangeSet:
     deleted: tuple[str, ...] = ()
     merge_base: str | None = None
     submodules: tuple[str, ...] = ()
+    #: ``git diff`` arguments that reproduce this comparison (see :func:`diff_text`);
+    #: empty when the changes did not come from git (``--files``)
+    diff_args: tuple[str, ...] = field(default=(), compare=False, repr=False)
+    #: files in ``modified`` that git does not track yet, so ``git diff`` omits them
+    untracked: tuple[str, ...] = field(default=(), compare=False, repr=False)
 
     @property
     def all(self) -> tuple[str, ...]:
@@ -214,7 +219,8 @@ def get_changes(
             against = verify_ref("HEAD", cwd)
         except GitError:
             against = EMPTY_TREE
-        return _parse_raw(run_git([*diff, "--cached", against], cwd))
+        staged_changes = _parse_raw(run_git([*diff, "--cached", against], cwd))
+        return replace(staged_changes, diff_args=("--cached", against))
 
     if head is not None:
         # The import graph is read from the working tree, so it must match `head`.
@@ -234,8 +240,47 @@ def get_changes(
             changes.deleted,
             merge_base=base_sha,
             submodules=changes.submodules,
+            diff_args=(base_sha,),
+            untracked=tuple(sorted(extra)),
         )
-    return _parse_raw(run_git([*diff, base_sha, head_sha], cwd), merge_base=base_sha)
+    committed = _parse_raw(run_git([*diff, base_sha, head_sha], cwd), merge_base=base_sha)
+    return replace(committed, diff_args=(base_sha, head_sha))
+
+
+MAX_NEW_FILE_LINES = 400
+
+
+def diff_text(changes: ChangeSet, paths: Sequence[str], cwd: Path, context: int = 3) -> str:
+    """The unified diff of ``paths``, for the same comparison that produced ``changes``.
+
+    Untracked files appear as added in full (up to :data:`MAX_NEW_FILE_LINES` lines).
+    Returns ``""`` when ``changes`` did not come from git (``--files``).
+    """
+    if not changes.diff_args or not paths:
+        return ""
+    untracked = set(changes.untracked)
+    tracked = [p for p in paths if p not in untracked]
+    parts = []
+    if tracked:
+        args = ["diff", "--no-color", "--no-ext-diff", "--no-textconv", "--no-renames"]
+        args += ["--relative", f"-U{context}", *changes.diff_args, "--"]
+        # :(literal) - a path like "tests/[a].py" must not act as a glob.
+        parts.append(run_git([*args, *(f":(literal){p}" for p in tracked)], cwd))
+    parts.extend(_new_file_diff(cwd, path) for path in paths if path in untracked)
+    return "".join(parts)
+
+
+def _new_file_diff(cwd: Path, path: str) -> str:
+    header = f"diff --git a/{path} b/{path}\nnew file (untracked)\n"
+    try:
+        data = (cwd / path).read_bytes()
+    except OSError:
+        return ""
+    if b"\0" in data[:8000]:
+        return f"{header}Binary files /dev/null and b/{path} differ\n"
+    lines = data.decode("utf-8", errors="replace").splitlines()[:MAX_NEW_FILE_LINES]
+    body = "".join(f"+{line}\n" for line in lines)
+    return f"{header}--- /dev/null\n+++ b/{path}\n@@ -0,0 +1,{len(lines)} @@\n{body}"
 
 
 _GITLINK_MODE = "160000"

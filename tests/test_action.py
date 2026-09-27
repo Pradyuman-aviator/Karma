@@ -243,6 +243,38 @@ def test_prioritize_input(upstream: GitRepo, tmp_path: Path) -> None:
     assert "prioritised by risk using built-in priors" in proc.stderr
 
 
+def test_diagnosis_inputs(upstream: GitRepo, tmp_path: Path) -> None:
+    upstream.checkout("feature")
+    upstream.write("app/other.py", "Y = 0\n")
+    upstream.commit("break it")
+    clone = shallow_clone(upstream, tmp_path)
+
+    proc, _ = run_action(
+        clone,
+        tmp_path,
+        GITHUB_BASE_REF="main",
+        INPUT_DIAGNOSE="true",
+        INPUT_AI="anthropic",
+        INPUT_AI_MODEL="claude-x",
+    )
+
+    assert proc.returncode == 1  # the failing test decides, not the missing API key
+    assert "--diagnose --ai=anthropic --ai-model=claude-x" in proc.stdout  # the echoed command
+    assert "no AI explanation: --ai anthropic needs an API key" in proc.stderr
+    assert "::notice file=app/other.py,line=1," in proc.stdout
+    summary = (tmp_path / "summary.md").read_text(encoding="utf-8")
+    assert "<code>app/other.py:1</code>: changed; the test imports it" in summary
+
+
+def test_diagnosis_inputs_only_apply_to_run(upstream: GitRepo, tmp_path: Path) -> None:
+    clone = shallow_clone(upstream, tmp_path)
+    proc, _ = run_action(
+        clone, tmp_path, GITHUB_BASE_REF="main", INPUT_COMMAND="select", INPUT_DIAGNOSE="true"
+    )
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "--diagnose" not in proc.stdout
+
+
 def test_retries_input(upstream: GitRepo, tmp_path: Path) -> None:
     clone = shallow_clone(upstream, tmp_path)
 

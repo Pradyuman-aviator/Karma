@@ -56,6 +56,23 @@ inputs:
       actions/cache, so history accumulates and graphs build faster.
     required: false
     default: "true"
+  diagnose:
+    description: >-
+      `true` to explain each failure in the job summary and on the diff: the changed lines
+      in its traceback, why the test ran, and its history. Computed locally.
+    required: false
+    default: "false"
+  ai:
+    description: >-
+      Also ask a language model to explain failures: `anthropic` (set `ANTHROPIC_API_KEY`
+      in the step's `env` from a secret), `ollama` or `openai` (any OpenAI-compatible
+      server). Off by default; the model is sent each failure's traceback and diff.
+    required: false
+    default: ""
+  ai-model:
+    description: "Model for `ai`; the default for `anthropic` is claude-sonnet-5."
+    required: false
+    default: ""
 
 outputs:
   test_files:
@@ -105,6 +122,9 @@ runs:
         INPUT_ARGS: ${{ inputs.args }}
         INPUT_PRIORITIZE: ${{ inputs.prioritize }}
         INPUT_RETRIES: ${{ inputs.retries }}
+        INPUT_DIAGNOSE: ${{ inputs.diagnose }}
+        INPUT_AI: ${{ inputs.ai }}
+        INPUT_AI_MODEL: ${{ inputs.ai-model }}
         KARMA_EVENT_BEFORE: ${{ github.event.before }}
         KARMA_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       run: bash "$KARMA_ACTION_PATH/entrypoint.sh"
