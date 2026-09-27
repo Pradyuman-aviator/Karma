@@ -89,6 +89,8 @@ The action runs in **your** job's Python environment, so selected tests can impo
 | `working-directory` | `.` | Project directory within the repository |
 | `on-git-error` | `fail` | `run-all` runs the whole suite if changes can't be determined |
 | `args` | | Extra Karma arguments, e.g. `--explain` |
+| `prioritize` | `false` | `true` runs the tests most likely to fail first (see *Predict and prioritise*) |
+| `cache` | `true` | Keep `.karma_cache/` (import cache + test history) between runs with `actions/cache` |
 
 | Output | Description |
 | --- | --- |
@@ -178,6 +180,55 @@ Absolute timings vary with machine load: a later run of the same benchmark on a 
 
 ---
 
+## Predict and prioritise
+
+Selection decides **which** tests run. Prioritisation decides **in what order**: the tests most likely to fail go first, so a broken change fails in the first seconds, not the last.
+
+```console
+$ karma run --prioritize --explain -- -x
+karma: prioritised by risk using 214 recorded runs
+tests/billing/test_invoice.py  (risk 71%: failed before when billing/tax.py changed; imports billing/tax.py (changed))
+    ← billing/tax.py  (changed)
+tests/test_settings.py  (risk 38%: the test itself changed)
+    (changed)
+tests/billing/test_report.py  (risk 9%: 2 imports away from billing/tax.py)
+    ← billing/invoice.py
+    ← billing/tax.py  (changed)
+```
+
+- **It never skips a test.** Every affected test still runs; only the order changes. Pair it with pytest's `-x` to stop at the first failure.
+- **It learns from your history, locally.** Every `karma run` records each test file's outcome in `.karma_cache/history.jsonl`. Nothing is sent anywhere. In GitHub Actions, the Karma action keeps this directory between runs automatically (`cache: true`).
+- **It's an explainable model, not a black box.** A logistic regression over seven features:
+  - the test itself changed
+  - distance from the change in imports
+  - recent failure rate
+  - how recently it last failed
+  - failed before when these same files changed
+  - flakiness
+  - new test
+
+  It trains online with no look-ahead (each past run is predicted only from the runs before it) and is regularised towards sensible priors, so it orders well from the very first run. Every score comes with its reasons.
+- **Turn it on** with `--prioritize`, `prioritize = true` in `[tool.karma]`, or `prioritize: "true"` in the action.
+
+`karma history` shows what the model sees: the most-failing tests, flaky candidates (outcome flips back and forth) and the slowest tests. `karma history --import report.xml ...` seeds the history from existing JUnit reports, so prioritisation is useful from day one.
+
+### Measured
+
+The 33 faults injected into [encode/starlette](https://github.com/encode/starlette) (see *Validated on real projects*) were replayed in random order, 20 times. Karma predicted each fault's ordering using only the faults before it. For the 24 faults whose selection allowed a choice of order:
+
+| Ordering | Mean APFD | First failing test file found after |
+| --- | ---: | ---: |
+| Random | 0.785 | 5.04 files |
+| Alphabetical (no prioritisation) | 0.840 | 3.50 files |
+| Karma, priors only (no history) | 0.896 | 2.04 files |
+| **Karma, learning from history** | 0.890 | **1.81 files** |
+
+APFD (Average Percentage of Faults Detected, 1.0 = the first test finds the bug) is the standard measure in test-prioritisation research. Karma finds the first failure about **2× sooner** than alphabetical order and **2.8× sooner** than random.
+
+Injected faults are independent of each other, so there is little to learn beyond the priors; real CI histories contain what the learned features are built for: fragile tests, recurring co-failures. Reproduce with `scripts/prioritization_benchmark.py`.
+
+---
+
 ## Configuration
 
 Optional, in `pyproject.toml`:
@@ -189,6 +240,7 @@ source-roots = [".", "src"]                  # where your top-level packages liv
 exclude = ["examples/*"]                     # never selected as tests (still analysed)
 extend-run-all-on = ["Dockerfile"]           # add to the full-suite triggers (run-all-on replaces them)
 pytest-args = ["-p", "no:cacheprovider"]     # always passed to pytest
+prioritize = true                            # run the likeliest failures first
 
 [tool.karma.mappings]                        # dependencies imports can't express
 "tests/fixtures/*.json" = ["tests/test_loader.py"]
@@ -204,6 +256,7 @@ Patterns without `/` match file names anywhere; patterns with `/` match the path
 | `karma run` | Select affected tests and run them with pytest |
 | `karma select` | Print the selection: `--format text` (default, space-separated), `lines`, or `json` |
 | `karma graph` | Print the dependency graph: `--format json`, `dot` (Graphviz), or `mermaid` |
+| `karma history` | Most-failing, flaky and slowest tests from the recorded history; `--import` JUnit reports |
 
 **What counts as changed** (`run` and `select`):
 
@@ -212,7 +265,7 @@ Patterns without `/` match file names anywhere; patterns with `/` match the path
 - `--files PATH…` to skip git entirely
 - `--all` to select everything
 
-**Other options:** `--explain`, `--ci` (GitHub outputs, summary and annotations), `--repo DIR`, `--python EXE`, `--jobs N`, `--no-cache`, `--on-git-error {fail,run-all}`, `-v`/`-q`.
+**Other options:** `--explain`, `--prioritize`, `--no-history` (run), `--ci` (GitHub outputs, summary and annotations), `--repo DIR`, `--python EXE`, `--jobs N`, `--no-cache`, `--on-git-error {fail,run-all}`, `-v`/`-q`.
 
 **Exit codes:**
 
@@ -231,8 +284,8 @@ Patterns without `/` match file names anywhere; patterns with `/` match the path
 | 1 | Git diff & AST dependency analysis | ✅ |
 | 2 | GitHub Actions integration | ✅ |
 | 3.0 | Hardening: merge-base diffs, conftest/safety-net selection, explainability, per-test reporting, incremental parallel cache | ✅ |
-| 3 | ML prediction layer: rank tests by failure likelihood, using the per-test results Karma now records | 📅 |
-| 4 | Flaky-test registry: quarantine and track unreliable tests | 📅 |
+| 3 | ML prediction layer: predict failures from local history and run the likeliest first (`--prioritize`, `karma history`) | ✅ |
+| 4 | Flaky-test registry: quarantine and track unreliable tests. Flaky candidates are already detected in `karma history` | 🚧 |
 | 5 | LLM copilot: semantic test mapping, failure diagnosis | 📅 |
 
 ## Contributing

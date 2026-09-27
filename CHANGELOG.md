@@ -4,6 +4,30 @@ All notable changes to Karma are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.1.0] - 2026-09-27
+
+Phase 3 of the roadmap: the prediction layer. Karma now learns which tests are likely
+to fail and can run them first. It still never skips a test because of a prediction.
+
+### Added
+- Test history: every `karma run` records each test file's outcome, duration and
+  distance from the change in `.karma_cache/history.jsonl`. Opt out with
+  `--no-history`.
+- `--prioritize` (or `prioritize = true` in `[tool.karma]`): orders the selected tests
+  by predicted risk of failure, so failures surface first (fail fast with `-- -x`).
+  - The model is a logistic regression over seven explainable features. It trains
+    online on the local history with no look-ahead, and is regularised towards priors
+    so it orders sensibly from the first run.
+  - Pure Python; no new dependencies.
+- Risk explanations in `--explain`, `select --format json`, and a Risk column in the
+  GitHub job summary, e.g. "risk 64%: failed before when app/pay.py changed".
+- `karma history`: most-failing tests, flaky candidates and slowest tests
+  (`--format json` for tooling). `--import` seeds the history from JUnit XML reports.
+- GitHub Action: `cache` input (default on) persists `.karma_cache/` between runs with
+  `actions/cache`; `prioritize` input.
+- `scripts/prioritization_benchmark.py` measures how early an ordering finds real
+  failures (APFD).
+
 ## [3.0.0] - 2026-09-27
 
 A correctness and robustness overhaul. Several bugs caused Karma to skip tests that

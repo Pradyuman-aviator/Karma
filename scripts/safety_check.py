@@ -102,15 +102,18 @@ class Project:
                 return prefix + path
         return path
 
-    def karma_selection(self, module: str) -> tuple[frozenset[str], int]:
-        proc = subprocess.run(
+    def karma_json(self, module: str) -> str:
+        """``karma select --format json`` for a change to ``module``."""
+        return subprocess.run(
             [self.python, "-m", "karma", "-q", "select", "--files", module, "--format", "json"],
             cwd=self.root,
             capture_output=True,
             text=True,
             check=True,
-        )
-        data = json.loads(proc.stdout)
+        ).stdout
+
+    def karma_selection(self, module: str) -> tuple[frozenset[str], int]:
+        data = json.loads(self.karma_json(module))
         return frozenset(data["tests"]), int(data["total"])
 
 
