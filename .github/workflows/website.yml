@@ -1,0 +1,52 @@
+name: Website
+
+# Publishes docs/ (the page, its social preview image and .nojekyll) to the gh-pages
+# branch, which GitHub Pages serves at https://pradyuman-aviator.github.io/Karma/.
+# Every run adds one commit on top of the previous one, so the branch never needs a
+# force push.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - docs/**
+      - .github/workflows/website.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: website
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    name: Publish to GitHub Pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - name: Check the page matches the source
+        run: python scripts/build_site.py --check
+      - name: Commit docs/ to gh-pages
+        run: |
+          git fetch --no-tags --depth=1 origin +refs/heads/gh-pages:refs/remotes/origin/gh-pages || true
+          tree=$(git rev-parse "HEAD:docs")
+          parent=$(git rev-parse -q --verify refs/remotes/origin/gh-pages || true)
+          if [ -n "$parent" ] && [ "$(git rev-parse "$parent^{tree}")" = "$tree" ]; then
+            echo "The published site is already up to date."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          message="Publish website from main@${GITHUB_SHA::7}"
+          if [ -n "$parent" ]; then
+            commit=$(git commit-tree "$tree" -p "$parent" -m "$message")
+          else
+            commit=$(git commit-tree "$tree" -m "$message")
+          fi
+          git push origin "$commit:refs/heads/gh-pages"
+          echo "Published $commit: https://pradyuman-aviator.github.io/Karma/" >> "$GITHUB_STEP_SUMMARY"

@@ -7,7 +7,9 @@ All notable changes to Karma are documented here. The format follows
 ## [Unreleased]
 
 ### Added
-- Website (`docs/index.html`, ready for GitHub Pages):
+- Website, live at https://pradyuman-aviator.github.io/Karma/ (`docs/index.html`,
+  published to the `gh-pages` branch by the new Website workflow whenever it changes on
+  `main`, after checking it matches the source):
   - the pitch, with an animated dependency-graph trace and an example run
   - the story of why Karma exists
   - a playground on starlette's real dependency graph: click files to change them
@@ -22,6 +24,7 @@ All notable changes to Karma are documented here. The format follows
   - setup for GitHub Actions, GitLab CI, Jenkins, CircleCI and pre-commit
   - the Action and configuration reference
   - pitch mode: a ten-slide walkthrough for presenting (arrow keys, full screen)
+  - a social preview card (`docs/og.png`) and icon, so shared links show the pitch
 
   Commands, Action inputs/outputs, configuration keys and the risk model's weights
   are generated from the source by `scripts/build_site.py`, which also embeds the
