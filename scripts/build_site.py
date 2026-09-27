@@ -24,9 +24,11 @@ sys.path.insert(0, str(ROOT))
 from karma import __version__  # noqa: E402
 from karma.cli import build_parser  # noqa: E402
 from karma.config import _KNOWN_KEYS  # noqa: E402
+from karma.risk import FEATURES, PRIOR, RECENCY  # noqa: E402
 
 PAGE = ROOT / "docs" / "index.html"
 BENCHMARKS = ROOT / "docs" / "benchmarks.json"
+SAMPLES = ROOT / "docs" / "samples.json"
 START = '<script id="karma-data" type="application/json">'
 END = "</script>"
 
@@ -213,6 +215,10 @@ def render_data() -> str:
         "action": action_reference(),
         "config": config_reference(),
         "benchmarks": json.loads(BENCHMARKS.read_text(encoding="utf-8")),
+        # The risk model's prior weights, so the page's risk demo computes what Karma does.
+        "risk": {"features": list(FEATURES), "prior": dict(PRIOR), "recency": RECENCY},
+        # Dependency graphs (`karma graph --format json`) for the playground.
+        "samples": json.loads(SAMPLES.read_text(encoding="utf-8")),
     }
     # `</` could end the <script> element early; JSON allows the escaped form.
     return json.dumps(data, ensure_ascii=False, indent=1).replace("</", "<\\/")

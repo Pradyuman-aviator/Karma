@@ -1,0 +1,626 @@
+{
+ "billing": {
+  "edges": {
+   "auth/session.py": [],
+   "billing/__init__.py": [],
+   "billing/invoice.py": [
+    "billing/tax.py"
+   ],
+   "billing/tax.py": [],
+   "tests/test_billing_api.py": [
+    "billing/invoice.py"
+   ],
+   "tests/test_invoice.py": [
+    "billing/invoice.py"
+   ],
+   "tests/test_login.py": [
+    "auth/session.py"
+   ],
+   "tests/test_tax.py": [
+    "billing/tax.py"
+   ],
+   "tests/test_theme.py": [
+    "ui/theme.py"
+   ],
+   "ui/theme.py": []
+  },
+  "real": false,
+  "suggest": "billing/tax.py",
+  "title": "Billing service (example)"
+ },
+ "starlette": {
+  "commit": "9774b08",
+  "edges": {
+   "starlette/__init__.py": [],
+   "starlette/_exception_handler.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/concurrency.py",
+    "starlette/exceptions.py",
+    "starlette/requests.py",
+    "starlette/types.py",
+    "starlette/websockets.py"
+   ],
+   "starlette/_utils.py": [
+    "starlette/__init__.py",
+    "starlette/types.py"
+   ],
+   "starlette/applications.py": [
+    "starlette/__init__.py",
+    "starlette/datastructures.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/body_limit.py",
+    "starlette/middleware/errors.py",
+    "starlette/middleware/exceptions.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/types.py"
+   ],
+   "starlette/authentication.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/exceptions.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/websockets.py"
+   ],
+   "starlette/background.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/concurrency.py"
+   ],
+   "starlette/concurrency.py": [
+    "starlette/__init__.py",
+    "starlette/exceptions.py"
+   ],
+   "starlette/config.py": [],
+   "starlette/convertors.py": [],
+   "starlette/datastructures.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/concurrency.py",
+    "starlette/types.py"
+   ],
+   "starlette/endpoints.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/concurrency.py",
+    "starlette/exceptions.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/status.py",
+    "starlette/types.py",
+    "starlette/websockets.py"
+   ],
+   "starlette/exceptions.py": [],
+   "starlette/formparsers.py": [
+    "starlette/__init__.py",
+    "starlette/datastructures.py"
+   ],
+   "starlette/middleware/__init__.py": [],
+   "starlette/middleware/authentication.py": [
+    "starlette/__init__.py",
+    "starlette/authentication.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/types.py"
+   ],
+   "starlette/middleware/base.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/types.py"
+   ],
+   "starlette/middleware/body_limit.py": [
+    "starlette/__init__.py",
+    "starlette/datastructures.py",
+    "starlette/exceptions.py",
+    "starlette/responses.py",
+    "starlette/types.py"
+   ],
+   "starlette/middleware/cors.py": [
+    "starlette/__init__.py",
+    "starlette/datastructures.py",
+    "starlette/responses.py",
+    "starlette/types.py"
+   ],
+   "starlette/middleware/errors.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/concurrency.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/types.py"
+   ],
+   "starlette/middleware/exceptions.py": [
+    "starlette/__init__.py",
+    "starlette/_exception_handler.py",
+    "starlette/exceptions.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/types.py",
+    "starlette/websockets.py"
+   ],
+   "starlette/middleware/gzip.py": [
+    "starlette/__init__.py",
+    "starlette/datastructures.py",
+    "starlette/types.py"
+   ],
+   "starlette/middleware/httpsredirect.py": [
+    "starlette/__init__.py",
+    "starlette/datastructures.py",
+    "starlette/responses.py",
+    "starlette/types.py"
+   ],
+   "starlette/middleware/opentelemetry.py": [
+    "starlette/__init__.py",
+    "starlette/datastructures.py",
+    "starlette/routing.py",
+    "starlette/types.py"
+   ],
+   "starlette/middleware/sessions.py": [
+    "starlette/__init__.py",
+    "starlette/datastructures.py",
+    "starlette/requests.py",
+    "starlette/types.py"
+   ],
+   "starlette/middleware/trustedhost.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/datastructures.py",
+    "starlette/responses.py",
+    "starlette/types.py"
+   ],
+   "starlette/middleware/wsgi.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/exceptions.py",
+    "starlette/types.py"
+   ],
+   "starlette/requests.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/applications.py",
+    "starlette/datastructures.py",
+    "starlette/exceptions.py",
+    "starlette/formparsers.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/sessions.py",
+    "starlette/routing.py",
+    "starlette/types.py"
+   ],
+   "starlette/responses.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/background.py",
+    "starlette/concurrency.py",
+    "starlette/datastructures.py",
+    "starlette/requests.py",
+    "starlette/types.py"
+   ],
+   "starlette/routing.py": [
+    "starlette/__init__.py",
+    "starlette/_exception_handler.py",
+    "starlette/_utils.py",
+    "starlette/concurrency.py",
+    "starlette/convertors.py",
+    "starlette/datastructures.py",
+    "starlette/exceptions.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/body_limit.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/types.py",
+    "starlette/websockets.py"
+   ],
+   "starlette/schemas.py": [
+    "starlette/__init__.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py"
+   ],
+   "starlette/staticfiles.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/datastructures.py",
+    "starlette/exceptions.py",
+    "starlette/responses.py",
+    "starlette/types.py",
+    "starlette/websockets.py"
+   ],
+   "starlette/status.py": [
+    "starlette/__init__.py",
+    "starlette/exceptions.py"
+   ],
+   "starlette/templating.py": [
+    "starlette/__init__.py",
+    "starlette/background.py",
+    "starlette/datastructures.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/types.py"
+   ],
+   "starlette/testclient.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/exceptions.py",
+    "starlette/types.py",
+    "starlette/websockets.py"
+   ],
+   "starlette/types.py": [
+    "starlette/__init__.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/websockets.py"
+   ],
+   "starlette/websockets.py": [
+    "starlette/__init__.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/types.py"
+   ],
+   "tests/__init__.py": [],
+   "tests/conftest.py": [
+    "starlette/__init__.py",
+    "starlette/testclient.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/middleware/__init__.py": [],
+   "tests/middleware/test_base.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/background.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/base.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/testclient.py",
+    "starlette/types.py",
+    "starlette/websockets.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/middleware/test_body_limit.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/exceptions.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/base.py",
+    "starlette/middleware/body_limit.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/types.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/middleware/test_cors.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/cors.py",
+    "starlette/middleware/gzip.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/middleware/test_errors.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/background.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/errors.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/types.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/middleware/test_gzip.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/gzip.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/types.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/middleware/test_https_redirect.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/httpsredirect.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/types.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/middleware/test_middleware.py": [
+    "starlette/__init__.py",
+    "starlette/middleware/__init__.py",
+    "starlette/types.py"
+   ],
+   "tests/middleware/test_opentelemetry.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/opentelemetry.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/testclient.py",
+    "starlette/types.py",
+    "starlette/websockets.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/middleware/test_session.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/sessions.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/testclient.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/middleware/test_trusted_host.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/trustedhost.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/middleware/test_wsgi.py": [
+    "starlette/__init__.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/wsgi.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test__utils.py": [
+    "starlette/__init__.py",
+    "starlette/_utils.py",
+    "starlette/types.py"
+   ],
+   "tests/test_applications.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/endpoints.py",
+    "starlette/exceptions.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/trustedhost.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/staticfiles.py",
+    "starlette/status.py",
+    "starlette/testclient.py",
+    "starlette/types.py",
+    "starlette/websockets.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_authentication.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/authentication.py",
+    "starlette/endpoints.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/authentication.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/websockets.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_background.py": [
+    "starlette/__init__.py",
+    "starlette/background.py",
+    "starlette/responses.py",
+    "starlette/types.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_concurrency.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/concurrency.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_config.py": [
+    "starlette/__init__.py",
+    "starlette/config.py",
+    "starlette/datastructures.py"
+   ],
+   "tests/test_convertors.py": [
+    "starlette/__init__.py",
+    "starlette/convertors.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_datastructures.py": [
+    "starlette/__init__.py",
+    "starlette/datastructures.py"
+   ],
+   "tests/test_endpoints.py": [
+    "starlette/__init__.py",
+    "starlette/endpoints.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/status.py",
+    "starlette/testclient.py",
+    "starlette/types.py",
+    "starlette/websockets.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_exceptions.py": [
+    "starlette/__init__.py",
+    "starlette/_exception_handler.py",
+    "starlette/exceptions.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/exceptions.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/testclient.py",
+    "starlette/types.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_formparsers.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/datastructures.py",
+    "starlette/formparsers.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/types.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_requests.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/datastructures.py",
+    "starlette/middleware/__init__.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/types.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_responses.py": [
+    "starlette/__init__.py",
+    "starlette/background.py",
+    "starlette/datastructures.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/status.py",
+    "starlette/testclient.py",
+    "starlette/types.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_routing.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/exceptions.py",
+    "starlette/middleware/__init__.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/testclient.py",
+    "starlette/types.py",
+    "starlette/websockets.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_schemas.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/endpoints.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/schemas.py",
+    "starlette/websockets.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_staticfiles.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/exceptions.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/base.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/staticfiles.py",
+    "starlette/websockets.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_status.py": [
+    "starlette/__init__.py",
+    "starlette/exceptions.py",
+    "starlette/status.py"
+   ],
+   "tests/test_templates.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/middleware/__init__.py",
+    "starlette/middleware/base.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/templating.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_testclient.py": [
+    "starlette/__init__.py",
+    "starlette/applications.py",
+    "starlette/exceptions.py",
+    "starlette/middleware/__init__.py",
+    "starlette/requests.py",
+    "starlette/responses.py",
+    "starlette/routing.py",
+    "starlette/testclient.py",
+    "starlette/types.py",
+    "starlette/websockets.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/test_websockets.py": [
+    "starlette/__init__.py",
+    "starlette/responses.py",
+    "starlette/status.py",
+    "starlette/testclient.py",
+    "starlette/types.py",
+    "starlette/websockets.py",
+    "tests/__init__.py",
+    "tests/types.py"
+   ],
+   "tests/types.py": [
+    "starlette/__init__.py",
+    "starlette/testclient.py",
+    "starlette/types.py"
+   ]
+  },
+  "real": true,
+  "suggest": "starlette/middleware/cors.py",
+  "title": "encode/starlette"
+ }
+}

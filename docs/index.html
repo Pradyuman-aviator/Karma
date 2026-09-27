@@ -189,7 +189,7 @@ p { margin: 0; }
 }
 .icon-btn:hover { color: var(--ink); border-color: var(--line-strong); }
 .icon-btn svg { width: 18px; height: 18px; }
-@media (max-width: 860px) {
+@media (max-width: 1100px) {
   .site-header .wrap { height: auto; flex-wrap: wrap; padding-block: 10px; gap: 10px; }
   .nav { order: 3; width: 100%; margin-left: 0; }
   .header-actions { margin-left: auto; }
@@ -243,14 +243,14 @@ p { margin: 0; }
 }
 @keyframes beam { from { stroke-dashoffset: 14; } to { stroke-dashoffset: -100; } }
 .g-node rect { fill: var(--surface); stroke: var(--line-strong); stroke-width: 1; }
-.g-node text { font: 500 11.5px var(--mono); fill: var(--ink-2); }
+.g-node text { font: 500 11px var(--mono); fill: var(--ink-2); }
 .g-node.changed rect { fill: var(--accent-wash); stroke: var(--accent); stroke-width: 1.5; }
 .g-node.changed text { fill: var(--ink); }
 .g-node.hit rect { stroke: var(--ink-2); }
 .g-node.hit text { fill: var(--ink); }
 .g-node.test.hit rect { stroke: var(--pass); stroke-width: 1.5; }
 .g-node.cold { opacity: 0.45; }
-.g-tag { font: 600 9.5px var(--mono); letter-spacing: 0.06em; }
+.g-tag { font: 500 9.5px var(--mono); letter-spacing: 0.06em; }
 .g-col-label { font: 500 10px var(--mono); fill: var(--muted); letter-spacing: 0.1em; text-transform: uppercase; }
 .graph-legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: 12.5px; color: var(--ink-2); padding: 8px 2px 2px; }
 .graph-legend span { display: inline-flex; align-items: center; gap: 6px; }
@@ -489,6 +489,10 @@ td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .code-card pre { margin: 0; padding: 16px; font: 12.5px/1.65 var(--mono); overflow-x: auto; }
 .code-card .k { color: #8ccbda; } .code-card .s { color: #f5c98f; } .code-card .c { color: var(--term-dim); }
 .stack { display: grid; gap: 18px; }
+/* Grids without a column template size to their widest child; keep wide tables and code inside the column. */
+.stack, .play-panel, .gh-summary, .case, .gauge { grid-template-columns: minmax(0, 1fr); }
+p code, li code, summary code { overflow-wrap: anywhere; }
+.gh-summary table { display: block; overflow-x: auto; }
 .tbl-title { font: 600 15px var(--sans); margin-bottom: 8px; }
 td code { white-space: nowrap; }
 
@@ -509,7 +513,162 @@ td code { white-space: nowrap; }
 footer { border-top: 1px solid var(--line); padding-block: 40px 56px; color: var(--muted); font-size: 14px; }
 footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 
-@media (max-width: 640px) { .section { padding-block: 64px; } .hero { padding-block: 44px 56px; } .spot, .chart-card, .cmd-panel { padding: 18px; } }
+/* ------------------------------------------------------------------ story */
+.story { display: grid; grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr); gap: 56px; align-items: start; }
+@media (max-width: 960px) { .story { grid-template-columns: minmax(0, 1fr); gap: 28px; } }
+.story-quote { font: 800 clamp(1.9rem, 1.2rem + 2.6vw, 3.1rem)/1.05 var(--display); letter-spacing: -0.025em; }
+.story-quote em { font-style: normal; color: var(--accent-text); }
+.story-body { display: grid; gap: 16px; font-size: 1.06rem; color: var(--ink-2); max-width: 64ch; }
+.story-body p:first-child { color: var(--ink); font-weight: 500; }
+.story-sign { display: flex; align-items: center; gap: 12px; margin-top: 6px; color: var(--ink); }
+.story-sign .avatar { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font: 800 16px var(--display); background: var(--accent-wash); color: var(--accent-text); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
+.story-timeline { display: grid; gap: 10px; margin-top: 26px; }
+.story-timeline li { display: grid; grid-template-columns: 22px 1fr; gap: 10px; align-items: start; font-size: 14.5px; color: var(--ink-2); }
+.story-timeline li::before { content: ""; width: 10px; height: 10px; margin: 7px 0 0 6px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-wash); }
+
+/* ------------------------------------------------------------------ meta card */
+.meta-card { margin-top: 18px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; background: var(--surface); }
+@media (max-width: 860px) { .meta-card { grid-template-columns: minmax(0, 1fr); } }
+.meta-card > div { padding: 22px; display: grid; gap: 10px; align-content: start; }
+.meta-card > div + div { border-left: 1px solid var(--line); background: color-mix(in srgb, var(--accent-wash) 40%, transparent); }
+@media (max-width: 860px) { .meta-card > div + div { border-left: 0; border-top: 1px solid var(--line); } }
+.meta-card ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; color: var(--ink-2); font-size: 14.5px; }
+.cite { font-size: 12.5px; color: var(--muted); }
+
+/* ------------------------------------------------------------------ playground */
+.play { display: grid; grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); gap: 16px; align-items: start; }
+@media (max-width: 1000px) { .play { grid-template-columns: minmax(0, 1fr); } }
+.play-toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+.play-toolbar select, .play-toolbar input[type="search"] { font: 13.5px var(--sans); padding: 9px 10px; border-radius: 9px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); }
+.play-toolbar input[type="search"] { flex: 1; min-width: 180px; }
+.graph-box { position: relative; background: var(--surface); border: 1px solid var(--line); border-radius: 18px; overflow: hidden; }
+.graph-box svg { display: block; width: 100%; height: 560px; touch-action: none; cursor: grab; background-image: radial-gradient(var(--line) 1px, transparent 1.2px); background-size: 20px 20px; }
+.graph-box svg.dragging { cursor: grabbing; }
+@media (max-width: 640px) { .graph-box svg { height: 420px; } }
+.zoom { position: absolute; right: 12px; top: 12px; display: grid; gap: 6px; }
+.zoom button { width: 34px; height: 34px; border-radius: 9px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); font: 600 16px var(--sans); cursor: pointer; }
+.graph-hint { position: absolute; left: 12px; bottom: 10px; font-size: 12px; color: var(--muted); background: color-mix(in srgb, var(--surface) 85%, transparent); padding: 4px 8px; border-radius: 6px; }
+.gx-link { stroke: var(--line-strong); stroke-width: 1; opacity: 0.55; }
+.gx-link.lit { stroke: var(--accent); stroke-width: 2; opacity: 0.95; }
+.gx-node circle { stroke: var(--surface); stroke-width: 2; cursor: pointer; transition: r 0.2s ease, opacity 0.2s ease; }
+.gx-node.src circle { fill: var(--chart-gray); }
+.gx-node.test circle { fill: var(--chart-sel); }
+.gx-node.changed circle { fill: var(--accent); }
+.gx-node.hit.test circle { fill: var(--pass); }
+.gx-node.hit.src circle { fill: var(--ink-2); }
+.gx-node text { font: 500 10.5px var(--mono); fill: var(--ink-2); pointer-events: none; paint-order: stroke; stroke: var(--surface); stroke-width: 3px; }
+.gx-dim .gx-node:not(.hit):not(.changed) { opacity: 0.28; }
+.gx-dim .gx-link:not(.lit) { opacity: 0.12; }
+.gx-node:focus { outline: none; }
+.gx-node:focus circle { stroke: var(--focus); stroke-width: 3; }
+.play-panel { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 20px; display: grid; gap: 16px; align-content: start; max-height: 640px; overflow: auto; }
+@media (max-width: 1000px) { .play-panel { max-height: none; } }
+.changed-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.changed-chips button { font: 500 12px var(--mono); border: 1px solid color-mix(in srgb, var(--accent) 50%, var(--line)); background: var(--accent-wash); color: var(--ink); border-radius: 999px; padding: 5px 9px; cursor: pointer; }
+.sel-summary { font: 600 1.25rem/1.25 var(--sans); }
+.sel-summary small { display: block; font: 400 13px var(--sans); color: var(--muted); margin-top: 3px; }
+.chains { margin: 0; background: var(--term-bg); color: var(--term-ink); border-radius: 12px; padding: 12px 14px; font: 12px/1.6 var(--mono); overflow-x: auto; white-space: pre; max-height: 260px; }
+.chains .acc { color: var(--term-accent); } .chains .dim { color: var(--term-dim); }
+.hubs { display: grid; gap: 7px; }
+.hub { display: grid; grid-template-columns: minmax(0, 1fr) 44px; gap: 4px 10px; align-items: center; border: 0; background: none; padding: 0; cursor: pointer; text-align: left; color: var(--ink-2); font: 12px var(--mono); }
+.hub:hover span:first-child { color: var(--ink); text-decoration: underline; }
+.hub .num { text-align: right; font-variant-numeric: tabular-nums; color: var(--ink); }
+.hub .bar { grid-column: 1 / -1; height: 5px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.hub .bar i { display: block; height: 100%; background: var(--chart-sel); border-radius: 0 3px 3px 0; }
+.paste-box { display: grid; gap: 8px; }
+.paste-box textarea { width: 100%; min-height: 120px; font: 12px var(--mono); padding: 10px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--bg); color: var(--ink); resize: vertical; }
+.error-text { color: var(--fail); font-size: 13px; }
+
+/* ------------------------------------------------------------------ risk demo */
+.risk-demo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; }
+@media (max-width: 960px) { .risk-demo { grid-template-columns: minmax(0, 1fr); } }
+.slider { display: grid; gap: 6px; }
+.slider-top { display: flex; justify-content: space-between; gap: 12px; font-size: 14px; }
+.slider-top output { font: 500 13px var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.slider small { color: var(--muted); font-size: 12.5px; }
+input[type="range"] { width: 100%; accent-color: var(--accent); }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; font-size: 14px; }
+.gauge { display: grid; gap: 14px; justify-items: start; }
+.gauge-num { font: 600 4rem/1 var(--sans); letter-spacing: -0.04em; }
+.gauge-track { width: 100%; height: 10px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
+.gauge-track i { display: block; height: 100%; border-radius: 0 6px 6px 0; background: var(--chart-accent); transition: width 0.25s ease; }
+.contrib { display: grid; gap: 7px; width: 100%; }
+.contrib-row { display: grid; grid-template-columns: minmax(0, 150px) minmax(0, 1fr) 52px; gap: 10px; align-items: center; font-size: 13px; color: var(--ink-2); }
+.contrib-row .track { height: 8px; border-radius: 4px; background: var(--surface-2); overflow: hidden; }
+.contrib-row .track i { display: block; height: 100%; border-radius: 0 4px 4px 0; background: var(--chart-accent); transition: width 0.25s ease; }
+.contrib-row .num { text-align: right; font: 12.5px var(--mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+.karma-says { font: 12.5px/1.5 var(--mono); background: var(--term-bg); color: var(--term-ink); border-radius: 10px; padding: 10px 12px; width: 100%; overflow-x: auto; white-space: pre-wrap; }
+.karma-says .acc { color: var(--term-accent); }
+
+/* ------------------------------------------------------------------ ROI */
+.roi { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr); gap: 16px; }
+@media (max-width: 960px) { .roi { grid-template-columns: minmax(0, 1fr); } }
+.field { display: grid; gap: 6px; }
+.field label { font-size: 14px; font-weight: 500; }
+.field input[type="number"] { font: 15px var(--mono); padding: 10px 12px; border-radius: 10px; border: 1px solid var(--line-strong); background: var(--bg); color: var(--ink); width: 100%; }
+.field small { color: var(--muted); font-size: 12.5px; }
+.presets { display: flex; flex-wrap: wrap; gap: 6px; }
+.presets button { font: 500 12.5px var(--sans); padding: 6px 9px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.presets button:hover { border-color: var(--line-strong); color: var(--ink); }
+.roi-out { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.roi-out .kpi-value { font-size: 2.2rem; }
+.roi-out .hero-kpi { grid-column: 1 / -1; background: var(--ink); border-color: var(--ink); }
+.roi-out .hero-kpi .kpi-label, .roi-out .hero-kpi .kpi-note { color: color-mix(in srgb, var(--bg) 70%, transparent); }
+.roi-out .hero-kpi .kpi-value { color: var(--bg); font-size: 3rem; }
+
+/* ------------------------------------------------------------------ PR summary + flaky dashboard */
+.gh-summary { border: 1px solid var(--line); border-radius: 14px; background: var(--surface); padding: 20px 22px; display: grid; gap: 12px; font-size: 14px; color: var(--ink-2); }
+.gh-summary h4 { margin: 0; font: 600 1.25rem/1.3 var(--sans); color: var(--ink); padding-bottom: 8px; border-bottom: 1px solid var(--line); }
+.gh-summary table { font-size: 13px; }
+.gh-summary th, .gh-summary td { padding: 7px 10px; border: 1px solid var(--line); }
+.gh-summary details { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; }
+.gh-summary summary { cursor: pointer; font-size: 13.5px; }
+.gh-summary pre { margin: 8px 0 2px; background: var(--surface-2); border-radius: 6px; padding: 10px; font: 12px/1.5 var(--mono); overflow-x: auto; color: var(--ink); }
+.gh-summary h5 { margin: 6px 0 0; font: 600 1rem var(--sans); color: var(--ink); }
+.runs { display: inline-flex; gap: 4px; }
+.runs i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.runs .p { background: var(--pass); } .runs .f { background: var(--fail); } .runs .k { background: var(--flaky); }
+.flaky-table td { vertical-align: middle; }
+.flaky-why { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 7px; color: var(--muted); font-size: 12.5px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; font: 600 12px/1 var(--sans); padding: 5px 8px; border-radius: 999px; border: 1px solid var(--line); white-space: nowrap; }
+.pill.release { color: var(--pass); border-color: color-mix(in srgb, var(--pass) 45%, var(--line)); }
+.pill.hold { color: var(--flaky); border-color: color-mix(in srgb, var(--flaky) 45%, var(--line)); }
+
+/* ------------------------------------------------------------------ case studies */
+.cases { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; margin-top: 16px; }
+@media (max-width: 960px) { .cases { grid-template-columns: minmax(0, 1fr); } }
+.case { border: 1px solid var(--line); border-radius: 18px; background: var(--surface); padding: 24px; display: grid; gap: 14px; align-content: start; }
+.case h3 { font: 800 1.5rem/1.15 var(--display); letter-spacing: -0.015em; }
+.case p { color: var(--ink-2); font-size: 14.5px; }
+.case .lesson { border-left: 3px solid var(--accent); padding-left: 12px; color: var(--ink); font-weight: 500; }
+
+/* ------------------------------------------------------------------ setup tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
+.tabs button { font: 500 13.5px var(--sans); padding: 8px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.tab-note { font-size: 13.5px; color: var(--ink-2); margin-top: 10px; }
+
+/* ------------------------------------------------------------------ pitch mode */
+.pitch { position: fixed; inset: 0; z-index: 50; background: var(--bg); display: grid; grid-template-rows: auto 1fr auto; padding: calc(env(safe-area-inset-top, 0px) + 16px) 20px calc(env(safe-area-inset-bottom, 0px) + 16px); }
+.pitch[hidden] { display: none; }
+.pitch-top { display: flex; justify-content: space-between; align-items: center; gap: 12px; max-width: 1180px; width: 100%; margin-inline: auto; }
+.pitch-stage { display: grid; place-items: center; overflow: auto; }
+.slide { max-width: 1060px; width: 100%; display: grid; gap: 22px; padding-block: 20px; }
+.slide .eyebrow { font-size: 13px; }
+.slide h2 { font-size: clamp(2.2rem, 1.2rem + 4vw, 4.6rem); line-height: 1; letter-spacing: -0.03em; }
+.slide .lede { font-size: clamp(1.05rem, 0.9rem + 0.6vw, 1.4rem); max-width: 60ch; }
+.slide-figures { display: flex; flex-wrap: wrap; gap: 28px; }
+.slide-figures div { display: grid; gap: 4px; }
+.slide-figures b { font: 600 clamp(2.4rem, 1.6rem + 3vw, 4.2rem)/1 var(--sans); letter-spacing: -0.03em; }
+.slide-figures span { color: var(--muted); font-size: 15px; }
+.slide ol, .slide ul { margin: 0; padding-left: 22px; display: grid; gap: 10px; font-size: clamp(1rem, 0.9rem + 0.5vw, 1.3rem); color: var(--ink-2); max-width: 64ch; }
+.pitch-bottom { display: flex; justify-content: space-between; align-items: center; gap: 12px; max-width: 1180px; width: 100%; margin-inline: auto; }
+.pitch-dots { display: flex; gap: 6px; flex-wrap: wrap; }
+.pitch-dots button { width: 9px; height: 9px; border-radius: 50%; border: 0; padding: 0; background: var(--line-strong); cursor: pointer; }
+.pitch-dots button[aria-current="true"] { background: var(--accent); width: 26px; border-radius: 6px; }
+.pitch-progress { position: absolute; left: 0; top: 0; height: 3px; background: var(--accent); transition: width 0.3s ease; }
+
+@media (max-width: 640px) { .section { padding-block: 64px; } .hero { padding-block: 44px 56px; } .spot, .chart-card, .cmd-panel, .case, .play-panel { padding: 18px; } }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
   .g-beam { display: none; }
@@ -530,16 +689,17 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
       <span class="brand-version" id="version">v3</span>
     </a>
     <nav class="nav" aria-label="Sections">
-      <a href="#why">Why</a>
-      <a href="#how">How it works</a>
-      <a href="#features">Features</a>
+      <a href="#story">Story</a>
+      <a href="#playground">Playground</a>
+      <a href="#risk">Risk model</a>
       <a href="#benchmarks">Benchmarks</a>
+      <a href="#roi">Savings</a>
       <a href="#commands">Commands</a>
-      <a href="#action">GitHub Action</a>
+      <a href="#setup">Setup</a>
       <a href="#config">Config</a>
-      <a href="#roadmap">Roadmap</a>
     </nav>
     <div class="header-actions" style="display:flex;gap:8px">
+      <button class="btn" type="button" id="pitch-open" style="padding:9px 12px;font-size:14px;white-space:nowrap">Pitch mode</button>
       <a class="icon-btn" href="https://github.com/Pradyuman-aviator/Karma" aria-label="Karma on GitHub" title="Karma on GitHub">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 19c-4.3 1.4-4.3-2.5-6-3m12 5v-3.5c0-1 .1-1.4-.5-2 2.8-.3 5.5-1.4 5.5-6a4.6 4.6 0 0 0-1.3-3.2 4.2 4.2 0 0 0-.1-3.2s-1.1-.3-3.5 1.3a12.3 12.3 0 0 0-6.2 0C6.5 2.8 5.4 3.1 5.4 3.1a4.2 4.2 0 0 0-.1 3.2A4.6 4.6 0 0 0 4 9.5c0 4.6 2.7 5.7 5.5 6-.6.6-.6 1.2-.5 2V21"/></svg>
       </a>
@@ -608,6 +768,33 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
   </div>
 </section>
 
+<!-- ================================================================ story -->
+<section class="section" id="story">
+  <div class="wrap story">
+    <div>
+      <p class="eyebrow">Why I built Karma</p>
+      <p class="story-quote" style="margin-top:16px">Your change has consequences. <em>Only those consequences need testing.</em></p>
+      <ul class="story-timeline" style="list-style:none;margin:26px 0 0;padding:0">
+        <li>A one-line comment change ran the entire test suite</li>
+        <li>An unrelated flaky test failed it, so it all ran again</li>
+        <li>Karma traced which tests a change can actually affect</li>
+        <li>47 real bugs injected on purpose; not one failing test skipped</li>
+        <li>Then it learned to predict failures and tame flaky tests</li>
+      </ul>
+    </div>
+    <div class="story-body">
+      <p>My philosophy is simple: the more you fuck around, the more you find out.</p>
+      <p>So I was fucking around in open source, contributing wherever I could. One day I opened a pull request that changed a single comment. One line. No code.</p>
+      <p>CI ran the entire test suite. Every test, on every platform, for a change that couldn't possibly break anything. I sat there watching the progress bar, burning compute and patience. Then a flaky test that had nothing to do with me failed, and I had to run it all again.</p>
+      <p>That's when I found out: most CI doesn't know what your change actually touches, so it runs everything, every time.</p>
+      <p>So I kept fucking around. I read the git diff, parsed the imports, and traced which tests could actually be affected. That became Karma: your change has consequences, and only those consequences need testing.</p>
+      <p>Then I found out more. I found out the diff was comparing the wrong commits. I found out CI could pass green while running zero tests. I broke real projects on purpose, 47 times, to prove Karma never skips a failing test. Then I taught it to predict which tests will fail first and to stop flaky tests from breaking builds.</p>
+      <p style="color:var(--ink);font-weight:600">Run only the tests your change can break.</p>
+      <div class="story-sign"><span class="avatar" aria-hidden="true">P</span><span><b>Pradyuman Sharma</b><br><span class="muted" style="font-size:13px">Creator of Karma</span></span></div>
+    </div>
+  </div>
+</section>
+
 <!-- ================================================================ why -->
 <section class="section" id="why">
   <div class="wrap">
@@ -639,6 +826,29 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
         </tbody>
       </table>
     </div>
+
+    <div class="meta-card">
+      <div>
+        <span class="tile-tag">Meta's predictive test selection</span>
+        <h3>Machine learning decides which tests to skip.</h3>
+        <ul>
+          <li>Trained on a large history of test outcomes in Meta's monorepo.</li>
+          <li>Halved the infrastructure cost of testing changes, running about a third of the tests that transitively depend on the modified code.</li>
+          <li>Still reports over 99.9% of faulty changes, and over 95% of individual test failures. The rest are skipped by design.</li>
+        </ul>
+        <p class="cite">Machalica, Samylkin, Porth, Chandra. <a href="https://arxiv.org/abs/1810.05286">Predictive Test Selection</a>, ICSE-SEIP 2019.</p>
+      </div>
+      <div>
+        <span class="tile-tag">Karma</span>
+        <h3>Dependencies decide what runs. ML decides the order.</h3>
+        <ul>
+          <li>Every test that imports the change runs: 0 failing tests missed across 47 injected bugs.</li>
+          <li>Prediction only reorders the selection, so the likeliest failure surfaces first without trading away any test.</li>
+          <li>Works on day one with no history and no data platform, then learns locally from your own runs.</li>
+        </ul>
+        <p class="cite">Same idea at a smaller scale, with a guarantee instead of a probability.</p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -655,6 +865,57 @@ footer .wrap { display: flex; justify-content: space-between; gap: 16px; flex-wr
       <li class="step"><span class="step-num">3</span><h3>Select, safely</h3><p class="muted">Walk reverse dependencies to every affected test. Dependency and config changes run everything; a git failure never passes empty.</p><span class="mono">breadth-first search</span></li>
       <li class="step"><span class="step-num">4</span><h3>Predict and run</h3><p class="muted">Order tests by predicted risk, retry failures to separate flaky from broken, and report straight into the pull request.</p><span class="mono">pytest + JUnit results</span></li>
     </ol>
+  </div>
+</section>
+
+<!-- ================================================================ playground -->
+<section class="section" id="playground">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Playground</p>
+      <h2>Change a file. Watch what it breaks.</h2>
+      <p class="lede">This is starlette's real dependency graph, exported with <code>karma graph</code>. Click any file to mark it changed: Karma's selection runs right here in your browser, with the reason for every test. Paste your own project's graph to explore it the same way; nothing is uploaded.</p>
+    </div>
+    <div class="play-toolbar">
+      <label class="visually-hidden" for="sample-pick">Project</label>
+      <select id="sample-pick"></select>
+      <label class="visually-hidden" for="file-find">Find a file</label>
+      <input id="file-find" type="search" list="file-list" placeholder="Find a file and press Enter to mark it changed" autocomplete="off">
+      <datalist id="file-list"></datalist>
+      <button class="link-btn" type="button" id="play-clear">Clear changes</button>
+    </div>
+    <div class="play">
+      <div class="graph-box">
+        <svg id="gx" role="group" aria-label="Interactive dependency graph"></svg>
+        <div class="zoom">
+          <button type="button" id="zoom-in" aria-label="Zoom in">+</button>
+          <button type="button" id="zoom-out" aria-label="Zoom out">−</button>
+          <button type="button" id="zoom-reset" aria-label="Reset view" style="font-size:12px">fit</button>
+        </div>
+        <span class="graph-hint">Drag to pan · click a file to change it · bigger dot = bigger blast radius</span>
+      </div>
+      <div class="play-panel" aria-live="polite">
+        <div class="legend">
+          <span><i style="background:var(--accent);border-radius:50%"></i>changed</span>
+          <span><i style="background:var(--pass);border-radius:50%"></i>selected test</span>
+          <span><i style="background:var(--ink-2);border-radius:50%"></i>affected module</span>
+          <span><i style="background:var(--chart-sel);border-radius:50%"></i>test</span>
+          <span><i style="background:var(--chart-gray);border-radius:50%"></i>module</span>
+        </div>
+        <div id="play-result"></div>
+        <div>
+          <p class="tbl-title" style="margin-bottom:10px">Biggest blast radius</p>
+          <div class="hubs" id="hubs"></div>
+        </div>
+        <details class="paste-box">
+          <summary style="cursor:pointer;font-weight:600">Explore your own project</summary>
+          <p class="muted" style="font-size:13.5px">Run <code>karma graph --format json</code> in your repository and paste the output here.</p>
+          <label class="visually-hidden" for="paste-graph">Dependency graph JSON</label>
+          <textarea id="paste-graph" spellcheck="false" placeholder='{"app/core.py": ["app/util.py"], "tests/test_core.py": ["app/core.py"]}'></textarea>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><button class="btn" type="button" id="paste-load" style="padding:9px 12px;font-size:14px">Load my graph</button><span class="error-text" id="paste-error"></span></div>
+        </details>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -738,6 +999,90 @@ quarantine tests/test_net.py::test_timeout</pre>
   </div>
 </section>
 
+<!-- ================================================================ risk demo -->
+<section class="section" id="risk">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Inside the risk model</p>
+      <h2>Move the sliders. See how Karma thinks.</h2>
+      <p class="lede">This is Karma's actual model: the same seven features and the same starting weights, read from its source. With history, the weights adapt to your project; these are where every project starts.</p>
+    </div>
+    <div class="risk-demo">
+      <div class="chart-card" style="gap:18px">
+        <div class="toggle-row"><span>The test file itself changed</span><label class="switch"><input type="checkbox" id="rk-changed"><span></span></label></div>
+        <div class="slider"><div class="slider-top"><label for="rk-distance">Imports between the test and the change</label><output id="rk-distance-out"></output></div><input type="range" id="rk-distance" min="1" max="6" step="1" value="2"><small>1 means the test imports the changed file directly.</small></div>
+        <div class="slider"><div class="slider-top"><label for="rk-rate">Recent failure rate</label><output id="rk-rate-out"></output></div><input type="range" id="rk-rate" min="0" max="100" step="5" value="10"></div>
+        <div class="slider"><div class="slider-top"><label for="rk-since">Runs since its last failure</label><output id="rk-since-out"></output></div><input type="range" id="rk-since" min="0" max="11" step="1" value="11"><small>At the far right: it has never failed.</small></div>
+        <div class="slider"><div class="slider-top"><label for="rk-co">Failed before when these same files changed</label><output id="rk-co-out"></output></div><input type="range" id="rk-co" min="0" max="100" step="5" value="0"></div>
+        <div class="slider"><div class="slider-top"><label for="rk-flaky">Flakiness: how often its result flips</label><output id="rk-flaky-out"></output></div><input type="range" id="rk-flaky" min="0" max="100" step="5" value="0"></div>
+        <div class="toggle-row"><span>New test, never run before</span><label class="switch"><input type="checkbox" id="rk-new"><span></span></label></div>
+      </div>
+      <div class="chart-card gauge">
+        <span class="kpi-label">Predicted risk of failing</span>
+        <span class="gauge-num" id="rk-prob">0%</span>
+        <div class="gauge-track" aria-hidden="true"><i id="rk-bar"></i></div>
+        <p class="tbl-title" style="margin:6px 0 0">What pushes the risk up</p>
+        <div class="contrib" id="rk-contrib"></div>
+        <div class="karma-says" id="rk-says"></div>
+        <p class="muted" style="font-size:12.5px">Log-odds contributions; the model adds them to a base of <span id="rk-bias"></span> and passes the sum through a logistic function.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ in the PR -->
+<section class="section" id="in-pr">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">In your pull request</p>
+      <h2>What your team sees.</h2>
+      <p class="lede">The job summary Karma writes on every run, and the flaky-test registry that keeps unreliable tests from blocking merges.</p>
+    </div>
+    <div class="two-col">
+      <div class="gh-summary" aria-label="Example GitHub job summary">
+        <h4>⚡ Karma: ❌ 1 test failed</h4>
+        <p><b style="color:var(--ink)">3 of 214</b> test files selected (<b style="color:var(--ink)">98.6%</b> skipped) for 1 changed file against <code>origin/main</code>.</p>
+        <details open>
+          <summary>Why were these tests selected?</summary>
+          <p style="margin:8px 0">Ordered by predicted risk: the likeliest failures ran first.</p>
+          <div class="table-wrap" style="border-radius:8px"><table>
+            <thead><tr><th>Test file</th><th>Selected because of</th><th>Risk</th></tr></thead>
+            <tbody>
+              <tr><td><code>tests/test_invoice.py</code></td><td><code>billing/invoice.py</code> ← <code>billing/tax.py</code></td><td>risk 71%: failed before when billing/tax.py changed</td></tr>
+              <tr><td><code>tests/test_tax.py</code></td><td><code>billing/tax.py</code></td><td>risk 44%: imports billing/tax.py (changed)</td></tr>
+              <tr><td><code>tests/test_billing_api.py</code></td><td><code>billing/invoice.py</code> ← <code>billing/tax.py</code></td><td>risk 9%: 2 imports away from billing/tax.py</td></tr>
+            </tbody>
+          </table></div>
+        </details>
+        <div class="table-wrap" style="border-radius:8px"><table>
+          <thead><tr><th>Result</th><th class="num">Tests</th></tr></thead>
+          <tbody><tr><td>✅ Passed</td><td class="num">41</td></tr><tr><td>❌ Failed</td><td class="num">1</td></tr><tr><td>⚠️ Errors</td><td class="num">0</td></tr><tr><td>⏭️ Skipped</td><td class="num">2</td></tr><tr><td>🔁 Flaky (passed on retry)</td><td class="num">1</td></tr><tr><td>⏱️ Time</td><td class="num">6.4s</td></tr></tbody>
+        </table></div>
+        <h5>Failures</h5>
+        <details><summary><code>tests/test_invoice.py::test_total_with_vat</code></summary><pre>def test_total_with_vat():
+&gt;       assert invoice.total(100) == 121.0
+E       assert 119.0 == 121.0</pre></details>
+        <h5>⚠️ Flaky and quarantined tests</h5>
+        <p>These failed but did not fail the build. Fix them, then remove any entries from the quarantine file (<code>karma flaky</code>).</p>
+        <p style="font-size:13.5px">• <code>tests/test_net.py::test_timeout</code>: flaky. passed on retry 1: TimeoutError</p>
+      </div>
+
+      <div class="chart-card">
+        <div class="chart-head"><div><h3>Flaky-test registry</h3><p><code>karma flaky</code>: quarantined tests still run, and their last results show when they have healed.</p></div></div>
+        <div class="table-wrap"><table class="flaky-table">
+          <thead><tr><th>Quarantined test</th><th>Last 10 runs</th></tr></thead>
+          <tbody id="flaky-rows"></tbody>
+        </table></div>
+        <div class="legend"><span><i style="background:var(--pass);border-radius:50%"></i>passed</span><span><i style="background:var(--fail);border-radius:50%"></i>failed</span><span><i style="background:var(--flaky);border-radius:50%"></i>flaky: passed on retry</span></div>
+<pre class="mini-term"><span class="dim">$</span> karma flaky sync --dry-run
+quarantine tests/test_net.py::test_retry_backoff  <span class="dim">(passed on retry after failing, in 3 recorded runs)</span>
+release    tests/test_upload.py::test_large_file  <span class="dim">(passed its last 10 runs)</span></pre>
+        <p class="muted" style="font-size:12.5px">Example data. The registry is <code>karma-quarantine.toml</code>, committed and reviewed like code.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
 <!-- ================================================================ benchmarks -->
 <section class="section" id="benchmarks">
   <div class="wrap">
@@ -804,6 +1149,50 @@ quarantine tests/test_net.py::test_timeout</pre>
         <div class="badges" id="quality-badges"></div>
       </div>
     </div>
+
+    <div class="cases">
+      <article class="case">
+        <span class="tile-tag">Case study · encode/starlette</span>
+        <h3>A modular framework: most changes touch a few tests.</h3>
+        <p>starlette is built from separate components: routing, requests, a dozen middlewares. Each of its 32 modules was broken in turn and the full suite of 1,277 tests run to find what really failed.</p>
+        <div class="stat-inline"><div><b>32 / 32</b><span>bugs caught</span></div><div><b>40.8%</b><span>test files skipped</span></div><div><b>1 to 4</b><span>of 31 files, for most middleware</span></div></div>
+        <p>A CORS or GZip change runs one or two test files instead of 31. A change to the request core still runs everything, because everything depends on it, and it should.</p>
+        <p class="lesson">Karma saves the most where code is well separated, and never trades away a failing test to do it.</p>
+      </article>
+      <article class="case">
+        <span class="tile-tag">Case study · Textualize/rich</span>
+        <h3>A library with a hub: safe, even when it can't skip.</h3>
+        <p>Nearly every rich test imports <code>rich.console</code>, which imports most of the library. Fifteen modules were broken, with 1,007 tests as the judge.</p>
+        <div class="stat-inline"><div><b>15 / 15</b><span>bugs caught</span></div><div><b>6.6%</b><span>test files skipped</span></div><div><b>1 of 63</b><span>for a change to prompt.py</span></div></div>
+        <p>Most changes rightly select almost everything; a change to <code>prompt.py</code>, which nothing central imports, ran the one test file that failed.</p>
+        <p class="lesson">When everything depends on everything, Karma says so honestly, and prioritisation still puts the likeliest failures first.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ================================================================ ROI -->
+<section class="section" id="roi">
+  <div class="wrap">
+    <div class="section-head">
+      <p class="eyebrow">Savings calculator</p>
+      <h2>What would Karma save your team?</h2>
+      <p class="lede">Put in your own numbers. The estimate assumes test time scales with the test files that run, which is roughly true for most suites.</p>
+    </div>
+    <div class="roi">
+      <form class="chart-card" id="roi-form" style="gap:16px">
+        <div class="field"><label for="roi-minutes">Full test suite, in minutes</label><input type="number" id="roi-minutes" min="1" step="1" value="20"></div>
+        <div class="field"><label for="roi-runs">CI runs per day</label><input type="number" id="roi-runs" min="1" step="1" value="40"><small>Pushes and pull request updates across the team.</small></div>
+        <div class="field">
+          <label for="roi-skip">Share of tests Karma skips, %</label>
+          <input type="number" id="roi-skip" min="0" max="99" step="0.1" value="40.8">
+          <div class="presets" aria-label="Presets"><button type="button" data-skip="20">Hub-heavy library: 20%</button><button type="button" data-skip="40.8">starlette, measured: 40.8%</button><button type="button" data-skip="80">Well-separated app: 80%</button></div>
+        </div>
+        <div class="field"><label for="roi-price">CI price per minute, $</label><input type="number" id="roi-price" min="0" step="0.001" value="0.008"><small>Enter your provider's rate for the runners you use.</small></div>
+        <div class="field"><label for="roi-days">Working days per month</label><input type="number" id="roi-days" min="1" max="31" step="1" value="21"></div>
+      </form>
+      <div class="roi-out" id="roi-out" aria-live="polite"></div>
+    </div>
   </div>
 </section>
 
@@ -826,37 +1215,26 @@ quarantine tests/test_net.py::test_timeout</pre>
   </div>
 </section>
 
-<!-- ================================================================ action -->
-<section class="section" id="action">
+<!-- ================================================================ setup -->
+<section class="section" id="setup">
   <div class="wrap">
     <div class="section-head">
-      <p class="eyebrow">GitHub Action</p>
-      <h2>Drop it into any Python workflow.</h2>
-      <p class="lede">It runs in your job's own Python environment, so the selected tests can import your dependencies. It fetches history on shallow clones, keeps <code>.karma_cache/</code> between runs, and reports into the pull request.</p>
+      <p class="eyebrow">Set up in your CI</p>
+      <h2>One step on GitHub. A few lines anywhere else.</h2>
+      <p class="lede">On GitHub, the Karma action runs in your job's own Python environment, fetches history on shallow clones, keeps <code>.karma_cache/</code> between runs, and reports into the pull request. On every other CI, the <code>karma</code> command does the same work and writes a standard JUnit report.</p>
     </div>
     <div class="two-col">
-      <div class="code-card">
-        <header><span>.github/workflows/test.yml</span><button class="copy-btn" type="button" data-copy-from="#workflow-yaml">Copy</button></header>
-<pre id="workflow-yaml"><span class="k">jobs</span>:
-  <span class="k">test</span>:
-    <span class="k">runs-on</span>: ubuntu-latest
-    <span class="k">steps</span>:
-      - <span class="k">uses</span>: actions/checkout@v5
-        <span class="k">with</span>:
-          <span class="k">fetch-depth</span>: 0   <span class="c"># optional: saves Karma fetching history</span>
-      - <span class="k">uses</span>: actions/setup-python@v6
-        <span class="k">with</span>:
-          <span class="k">python-version</span>: <span class="s">"3.13"</span>
-      - <span class="k">run</span>: pip install -e <span class="s">".[test]"</span>
-      - <span class="k">uses</span>: Pradyuman-aviator/Karma@main
-        <span class="k">with</span>:
-          <span class="k">prioritize</span>: <span class="s">"true"</span>   <span class="c"># likeliest failures first</span>
-          <span class="k">retries</span>: <span class="s">"2"</span>         <span class="c"># flaky tests warn, broken tests fail</span>
-          <span class="k">args</span>: --explain</pre>
+      <div>
+        <div class="tabs" role="tablist" aria-label="CI system" id="setup-tabs"></div>
+        <div class="code-card">
+          <header><span id="setup-file"></span><button class="copy-btn" type="button" data-copy-from="#setup-code">Copy</button></header>
+          <pre id="setup-code"></pre>
+        </div>
+        <p class="tab-note" id="setup-note"></p>
       </div>
       <div class="stack">
-        <div><p class="tbl-title">Inputs</p><div class="table-wrap" id="action-inputs"></div></div>
-        <div><p class="tbl-title">Outputs</p><div class="table-wrap" id="action-outputs"></div></div>
+        <div><p class="tbl-title">GitHub Action inputs</p><div class="table-wrap" id="action-inputs"></div></div>
+        <div><p class="tbl-title">GitHub Action outputs</p><div class="table-wrap" id="action-outputs"></div></div>
       </div>
     </div>
   </div>
@@ -946,6 +1324,20 @@ retries = 2
     <span>Commands, Action and configuration on this page are generated from the source.</span>
   </div>
 </footer>
+
+<div class="pitch" id="pitch" role="dialog" aria-modal="true" aria-label="Karma pitch" hidden>
+  <div class="pitch-progress" id="pitch-progress"></div>
+  <div class="pitch-top">
+    <span class="brand-name">karma</span>
+    <div style="display:flex;gap:8px"><button class="link-btn" type="button" id="pitch-full">Full screen</button><button class="link-btn" type="button" id="pitch-close">Close</button></div>
+  </div>
+  <div class="pitch-stage" id="pitch-stage" aria-live="polite"></div>
+  <div class="pitch-bottom">
+    <button class="btn" type="button" id="pitch-prev">← Back</button>
+    <div class="pitch-dots" id="pitch-dots"></div>
+    <button class="btn primary" type="button" id="pitch-next">Next →</button>
+  </div>
+</div>
 
 <script id="karma-data" type="application/json">{
  "version": "3.2.0",
@@ -2294,6 +2686,654 @@ retries = 2
    ],
    "ci_jobs": 11
   }
+ },
+ "risk": {
+  "features": [
+   "test_changed",
+   "proximity",
+   "failure_rate",
+   "recent_failure",
+   "co_failure",
+   "flakiness",
+   "new_test"
+  ],
+  "prior": {
+   "bias": -3.0,
+   "test_changed": 2.0,
+   "proximity": 1.5,
+   "failure_rate": 3.0,
+   "recent_failure": 2.0,
+   "co_failure": 3.0,
+   "flakiness": 1.0,
+   "new_test": 1.0
+  },
+  "recency": 0.7
+ },
+ "samples": {
+  "billing": {
+   "edges": {
+    "auth/session.py": [],
+    "billing/__init__.py": [],
+    "billing/invoice.py": [
+     "billing/tax.py"
+    ],
+    "billing/tax.py": [],
+    "tests/test_billing_api.py": [
+     "billing/invoice.py"
+    ],
+    "tests/test_invoice.py": [
+     "billing/invoice.py"
+    ],
+    "tests/test_login.py": [
+     "auth/session.py"
+    ],
+    "tests/test_tax.py": [
+     "billing/tax.py"
+    ],
+    "tests/test_theme.py": [
+     "ui/theme.py"
+    ],
+    "ui/theme.py": []
+   },
+   "real": false,
+   "suggest": "billing/tax.py",
+   "title": "Billing service (example)"
+  },
+  "starlette": {
+   "commit": "9774b08",
+   "edges": {
+    "starlette/__init__.py": [],
+    "starlette/_exception_handler.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py",
+     "starlette/exceptions.py",
+     "starlette/requests.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/_utils.py": [
+     "starlette/__init__.py",
+     "starlette/types.py"
+    ],
+    "starlette/applications.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/body_limit.py",
+     "starlette/middleware/errors.py",
+     "starlette/middleware/exceptions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py"
+    ],
+    "starlette/authentication.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/exceptions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/background.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py"
+    ],
+    "starlette/concurrency.py": [
+     "starlette/__init__.py",
+     "starlette/exceptions.py"
+    ],
+    "starlette/config.py": [],
+    "starlette/convertors.py": [],
+    "starlette/datastructures.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py",
+     "starlette/types.py"
+    ],
+    "starlette/endpoints.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py",
+     "starlette/exceptions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/status.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/exceptions.py": [],
+    "starlette/formparsers.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py"
+    ],
+    "starlette/middleware/__init__.py": [],
+    "starlette/middleware/authentication.py": [
+     "starlette/__init__.py",
+     "starlette/authentication.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/base.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/body_limit.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/exceptions.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/cors.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/errors.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/exceptions.py": [
+     "starlette/__init__.py",
+     "starlette/_exception_handler.py",
+     "starlette/exceptions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/middleware/gzip.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/httpsredirect.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/opentelemetry.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/routing.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/sessions.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/requests.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/trustedhost.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/datastructures.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/wsgi.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/exceptions.py",
+     "starlette/types.py"
+    ],
+    "starlette/requests.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/applications.py",
+     "starlette/datastructures.py",
+     "starlette/exceptions.py",
+     "starlette/formparsers.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/sessions.py",
+     "starlette/routing.py",
+     "starlette/types.py"
+    ],
+    "starlette/responses.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/background.py",
+     "starlette/concurrency.py",
+     "starlette/datastructures.py",
+     "starlette/requests.py",
+     "starlette/types.py"
+    ],
+    "starlette/routing.py": [
+     "starlette/__init__.py",
+     "starlette/_exception_handler.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py",
+     "starlette/convertors.py",
+     "starlette/datastructures.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/body_limit.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/schemas.py": [
+     "starlette/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py"
+    ],
+    "starlette/staticfiles.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/datastructures.py",
+     "starlette/exceptions.py",
+     "starlette/responses.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/status.py": [
+     "starlette/__init__.py",
+     "starlette/exceptions.py"
+    ],
+    "starlette/templating.py": [
+     "starlette/__init__.py",
+     "starlette/background.py",
+     "starlette/datastructures.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/testclient.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/exceptions.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/types.py": [
+     "starlette/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/websockets.py": [
+     "starlette/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "tests/__init__.py": [],
+    "tests/conftest.py": [
+     "starlette/__init__.py",
+     "starlette/testclient.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/__init__.py": [],
+    "tests/middleware/test_base.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/background.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/base.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_body_limit.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/base.py",
+     "starlette/middleware/body_limit.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_cors.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/cors.py",
+     "starlette/middleware/gzip.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_errors.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/background.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/errors.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_gzip.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/gzip.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_https_redirect.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/httpsredirect.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_middleware.py": [
+     "starlette/__init__.py",
+     "starlette/middleware/__init__.py",
+     "starlette/types.py"
+    ],
+    "tests/middleware/test_opentelemetry.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/opentelemetry.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_session.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/sessions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_trusted_host.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/trustedhost.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_wsgi.py": [
+     "starlette/__init__.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/wsgi.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test__utils.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/types.py"
+    ],
+    "tests/test_applications.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/endpoints.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/trustedhost.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/staticfiles.py",
+     "starlette/status.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_authentication.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/authentication.py",
+     "starlette/endpoints.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/authentication.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_background.py": [
+     "starlette/__init__.py",
+     "starlette/background.py",
+     "starlette/responses.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_concurrency.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/concurrency.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_config.py": [
+     "starlette/__init__.py",
+     "starlette/config.py",
+     "starlette/datastructures.py"
+    ],
+    "tests/test_convertors.py": [
+     "starlette/__init__.py",
+     "starlette/convertors.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_datastructures.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py"
+    ],
+    "tests/test_endpoints.py": [
+     "starlette/__init__.py",
+     "starlette/endpoints.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/status.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_exceptions.py": [
+     "starlette/__init__.py",
+     "starlette/_exception_handler.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/exceptions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_formparsers.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/datastructures.py",
+     "starlette/formparsers.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_requests.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/datastructures.py",
+     "starlette/middleware/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_responses.py": [
+     "starlette/__init__.py",
+     "starlette/background.py",
+     "starlette/datastructures.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/status.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_routing.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_schemas.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/endpoints.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/schemas.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_staticfiles.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/base.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/staticfiles.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_status.py": [
+     "starlette/__init__.py",
+     "starlette/exceptions.py",
+     "starlette/status.py"
+    ],
+    "tests/test_templates.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/base.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/templating.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_testclient.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_websockets.py": [
+     "starlette/__init__.py",
+     "starlette/responses.py",
+     "starlette/status.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/types.py": [
+     "starlette/__init__.py",
+     "starlette/testclient.py",
+     "starlette/types.py"
+    ]
+   },
+   "real": true,
+   "suggest": "starlette/middleware/cors.py",
+   "title": "encode/starlette"
+  }
  }
 }</script>
 <script>
@@ -2389,7 +3429,7 @@ document.addEventListener("click", (event) => {
   for (const node of Object.values(nodes)) {
     const g = svg("g", { class: `g-node ${node.kind}` });
     g.append(svg("rect", { x: X[node.col], y: node.y, width: W, height: H, rx: 8 }));
-    g.append(svg("text", { x: X[node.col] + 10, y: node.y + 19.5 }, node.label));
+    g.append(svg("text", { x: X[node.col] + 9, y: node.y + 19.5 }, node.label));
     if (node.kind === "changed") {
       g.append(svg("rect", { x: X[node.col] + 8, y: node.y + 36, width: 62, height: 17, rx: 8.5, fill: "var(--accent)" }));
       g.append(svg("text", { x: X[node.col] + 15, y: node.y + 48, class: "g-tag", fill: "var(--surface)" }, "CHANGED"));
@@ -2553,12 +3593,14 @@ function emphasisBars(containerId, rows, opts) {
   new ResizeObserver(draw).observe(container);
 }
 
+// `text` in a description becomes <code>text</code>; everything stays text nodes, never HTML.
+const inlineCode = (text) => text.split(/`([^`]+)`/).map((part, i) => (i % 2 ? el("code", { text: part }) : part));
 function tableView(hostId, headers, rows) {
   const host = document.getElementById(hostId);
   host.textContent = "";
   const table = el("table", {},
     el("thead", {}, el("tr", {}, headers.map((h) => el("th", { scope: "col", class: h.num ? "num" : null, text: h.label })))),
-    el("tbody", {}, rows.map((r) => el("tr", {}, r.map((cell, i) => el("td", { class: headers[i].num ? "num" : null, text: cell }))))));
+    el("tbody", {}, rows.map((r) => el("tr", {}, r.map((cell, i) => el("td", { class: headers[i].num ? "num" : null }, cell))))));
   host.append(table);
 }
 document.querySelectorAll("[data-table-for]").forEach((button) => button.addEventListener("click", () => {
@@ -2759,13 +3801,541 @@ renderList();
 
 /* ---------------------------------------------------------------- action + config tables (generated) */
 tableView("action-inputs", [{ label: "Input" }, { label: "Default" }, { label: "What it does" }],
-  DATA.action.inputs.map((i) => [i.name, i.default || "—", i.description]));
-tableView("action-outputs", [{ label: "Output" }, { label: "What it holds" }], DATA.action.outputs.map((o) => [o.name, o.description]));
+  DATA.action.inputs.map((i) => [i.name, i.default || "—", inlineCode(i.description)]));
+tableView("action-outputs", [{ label: "Output" }, { label: "What it holds" }], DATA.action.outputs.map((o) => [o.name, inlineCode(o.description)]));
 tableView("config-table", [{ label: "Key" }, { label: "Type" }, { label: "Default" }, { label: "What it does" }],
   DATA.config.map((c) => [c.key, c.type, c.default, c.description]));
 document.querySelectorAll("#action-inputs td:first-child, #action-outputs td:first-child, #config-table td:first-child").forEach((td) => {
   const code = el("code", { text: td.textContent }); td.textContent = ""; td.append(code);
 });
+
+/* ---------------------------------------------------------------- playground: interactive dependency graph */
+(function playground() {
+  const svgEl = document.getElementById("gx");
+  const pick = document.getElementById("sample-pick");
+  const find = document.getElementById("file-find"), datalist = document.getElementById("file-list");
+  const resultHost = document.getElementById("play-result"), hubsHost = document.getElementById("hubs");
+  const samples = { ...DATA.samples };
+  const MAX_NODES = 400;
+  const fill = () => {
+    pick.textContent = "";
+    for (const [key, s] of Object.entries(samples)) {
+      pick.append(el("option", { value: key, text: s.real ? `${s.title} · real graph` : s.title }));
+    }
+  };
+  fill();
+  const isTest = (p) => {
+    const name = p.slice(p.lastIndexOf("/") + 1);
+    if (name === "conftest.py" || name === "__init__.py") return false;
+    return (name.endsWith(".py") && (name.startsWith("test_") || name.endsWith("_test.py"))) || /^test.*\.txt$/.test(name);
+  };
+  let m = null, changed = new Set(), positions = new Map(), view = { x: 0, y: 0, k: 1 }, fitView = null, radius = new Map();
+
+  function buildModel(edges) {
+    const files = new Set(Object.keys(edges));
+    Object.values(edges).forEach((deps) => deps.forEach((d) => files.add(d)));
+    const forward = new Map([...files].map((f) => [f, new Set(edges[f] || [])]));
+    const reverse = new Map([...files].map((f) => [f, new Set()]));
+    forward.forEach((deps, f) => deps.forEach((d) => reverse.get(d).add(f)));
+    const tests = [...files].filter(isTest).sort();
+    return { files: [...files].sort(), forward, reverse, tests, testSet: new Set(tests) };
+  }
+  function affectedOf(node) { // mirrors karma.selector: dependents, plus conftest/__init__ scope
+    const out = new Set(m.reverse.get(node) || []);
+    const cut = node.lastIndexOf("/"), name = node.slice(cut + 1), dir = cut >= 0 ? node.slice(0, cut) : "";
+    if (name === "conftest.py" || name === "__init__.py") {
+      const prefix = dir ? `${dir}/` : "";
+      m.tests.forEach((t) => { if (t.startsWith(prefix)) out.add(t); });
+    }
+    out.delete(node);
+    return out;
+  }
+  function select(starts) {
+    const parent = new Map(), depth = new Map(), queue = [];
+    for (const s of starts) { parent.set(s, null); depth.set(s, 0); queue.push(s); }
+    for (let i = 0; i < queue.length; i += 1) {
+      const node = queue[i];
+      for (const next of [...affectedOf(node)].sort()) {
+        if (!parent.has(next)) { parent.set(next, node); depth.set(next, depth.get(node) + 1); queue.push(next); }
+      }
+    }
+    const selected = [...parent.keys()].filter((f) => m.testSet.has(f)).sort();
+    const chain = (t) => { const c = [t]; while (parent.get(c[c.length - 1]) != null) c.push(parent.get(c[c.length - 1])); return c; };
+    return { parent, depth, selected, chain };
+  }
+
+  function layout(nodes, W, H) {
+    let seed = 11;
+    const rand = () => (seed = (seed * 16807) % 2147483647) / 2147483647;
+    const pos = new Map(nodes.map((n) => [n, { x: (isTest(n) ? 0.7 : 0.3) * W + (rand() - 0.5) * W * 0.35, y: 30 + rand() * (H - 60) }]));
+    const nodeSet = new Set(nodes), links = [];
+    nodes.forEach((n) => m.forward.get(n).forEach((d) => { if (nodeSet.has(d)) links.push([pos.get(n), pos.get(d)]); }));
+    const list = [...pos.values()], N = list.length, k = 0.85 * Math.sqrt((W * H) / Math.max(N, 1));
+    const iterations = N > 250 ? 180 : 300;
+    for (let it = 0; it < iterations; it += 1) {
+      const temp = (W / 9) * (1 - it / iterations) + 1;
+      for (const p of list) { p.dx = 0; p.dy = 0; }
+      for (let i = 0; i < N; i += 1) {
+        const a = list[i];
+        for (let j = i + 1; j < N; j += 1) {
+          const b = list[j]; let dx = a.x - b.x, dy = a.y - b.y; const d2 = dx * dx + dy * dy + 0.01, f = (k * k) / d2;
+          a.dx += dx * f; a.dy += dy * f; b.dx -= dx * f; b.dy -= dy * f;
+        }
+      }
+      for (const [a, b] of links) {
+        const dx = a.x - b.x, dy = a.y - b.y, d = Math.sqrt(dx * dx + dy * dy) + 0.01, f = d / k;
+        a.dx -= dx * f; a.dy -= dy * f; b.dx += dx * f; b.dy += dy * f;
+      }
+      for (const [n, p] of pos) {
+        p.dx += ((isTest(n) ? 0.74 : 0.28) * W - p.x) * 0.9; // tests drift right, code left
+        const len = Math.sqrt(p.dx * p.dx + p.dy * p.dy) + 0.01, step = Math.min(len, temp);
+        p.x = Math.min(W - 20, Math.max(20, p.x + (p.dx / len) * step));
+        p.y = Math.min(H - 20, Math.max(20, p.y + (p.dy / len) * step));
+      }
+    }
+    return pos;
+  }
+
+  function load(key) {
+    const sample = samples[key];
+    m = buildModel(sample.edges);
+    changed = new Set();
+    datalist.textContent = "";
+    m.files.forEach((f) => datalist.append(el("option", { value: f })));
+    // Blast radius: how many test files a change to each file would select.
+    let shown = m.files;
+    if (shown.length > MAX_NODES) {
+      const degree = (f) => m.forward.get(f).size + m.reverse.get(f).size;
+      shown = [...m.files].sort((a, b) => degree(b) - degree(a)).slice(0, MAX_NODES);
+    }
+    radius = new Map(shown.map((f) => [f, select([f]).selected.length]));
+    const W = 900, H = 620;
+    positions = layout(shown, W, H);
+    const xs = [...positions.values()].map((p) => p.x), ys = [...positions.values()].map((p) => p.y);
+    fitView = { x: Math.min(...xs) - 30, y: Math.min(...ys) - 30, w: Math.max(...xs) - Math.min(...xs) + 60, h: Math.max(...ys) - Math.min(...ys) + 60 };
+    view = { ...fitView };
+    draw();
+    renderHubs();
+  }
+
+  function applyView() { svgEl.setAttribute("viewBox", `${view.x} ${view.y} ${view.w} ${view.h}`); }
+  function draw() {
+    svgEl.textContent = "";
+    applyView();
+    const links = svg("g"), nodes = svg("g");
+    svgEl.append(links, nodes);
+    const maxR = Math.max(1, ...radius.values());
+    for (const [n, p] of positions) {
+      for (const d of m.forward.get(n)) {
+        const q = positions.get(d);
+        if (q) links.append(svg("line", { x1: p.x, y1: p.y, x2: q.x, y2: q.y, class: "gx-link", "data-from": n, "data-to": d }));
+      }
+    }
+    // Small graphs: label everything. Large ones: only the biggest hubs, until a selection lights up tests.
+    const labelled = positions.size <= 30 ? new Set(positions.keys())
+      : new Set([...radius.entries()].filter(([f]) => !isTest(f)).sort((a, b) => b[1] - a[1]).slice(0, 8).map(([f]) => f));
+    for (const [n, p] of positions) {
+      const test = isTest(n), r = test ? 5 : 4 + 9 * Math.sqrt(radius.get(n) / maxR);
+      const g = svg("g", { class: `gx-node ${test ? "test" : "src"}`, tabindex: 0, role: "button", "data-file": n, "aria-label": `${n}: affects ${radius.get(n)} test file(s). Activate to toggle as changed.` });
+      g.append(svg("circle", { cx: p.x, cy: p.y, r }));
+      const short = n.slice(n.lastIndexOf("/") + 1);
+      g.append(svg("text", { x: p.x + r + 4, y: p.y + 3.5, "data-label": labelled.has(n) ? "always" : "hover" }, labelled.has(n) ? short : ""));
+      g.append(svg("title", {}, `${n}\naffects ${radius.get(n)} test file(s)`));
+      nodes.append(g);
+    }
+    paintSelection(false);
+  }
+
+  function paintSelection(animate) {
+    const sel = changed.size ? select([...changed]) : null;
+    svgEl.classList.toggle("gx-dim", Boolean(sel));
+    svgEl.querySelectorAll(".gx-node").forEach((g) => {
+      const f = g.dataset.file, d = sel ? sel.depth.get(f) : undefined;
+      const apply = () => {
+        g.classList.toggle("changed", changed.has(f));
+        g.classList.toggle("hit", Boolean(sel) && d !== undefined && !changed.has(f));
+        const text = g.querySelector("text");
+        const show = changed.has(f) || (sel && d !== undefined && m.testSet.has(f)) || text.dataset.label === "always";
+        text.textContent = show ? f.slice(f.lastIndexOf("/") + 1) : "";
+      };
+      if (animate && !REDUCED && d) setTimeout(apply, d * 140); else apply();
+    });
+    svgEl.querySelectorAll(".gx-link").forEach((line) => {
+      const lit = Boolean(sel) && sel.parent.get(line.dataset.from) === line.dataset.to;
+      const d = sel ? sel.depth.get(line.dataset.from) : 0;
+      if (animate && !REDUCED && lit) setTimeout(() => line.classList.add("lit"), d * 140); else line.classList.toggle("lit", lit);
+    });
+    renderResult(samples[pick.value] || null, sel);
+  }
+
+  function toggle(file) {
+    if (!m.files.includes(file)) return;
+    if (changed.has(file)) changed.delete(file); else changed.add(file);
+    paintSelection(true);
+  }
+
+  function renderResult(sample, sel) {
+    resultHost.textContent = "";
+    if (!sel) {
+      const plain = [...radius.entries()].filter(([f, r]) => !isTest(f) && r > 0 && !/(^|\/)(__init__|conftest)\.py$/.test(f));
+      const suggest = sample && sample.suggest && m.files.includes(sample.suggest) ? sample.suggest : plain.length ? plain[0][0] : null;
+      const narrow = plain.filter(([f]) => f !== suggest).sort((a, b) => a[1] - b[1] || a[0].localeCompare(b[0]))[0];
+      resultHost.append(
+        el("p", { class: "sel-summary" }, `${m.tests.length} test files, ${m.files.length} files in total`,
+          el("small", { text: "Click a file in the graph to mark it changed, or try one:" })),
+        el("div", { class: "presets", style: "margin-top:10px" }, [suggest, narrow && narrow[0]]
+          .filter(Boolean).map((f) => el("button", { type: "button", text: f, onclick: () => toggle(f) }))));
+      return;
+    }
+    const skipped = m.tests.length ? 100 * (1 - sel.selected.length / m.tests.length) : 0;
+    resultHost.append(
+      el("div", { class: "changed-chips" }, [...changed].map((f) => el("button", { type: "button", title: "Remove", onclick: () => toggle(f) }, `${f} ×`))),
+      el("p", { class: "sel-summary", style: "margin-top:12px" }, `${sel.selected.length} of ${m.tests.length} test files selected`,
+        el("small", { text: `${fmt(skipped, 1)}% skipped · karma select --files ${[...changed].join(" ")}` })),
+    );
+    const pre = el("pre", { class: "chains" });
+    sel.selected.slice(0, 60).forEach((t) => {
+      const chain = sel.chain(t);
+      pre.append(el("span", { text: t }), "\n");
+      if (chain.length === 1) pre.append(el("span", { class: "dim", text: "    (changed)\n" }));
+      chain.slice(1).forEach((step, i) => pre.append(el("span", { class: "acc", text: "    ← " }), el("span", { class: i === chain.length - 2 ? "dim" : null, text: step + (i === chain.length - 2 ? "  (changed)" : "") }), "\n"));
+    });
+    if (sel.selected.length > 60) pre.append(el("span", { class: "dim", text: `… and ${sel.selected.length - 60} more\n` }));
+    const idle = [...changed].filter((c) => !sel.selected.some((t) => sel.chain(t).includes(c)));
+    if (idle.length) pre.append(el("span", { class: "dim", text: `No test depends on: ${idle.join(", ")}` }));
+    if (!sel.selected.length && !idle.length) pre.append(el("span", { class: "dim", text: "No tests selected." }));
+    resultHost.append(pre);
+  }
+
+  function renderHubs() {
+    hubsHost.textContent = "";
+    const ranked = [...radius.entries()].filter(([f]) => !isTest(f)).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+    const all = m.tests.length, full = ranked.filter(([, r]) => r === all && all > 0);
+    let top = ranked.slice(0, 8);
+    if (full.length > 3) {
+      hubsHost.append(el("p", { class: "muted", style: "font-size:13px;margin:0 0 4px" },
+        `${full.length} of ${ranked.length} modules reach all ${all} test files, so changing any of them runs everything. The rest:`));
+      top = [...full.slice(0, 2), ...ranked.filter(([, r]) => r < all).slice(0, 6)];
+    }
+    for (const [f, r] of top) {
+      const share = all ? (100 * r) / all : 0;
+      hubsHost.append(el("button", { class: "hub", type: "button", onclick: () => { changed = new Set([f]); paintSelection(true); } },
+        el("span", { text: f }), el("span", { class: "num", text: `${r}` }), el("span", { class: "bar" }, el("i", { style: `width:${share}%` }))));
+    }
+  }
+
+  // pan (drag), click to toggle, keyboard
+  let drag = null;
+  svgEl.addEventListener("pointerdown", (e) => {
+    drag = { x: e.clientX, y: e.clientY, view: { ...view }, moved: false, node: e.target.closest(".gx-node") };
+    svgEl.setPointerCapture(e.pointerId);
+  });
+  svgEl.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (Math.abs(dx) + Math.abs(dy) > 4) { drag.moved = true; svgEl.classList.add("dragging"); }
+    if (drag.moved) {
+      const scale = view.w / svgEl.clientWidth;
+      view.x = drag.view.x - dx * scale; view.y = drag.view.y - dy * scale; applyView();
+    }
+  });
+  svgEl.addEventListener("pointerup", () => {
+    if (drag && !drag.moved && drag.node) toggle(drag.node.dataset.file);
+    drag = null; svgEl.classList.remove("dragging");
+  });
+  svgEl.addEventListener("keydown", (e) => {
+    const node = e.target.closest(".gx-node");
+    if (node && (e.key === "Enter" || e.key === " ")) { e.preventDefault(); toggle(node.dataset.file); }
+  });
+  const zoom = (factor) => {
+    const cx = view.x + view.w / 2, cy = view.y + view.h / 2;
+    view.w *= factor; view.h *= factor; view.x = cx - view.w / 2; view.y = cy - view.h / 2; applyView();
+  };
+  document.getElementById("zoom-in").addEventListener("click", () => zoom(0.8));
+  document.getElementById("zoom-out").addEventListener("click", () => zoom(1.25));
+  document.getElementById("zoom-reset").addEventListener("click", () => { view = { ...fitView }; applyView(); });
+  document.getElementById("play-clear").addEventListener("click", () => { changed = new Set(); paintSelection(false); });
+  find.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); toggle(find.value.trim()); find.value = ""; } });
+  find.addEventListener("change", () => { if (m.files.includes(find.value.trim())) { toggle(find.value.trim()); find.value = ""; } });
+  pick.addEventListener("change", () => load(pick.value));
+
+  document.getElementById("paste-load").addEventListener("click", () => {
+    const error = document.getElementById("paste-error");
+    error.textContent = "";
+    let edges;
+    try { edges = JSON.parse(document.getElementById("paste-graph").value); }
+    catch (e) { error.textContent = "That isn't valid JSON. Paste the output of karma graph --format json."; return; }
+    const valid = edges && typeof edges === "object" && !Array.isArray(edges) &&
+      Object.entries(edges).every(([k, v]) => typeof k === "string" && Array.isArray(v) && v.every((d) => typeof d === "string"));
+    if (!valid || !Object.keys(edges).length) { error.textContent = "Expected an object of file → list of imported files."; return; }
+    samples.custom = { title: "Your project", real: true, edges };
+    fill(); pick.value = "custom"; load("custom");
+  });
+  if (samples.starlette) pick.value = "starlette";
+  load(pick.value);
+})();
+
+/* ---------------------------------------------------------------- risk demo: Karma's own model and prior weights */
+(function riskDemo() {
+  const R = DATA.risk, w = R.prior;
+  const $ = (id) => document.getElementById(id);
+  const inputs = ["rk-changed", "rk-distance", "rk-rate", "rk-since", "rk-co", "rk-flaky", "rk-new"].map($);
+  const names = {
+    test_changed: "Test changed", proximity: "Close to the change", failure_rate: "Failure rate",
+    recent_failure: "Recent failure", co_failure: "Failed with these files", flakiness: "Flakiness", new_test: "New test",
+  };
+  $("rk-bias").textContent = fmt(w.bias, 1);
+  function update() {
+    const changed = $("rk-changed").checked, distance = Number($("rk-distance").value);
+    const rate = Number($("rk-rate").value), since = Number($("rk-since").value);
+    const co = Number($("rk-co").value), flaky = Number($("rk-flaky").value), isNew = $("rk-new").checked;
+    $("rk-distance").disabled = changed;
+    $("rk-distance-out").textContent = changed ? "0 (changed)" : `${distance}`;
+    $("rk-rate-out").textContent = `${rate}%`;
+    $("rk-since-out").textContent = since >= 11 ? "never failed" : `${since}`;
+    $("rk-co-out").textContent = `${co}%`;
+    $("rk-flaky-out").textContent = `${flaky}%`;
+    const f = {
+      test_changed: changed ? 1 : 0,
+      proximity: changed ? 1 : 1 / Math.max(distance, 1),
+      failure_rate: rate / 100,
+      recent_failure: since >= 11 ? 0 : Math.pow(R.recency, since),
+      co_failure: co / 100,
+      flakiness: flaky / 100,
+      new_test: isNew ? 1 : 0,
+    };
+    const contributions = R.features.map((name) => [name, w[name] * f[name]]);
+    const z = w.bias + contributions.reduce((s, [, c]) => s + c, 0);
+    const p = 1 / (1 + Math.exp(-z));
+    $("rk-prob").textContent = `${fmt(100 * p, 0)}%`;
+    $("rk-bar").style.width = `${100 * p}%`;
+    const host = $("rk-contrib"); host.textContent = "";
+    const maxW = Math.max(...R.features.map((n) => w[n]));
+    for (const [name, c] of contributions) {
+      host.append(el("div", { class: "contrib-row" }, el("span", { text: names[name] || name }),
+        el("span", { class: "track" }, el("i", { style: `width:${(100 * c) / maxW}%` })),
+        el("span", { class: "num", text: `+${fmt(c, 2)}` })));
+    }
+    const reasons = [];
+    const add = (name, text) => { const c = w[name] * f[name]; if (c > 0.05) reasons.push([c, text]); };
+    add("test_changed", "the test itself changed");
+    if (!changed) add("proximity", distance === 1 ? "imports app/core.py (changed)" : `${distance} imports away from app/core.py`);
+    add("failure_rate", `failed in ${Math.round(rate / 5)} of 20 recorded runs`);
+    add("recent_failure", since === 0 ? "failed the last time it ran" : `failed ${since + 1} runs ago`);
+    add("co_failure", "failed before when app/core.py changed");
+    add("flakiness", "flaky: its outcome often flips");
+    add("new_test", "new test with no history");
+    reasons.sort((a, b) => b[0] - a[0]);
+    const says = $("rk-says"); says.textContent = "";
+    says.append("tests/test_example.py  ", el("span", { class: "acc", text: `(risk ${fmt(100 * p, 0)}%${reasons.length ? ": " + reasons.slice(0, 3).map((r) => r[1]).join("; ") : ""})` }));
+  }
+  inputs.forEach((input) => input.addEventListener("input", update));
+  update();
+})();
+
+/* ---------------------------------------------------------------- flaky registry (example data) */
+(function flakyRows() {
+  const rows = [
+    ["tests/test_net.py::test_timeout", "ppkppfppkp", "hold", "Keep", "Flaky twice in the last 10 runs"],
+    ["tests/test_ws.py::test_reconnect", "pkpppppppp", "hold", "Healing", "8 clean passes in a row"],
+    ["tests/test_upload.py::test_large_file", "pppppppppp", "release", "Release", "Passed its last 10 runs"],
+  ];
+  const labels = { p: "passed", f: "failed", k: "flaky" };
+  const host = document.getElementById("flaky-rows");
+  for (const [id, runs, state, next, why] of rows) {
+    const dots = el("span", { class: "runs", role: "img", "aria-label": `Last 10 runs: ${[...runs].map((r) => labels[r]).join(", ")}` },
+      [...runs].map((r) => el("i", { class: r })));
+    host.append(el("tr", {},
+      el("td", {}, el("code", { text: id }), el("span", { class: "flaky-why" }, el("span", { class: `pill ${state}`, text: next }), why)),
+      el("td", {}, dots)));
+  }
+})();
+
+/* ---------------------------------------------------------------- ROI calculator */
+(function roi() {
+  const $ = (id) => document.getElementById(id);
+  const out = $("roi-out");
+  function update() {
+    const minutes = Math.max(0, Number($("roi-minutes").value) || 0);
+    const runs = Math.max(0, Number($("roi-runs").value) || 0);
+    const skip = Math.min(99, Math.max(0, Number($("roi-skip").value) || 0)) / 100;
+    const price = Math.max(0, Number($("roi-price").value) || 0);
+    const days = Math.max(0, Number($("roi-days").value) || 0);
+    const perRun = minutes * skip, perDay = perRun * runs, perMonth = perDay * days;
+    const money = perMonth * price;
+    out.textContent = "";
+    const tile = (label, value, suffix, note, hero) => {
+      const v = el("span", { class: "kpi-value" }, value); v.append(el("small", { text: suffix }));
+      return el("div", { class: hero ? "kpi hero-kpi" : "kpi" }, el("span", { class: "kpi-label", text: label }), v, el("span", { class: "kpi-note", text: note }));
+    };
+    out.append(
+      tile("CI time saved per month", fmt(perMonth / 60, perMonth / 60 < 10 ? 1 : 0), " hours", `${fmt(perMonth, 0)} runner minutes across ${fmt(runs * days, 0)} runs`, true),
+      tile("Saved per day", fmt(perDay, 0), " min", `${fmt(perDay / 60, 1)} runner hours`),
+      tile("Compute saved per month", `$${fmt(money, money < 100 ? 2 : 0)}`, "", `at $${fmt(price, 3)} per minute`),
+      tile("Faster feedback per run", fmt(perRun, 1), " min", "less waiting on every push"),
+      tile("Tests still run", `${fmt(100 * (1 - skip), 0)}%`, "", "every test that can be affected"),
+    );
+  }
+  $("roi-form").addEventListener("input", update);
+  $("roi-form").addEventListener("submit", (e) => e.preventDefault());
+  document.querySelectorAll("[data-skip]").forEach((b) => b.addEventListener("click", () => { $("roi-skip").value = b.dataset.skip; update(); }));
+  update();
+})();
+
+/* ---------------------------------------------------------------- setup snippets for every CI */
+(function setup() {
+  const INSTALL = 'pip install -e ".[test]" git+https://github.com/Pradyuman-aviator/Karma.git';
+  const snippets = [
+    { id: "github", label: "GitHub Actions", file: ".github/workflows/test.yml", note: "Pull requests compare against their base branch; pushes against the previous commit. Results appear in the job summary and inline on the diff.", code:
+`jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0     # optional: skips a fetch
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+      - run: pip install -e ".[test]"
+      - uses: Pradyuman-aviator/Karma@main
+        with:
+          prioritize: "true" # likeliest failures first
+          retries: "2"       # flaky warns, broken fails
+          args: --explain` },
+    { id: "gitlab", label: "GitLab CI", file: ".gitlab-ci.yml", note: "Runs in merge request pipelines and compares against the target branch. The JUnit report shows failures in the merge request.", code:
+`test:
+  image: python:3.13
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+  variables:
+    GIT_DEPTH: "0"
+    TARGET: $CI_MERGE_REQUEST_TARGET_BRANCH_NAME
+  cache:
+    key: karma
+    paths: [.karma_cache/]
+  script:
+    - ${INSTALL}
+    - git fetch --no-tags origin "+refs/heads/$TARGET:refs/remotes/origin/$TARGET"
+    - karma run --base "origin/$TARGET" --prioritize --retries 2 -- --junitxml=report.xml
+  artifacts:
+    when: always
+    reports:
+      junit: report.xml` },
+    { id: "jenkins", label: "Jenkins", file: "Jenkinsfile", note: "In multibranch pipelines, CHANGE_TARGET is the pull request's target branch; other builds compare against main.", code:
+`pipeline {
+  agent any
+  environment {
+    TARGET = "\${env.CHANGE_TARGET ?: 'main'}"
+  }
+  stages {
+    stage('Test') {
+      steps {
+        sh '${INSTALL}'
+        sh 'git fetch --no-tags origin "+refs/heads/$TARGET:refs/remotes/origin/$TARGET"'
+        sh 'karma run --base "origin/$TARGET" --prioritize --retries 2 -- --junitxml=report.xml'
+      }
+      post {
+        always { junit 'report.xml' }
+      }
+    }
+  }
+}` },
+    { id: "circleci", label: "CircleCI", file: ".circleci/config.yml", note: "The fetch makes sure origin/main is present. The cache keeps Karma's import cache and test history between builds.", code:
+`version: 2.1
+jobs:
+  test:
+    docker:
+      - image: cimg/python:3.13
+    steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - karma-{{ .Branch }}-
+            - karma-
+      - run: ${INSTALL}
+      - run: git fetch --no-tags origin "+refs/heads/main:refs/remotes/origin/main"
+      - run: karma run --base origin/main --prioritize --retries 2 -- --junitxml=results/report.xml
+      - save_cache:
+          key: karma-{{ .Branch }}-{{ epoch }}
+          paths: [.karma_cache]
+      - store_test_results:
+          path: results
+workflows:
+  test:
+    jobs: [test]` },
+    { id: "precommit", label: "pre-commit", file: ".pre-commit-config.yaml", note: "Runs the tests affected by what you are about to commit, and stops at the first failure. Karma must be installed in the environment you commit from.", code:
+`repos:
+  - repo: local
+    hooks:
+      - id: karma
+        name: tests affected by this commit
+        entry: karma run --staged -- -x -q
+        language: system
+        pass_filenames: false
+        stages: [pre-commit]` },
+  ];
+  const tabs = document.getElementById("setup-tabs");
+  const show = (s) => {
+    tabs.querySelectorAll("button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.id === s.id)));
+    document.getElementById("setup-file").textContent = s.file;
+    document.getElementById("setup-code").textContent = s.code;
+    document.getElementById("setup-note").textContent = s.note;
+  };
+  for (const s of snippets) tabs.append(el("button", { type: "button", role: "tab", "data-id": s.id, onclick: () => show(s) }, s.label));
+  show(snippets[0]);
+})();
+
+/* ---------------------------------------------------------------- pitch mode: a slide walkthrough for presenting */
+(function pitch() {
+  const overlay = document.getElementById("pitch"), stage = document.getElementById("pitch-stage");
+  const dots = document.getElementById("pitch-dots"), bar = document.getElementById("pitch-progress");
+  const opener = document.getElementById("pitch-open");
+  const figs = (items) => el("div", { class: "slide-figures" }, items.map(([v, l]) => el("div", {}, el("b", { text: v }), el("span", { text: l }))));
+  const slides = [
+    () => [el("p", { class: "eyebrow", text: "Test impact analysis for pytest" }), el("h2", {}, "Run only the tests your change ", el("em", { style: "font-style:normal;color:var(--accent-text)", text: "can break." })), el("p", { class: "lede", text: "Karma traces your change through the import graph, runs the tests it can affect, runs the likeliest failures first, and keeps flaky tests from breaking the build." })],
+    () => [el("p", { class: "eyebrow", text: "The problem" }), el("h2", { text: "A one-line comment change ran the entire test suite." }), el("p", { class: "lede", text: "Every test, on every platform, for a change that couldn't break anything. Then an unrelated flaky test failed it, and it all ran again. Most CI doesn't know what a change touches, so it runs everything, every time." })],
+    () => [el("p", { class: "eyebrow", text: "The insight" }), el("h2", { text: "Your change has consequences. Only those need testing." }), el("p", { class: "lede", text: "Follow the imports from the changed files to the tests that depend on them. Everything else cannot be affected, and doesn't need to run." })],
+    () => [el("p", { class: "eyebrow", text: "How it works" }), el("h2", { text: "Four steps." }), el("ol", {}, el("li", { text: "Diff from the merge base: exactly what the pull request contains." }), el("li", { text: "Trace imports, cached per file and parsed in parallel, following pytest's own rules." }), el("li", { text: "Select every affected test. Config and dependency changes run everything." }), el("li", { text: "Order by predicted risk, retry to separate flaky from broken, report into the PR." }))],
+    () => [el("p", { class: "eyebrow", text: "Proof" }), el("h2", { text: "Broken on purpose, 47 times. Never missed a failure." }), figs([[`${caught - missed} / ${caught}`, "injected bugs caught"], [`${fmt(skipStarlette, 1)}%`, "test files skipped, starlette"], ["0", "failing tests missed"]]), el("p", { class: "lede", text: "Real modules of encode/starlette and Textualize/rich were broken one at a time; the full suite showed what really failed, and Karma had selected every one." })],
+    () => [el("p", { class: "eyebrow", text: "Faster feedback" }), el("h2", { text: "The likeliest failure runs first." }), figs([[fmt(learned.first_failure, 1), "files until the first failure"], [fmt(alpha.first_failure, 1), "without prioritisation"], [fmt(orderings[0].first_failure, 1), "in random order"]]), el("p", { class: "lede", text: "A local logistic regression learns from your own history. It only reorders; it never skips." })],
+    () => [el("p", { class: "eyebrow", text: "Flaky tests" }), el("h2", { text: "Flaky tests warn. Broken tests fail." }), figs([[fmt(flaky.tests), "tests checked"], [`${flaky.deterministic_failures}`, "real failures kept failing"], ["0", "false flaky alarms"]]), el("p", { class: "lede", text: "Retries confirm flakiness; a reviewed quarantine registry keeps flaky tests running without blocking merges, and releases them once they heal." })],
+    () => [el("p", { class: "eyebrow", text: "Versus the field" }), el("h2", { text: "Meta skips tests with ML. Karma orders them." }), el("p", { class: "lede", text: "Meta's predictive test selection halves testing cost and still reports over 99.9% of faulty changes, by skipping tests a model expects to pass. Karma lets dependencies decide what runs, and uses its model only for the order: a guarantee instead of a probability, from day one, on your own machine." })],
+    () => [el("p", { class: "eyebrow", text: "Adoption" }), el("h2", { text: "One step in GitHub Actions. A few lines anywhere else." }), el("pre", { class: "mini-term", style: "font-size:clamp(12px,1.2vw,15px);max-width:720px", text: "- uses: Pradyuman-aviator/Karma@main\n  with:\n    prioritize: \"true\"\n    retries: \"2\"" }), el("p", { class: "lede", text: "GitLab, Jenkins, CircleCI and pre-commit work through the same karma command." })],
+    () => [el("p", { class: "eyebrow", text: "Next" }), el("h2", { text: "Four phases shipped. Next: an LLM copilot for failure diagnosis." }), el("p", { class: "lede", text: "Try it on your own project: pip install git+https://github.com/Pradyuman-aviator/Karma.git, then karma run --explain." }), el("p", { class: "muted", text: "Karma · MIT licence · github.com/Pradyuman-aviator/Karma" })],
+  ];
+  let index = 0;
+  slides.forEach((_, i) => dots.append(el("button", { type: "button", "aria-label": `Slide ${i + 1}`, onclick: () => go(i) })));
+  function go(i) {
+    index = Math.max(0, Math.min(slides.length - 1, i));
+    stage.textContent = "";
+    stage.append(el("div", { class: "slide" }, slides[index]()));
+    dots.querySelectorAll("button").forEach((b, n) => b.setAttribute("aria-current", String(n === index)));
+    bar.style.width = `${(100 * (index + 1)) / slides.length}%`;
+    document.getElementById("pitch-prev").disabled = index === 0;
+    document.getElementById("pitch-next").textContent = index === slides.length - 1 ? "Finish" : "Next →";
+  }
+  function open() { overlay.hidden = false; document.body.style.overflow = "hidden"; go(0); document.getElementById("pitch-next").focus(); }
+  function close() {
+    overlay.hidden = true; document.body.style.overflow = "";
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    opener.focus();
+  }
+  opener.addEventListener("click", open);
+  document.getElementById("pitch-close").addEventListener("click", close);
+  document.getElementById("pitch-prev").addEventListener("click", () => go(index - 1));
+  document.getElementById("pitch-next").addEventListener("click", () => (index === slides.length - 1 ? close() : go(index + 1)));
+  document.getElementById("pitch-full").addEventListener("click", () => {
+    if (overlay.requestFullscreen) overlay.requestFullscreen().catch(() => {});
+  });
+  document.addEventListener("keydown", (e) => {
+    if (overlay.hidden) return;
+    if (e.key === "ArrowRight" || e.key === "PageDown" || (e.key === " " && e.target === document.body)) { e.preventDefault(); go(index + 1); }
+    else if (e.key === "ArrowLeft" || e.key === "PageUp") { e.preventDefault(); go(index - 1); }
+    else if (e.key === "Escape") close();
+  });
+  if (location.hash === "#pitch") open();
+})();
 
 /* ---------------------------------------------------------------- nav: highlight the section in view */
 const links = [...document.querySelectorAll(".nav a")];

@@ -9,12 +9,24 @@ All notable changes to Karma are documented here. The format follows
 ### Added
 - Website (`docs/index.html`, ready for GitHub Pages):
   - the pitch, with an animated dependency-graph trace and an example run
-  - benchmark charts from the real-project experiments, each with a table view
+  - the story of why Karma exists
+  - a playground on starlette's real dependency graph: click files to change them
+    and see the selection, the chain behind every test and each module's blast
+    radius; paste your own `karma graph --format json` to explore your project
+  - a risk-model demo driven by the model's own features and prior weights
+  - the pull request summary and the flaky-test registry as your team sees them
+  - benchmark charts from the real-project experiments, each with a table view,
+    and the starlette and rich experiments as case studies
+  - a CI savings calculator
   - an interactive explorer that builds any `karma` command
+  - setup for GitHub Actions, GitLab CI, Jenkins, CircleCI and pre-commit
   - the Action and configuration reference
+  - pitch mode: a ten-slide walkthrough for presenting (arrow keys, full screen)
 
-  Commands, Action inputs/outputs and configuration keys are generated from the
-  source by `scripts/build_site.py`; a test fails if the page drifts.
+  Commands, Action inputs/outputs, configuration keys and the risk model's weights
+  are generated from the source by `scripts/build_site.py`, which also embeds the
+  benchmark results and the playground graphs (`docs/samples.json`); a test fails if
+  the page drifts.
 
 ### Fixed
 - `--format` of `graph`, `history` and `flaky` had no help text.
