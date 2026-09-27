@@ -496,7 +496,7 @@ class TestHistoryCommand:
         out = capfd.readouterr().out
         assert "2 recorded runs" in out
         assert re.search(r"tests/test_core.py\s+1 of 2 runs \(50%\)", out)
-        assert "Slowest:" in out
+        # (No timing assertions here: a trivial test can report 0.000s on a fast runner.)
 
         karma_main(project, "history", "--format", "json")
         data = json.loads(capfd.readouterr().out)
@@ -520,3 +520,27 @@ class TestHistoryCommand:
     def test_import_errors(self, project: GitRepo, capsys: pytest.CaptureFixture[str]) -> None:
         assert karma_main(project, "history", "--import", "missing.xml") == cli.EXIT_KARMA_ERROR
         assert "cannot import missing.xml" in capsys.readouterr().err
+
+
+def test_history_lists_flaky_and_slowest_tests(
+    project: GitRepo, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from karma.history import FAILED, PASSED, History, Run, TestRecord, default_history_path
+
+    stored = History.load(default_history_path(project.path))
+    for i, outcome in enumerate([PASSED, FAILED, PASSED, FAILED, PASSED, FAILED]):
+        stored.append(
+            Run(
+                float(i),
+                {
+                    "tests/test_flaky.py": TestRecord(outcome, 0.5),
+                    "tests/test_slow.py": TestRecord(PASSED, 7.25),
+                },
+            )
+        )
+
+    assert karma_main(project, "history") == 0
+
+    out = capsys.readouterr().out
+    assert re.search(r"Flaky candidates.*\n\s+tests/test_flaky.py\s+flipped 5 times in 6 runs", out)
+    assert re.search(r"Slowest:\n\s+tests/test_slow.py\s+7.25s", out)
