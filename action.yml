@@ -38,6 +38,18 @@ inputs:
     description: Extra arguments for Karma itself, separated by spaces (e.g. `--explain`).
     required: false
     default: ""
+  prioritize:
+    description: >-
+      `true` to run the tests most likely to fail first, predicted from the recorded test
+      history. Combine with `pytest-args: -x` to stop at the first failure.
+    required: false
+    default: "false"
+  cache:
+    description: >-
+      `true` to keep `.karma_cache/` (import cache and test history) between runs with
+      actions/cache, so history accumulates and graphs build faster.
+    required: false
+    default: "true"
 
 outputs:
   test_files:
@@ -59,6 +71,17 @@ outputs:
 runs:
   using: composite
   steps:
+    - if: inputs.cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ${{ inputs.working-directory }}/.karma_cache
+        # A new entry every run (history grows); restore the newest from this branch,
+        # else from the default branch (so pull requests start with its history).
+        key: karma-${{ runner.os }}-${{ github.ref_name }}-${{ github.run_id }}-${{ github.run_attempt }}
+        restore-keys: |
+          karma-${{ runner.os }}-${{ github.ref_name }}-
+          karma-${{ runner.os }}-${{ github.event.repository.default_branch }}-
+          karma-${{ runner.os }}-
     - id: karma
       shell: bash
       working-directory: ${{ inputs.working-directory }}
@@ -71,6 +94,7 @@ runs:
         INPUT_PYTEST_ARGS: ${{ inputs.pytest-args }}
         INPUT_ON_GIT_ERROR: ${{ inputs.on-git-error }}
         INPUT_ARGS: ${{ inputs.args }}
+        INPUT_PRIORITIZE: ${{ inputs.prioritize }}
         KARMA_EVENT_BEFORE: ${{ github.event.before }}
         KARMA_DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
       run: bash "$KARMA_ACTION_PATH/entrypoint.sh"

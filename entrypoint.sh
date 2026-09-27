@@ -88,6 +88,7 @@ while IFS= read -r -d '' word; do PYTEST_ARGS+=("$word"); done <"$WORDS_FILE"
 cmd=("$PYTHON" "$ACTION_PATH/cli.py" "${INPUT_COMMAND:-run}" --ci --head HEAD
   --on-git-error "${INPUT_ON_GIT_ERROR:-fail}")
 if [[ -n "$BASE" ]]; then cmd+=(--base "$BASE"); fi
+if [[ "${INPUT_PRIORITIZE:-false}" == "true" ]]; then cmd+=(--prioritize); fi
 # ${arr[@]+...} keeps `set -u` happy with empty arrays on old bash versions.
 cmd+=(${EXTRA_ARGS[@]+"${EXTRA_ARGS[@]}"})
 if [[ ${#PYTEST_ARGS[@]} -gt 0 ]]; then cmd+=(-- "${PYTEST_ARGS[@]}"); fi

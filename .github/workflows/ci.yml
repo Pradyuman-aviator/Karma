@@ -74,6 +74,7 @@ jobs:
         uses: ./
         with:
           args: --explain
+          prioritize: "true"
       - name: Show outputs
         run: |
           echo "selected: ${{ steps.karma.outputs.selected-count }} of ${{ steps.karma.outputs.total-count }}"
