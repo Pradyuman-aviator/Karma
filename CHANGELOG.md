@@ -4,6 +4,21 @@ All notable changes to Karma are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+- Website (`docs/index.html`, ready for GitHub Pages):
+  - the pitch, with an animated dependency-graph trace and an example run
+  - benchmark charts from the real-project experiments, each with a table view
+  - an interactive explorer that builds any `karma` command
+  - the Action and configuration reference
+
+  Commands, Action inputs/outputs and configuration keys are generated from the
+  source by `scripts/build_site.py`; a test fails if the page drifts.
+
+### Fixed
+- `--format` of `graph`, `history` and `flaky` had no help text.
+
 ## [3.2.0] - 2026-09-27
 
 Phase 4 of the roadmap: the flaky-test registry.

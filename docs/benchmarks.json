@@ -1,0 +1,420 @@
+{
+  "safety": {
+    "starlette": {
+      "repo": "encode/starlette",
+      "commit": "9774b08",
+      "tests": 1277,
+      "test_files": 31,
+      "modules": [
+        {
+          "module": "starlette/convertors.py",
+          "failing": 8,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/_exception_handler.py",
+          "failing": 20,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/schemas.py",
+          "failing": 1,
+          "selected": 1,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/opentelemetry.py",
+          "failing": 1,
+          "selected": 1,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/exceptions.py",
+          "failing": 9,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/concurrency.py",
+          "failing": 22,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/sessions.py",
+          "failing": 1,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/base.py",
+          "failing": 3,
+          "selected": 4,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/_utils.py",
+          "failing": 7,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/exceptions.py",
+          "failing": 1,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/testclient.py",
+          "failing": 25,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/trustedhost.py",
+          "failing": 2,
+          "selected": 2,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/wsgi.py",
+          "failing": 1,
+          "selected": 1,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/websockets.py",
+          "failing": 8,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/body_limit.py",
+          "failing": 1,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/templating.py",
+          "failing": 1,
+          "selected": 1,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/authentication.py",
+          "failing": 1,
+          "selected": 1,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/httpsredirect.py",
+          "failing": 1,
+          "selected": 1,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/background.py",
+          "failing": 4,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/status.py",
+          "failing": 1,
+          "selected": 7,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/gzip.py",
+          "failing": 2,
+          "selected": 2,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/formparsers.py",
+          "failing": 3,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/staticfiles.py",
+          "failing": 1,
+          "selected": 2,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/endpoints.py",
+          "failing": 3,
+          "selected": 4,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/responses.py",
+          "failing": 1,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/authentication.py",
+          "failing": 1,
+          "selected": 1,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/cors.py",
+          "failing": 1,
+          "selected": 1,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/middleware/errors.py",
+          "failing": 18,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/datastructures.py",
+          "failing": 7,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/applications.py",
+          "failing": 7,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/routing.py",
+          "failing": 9,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        },
+        {
+          "module": "starlette/requests.py",
+          "failing": 23,
+          "selected": 31,
+          "total": 31,
+          "missed": 0
+        }
+      ]
+    },
+    "rich": {
+      "repo": "Textualize/rich",
+      "commit": "9d8f9a3",
+      "tests": 1007,
+      "test_files": 63,
+      "modules": [
+        {
+          "module": "rich/_log_render.py",
+          "failing": 1,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/pretty.py",
+          "failing": 7,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/align.py",
+          "failing": 5,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/columns.py",
+          "failing": 3,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/_null_file.py",
+          "failing": 3,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/_ratio.py",
+          "failing": 10,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/syntax.py",
+          "failing": 3,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/prompt.py",
+          "failing": 1,
+          "selected": 1,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/color.py",
+          "failing": 41,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/json.py",
+          "failing": 3,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/table.py",
+          "failing": 13,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/terminal_theme.py",
+          "failing": 50,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/file_proxy.py",
+          "failing": 3,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/_fileno.py",
+          "failing": 26,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        },
+        {
+          "module": "rich/segment.py",
+          "failing": 37,
+          "selected": 63,
+          "total": 63,
+          "missed": 0
+        }
+      ]
+    }
+  },
+  "prioritization": {
+    "repo": "encode/starlette",
+    "faults": 24,
+    "replays": 20,
+    "orderings": [
+      {
+        "name": "Random",
+        "first_failure": 5.04,
+        "apfd": 0.785
+      },
+      {
+        "name": "Alphabetical",
+        "first_failure": 3.5,
+        "apfd": 0.84
+      },
+      {
+        "name": "Karma, priors only",
+        "first_failure": 2.04,
+        "apfd": 0.896
+      },
+      {
+        "name": "Karma, learned from history",
+        "first_failure": 1.81,
+        "apfd": 0.89
+      }
+    ]
+  },
+  "performance": {
+    "repo": "pandas source tree",
+    "files": 1415,
+    "edges": 8140,
+    "machine": "Windows, 16 logical CPUs",
+    "runs": [
+      {
+        "name": "Cold, one process",
+        "seconds": 3.7
+      },
+      {
+        "name": "Cold, parallel",
+        "seconds": 1.2
+      },
+      {
+        "name": "Warm cache",
+        "seconds": 0.34
+      }
+    ]
+  },
+  "flaky": {
+    "repo": "encode/starlette",
+    "tests": 1277,
+    "deterministic_failures": 14,
+    "retries": 2,
+    "misclassified": 0
+  },
+  "quality": {
+    "tests": 355,
+    "coverage": 97,
+    "pythons": [
+      "3.9",
+      "3.10",
+      "3.11",
+      "3.12",
+      "3.13"
+    ],
+    "os": [
+      "Linux",
+      "macOS",
+      "Windows"
+    ],
+    "ci_jobs": 11
+  }
+}

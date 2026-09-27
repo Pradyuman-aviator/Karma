@@ -37,6 +37,8 @@ mypy                      # strict type checking
 
 All four should pass before you start making changes. CI runs them on Python 3.9–3.13 across Linux, macOS and Windows.
 
+Changed a command, flag, Action input or `[tool.karma]` key? Run `python scripts/build_site.py` to regenerate the website's reference data (`docs/index.html`); a test fails until you do.
+
 Tests that touch git create throwaway repositories and never read your personal git config. Use the `repo` fixture and `tests/helpers.py` rather than mocking `subprocess`.
 
 ---

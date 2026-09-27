@@ -540,7 +540,12 @@ def build_parser() -> argparse.ArgumentParser:
         "graph", help="print the dependency graph", description="Print the dependency graph."
     )
     _add_analysis_options(graph)
-    graph.add_argument("--format", choices=("json", "dot", "mermaid"), default="json")
+    graph.add_argument(
+        "--format",
+        choices=("json", "dot", "mermaid"),
+        default="json",
+        help="json (default), dot for Graphviz, or mermaid for GitHub and docs",
+    )
     graph.set_defaults(func=cmd_graph)
 
     history = commands.add_parser(
@@ -554,7 +559,9 @@ def build_parser() -> argparse.ArgumentParser:
     history.add_argument(
         "--import", dest="import_reports", nargs="+", metavar="REPORT", help="JUnit XML reports"
     )
-    history.add_argument("--format", choices=("text", "json"), default="text")
+    history.add_argument(
+        "--format", choices=("text", "json"), default="text", help="text (default) or json"
+    )
     history.add_argument("--top", type=int, default=10, metavar="N", help="rows per list")
     history.set_defaults(func=cmd_history)
 
@@ -566,7 +573,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     _add_verbosity(flaky, argparse.SUPPRESS)
     flaky.add_argument("--repo", default=".", metavar="DIR", help="project directory")
-    flaky.add_argument("--format", choices=("text", "json"), default="text")
+    flaky.add_argument(
+        "--format", choices=("text", "json"), default="text", help="text (default) or json"
+    )
     flaky.set_defaults(func=cmd_flaky, action=None)
     actions = flaky.add_subparsers(dest="action", metavar="<action>")
 

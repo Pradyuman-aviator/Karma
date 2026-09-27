@@ -23,6 +23,8 @@ tests/test_settings.py
 
 Karma reads your git diff, builds a dependency graph from your imports, and runs **only the tests that can be affected**. Every selected test comes with the chain of imports that selected it, so you can check its reasoning.
 
+**Website:** [`docs/index.html`](docs/index.html) has the full tour: interactive benchmarks, and a command explorer that builds any `karma` command. Its commands, Action inputs and configuration are generated from the source by `scripts/build_site.py`. To publish it, enable GitHub Pages in the repository settings (*Deploy from a branch* → `main`, `/docs`).
+
 ---
 
 ## Why Karma
