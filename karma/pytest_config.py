@@ -65,6 +65,8 @@ class PytestSettings:
 
     inifile: Path | None = None
     python_files: tuple[str, ...] = ()
+    python_functions: tuple[str, ...] = ()
+    python_classes: tuple[str, ...] = ()
     testpaths: tuple[str, ...] = ()
     norecursedirs: tuple[str, ...] = DEFAULT_NORECURSEDIRS
     pythonpath: tuple[str, ...] = ()
@@ -156,6 +158,8 @@ def _settings(inifile: Path, values: dict[str, Any], root: Path) -> PytestSettin
     return PytestSettings(
         inifile=inifile,
         python_files=_words(values.get("python_files")),
+        python_functions=_words(values.get("python_functions")),
+        python_classes=_words(values.get("python_classes")),
         testpaths=relative(_words(values.get("testpaths"))) if at_rootdir else (),
         norecursedirs=_words(norecursedirs) if norecursedirs is not None else DEFAULT_NORECURSEDIRS,
         pythonpath=relative(_words(values.get("pythonpath"))),

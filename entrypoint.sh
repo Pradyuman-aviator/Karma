@@ -89,6 +89,7 @@ cmd=("$PYTHON" "$ACTION_PATH/cli.py" "${INPUT_COMMAND:-run}" --ci --head HEAD
   --on-git-error "${INPUT_ON_GIT_ERROR:-fail}")
 if [[ -n "$BASE" ]]; then cmd+=(--base "$BASE"); fi
 if [[ "${INPUT_PRIORITIZE:-false}" == "true" ]]; then cmd+=(--prioritize); fi
+if [[ -n "${INPUT_GRANULARITY:-}" ]]; then cmd+=("--granularity=${INPUT_GRANULARITY}"); fi
 if [[ "${INPUT_COMMAND:-run}" == "run" ]]; then
   if [[ "${INPUT_RETRIES:-0}" =~ ^[1-9][0-9]*$ ]]; then cmd+=(--retries "$INPUT_RETRIES"); fi
   if [[ "${INPUT_DIAGNOSE:-false}" == "true" ]]; then cmd+=(--diagnose); fi

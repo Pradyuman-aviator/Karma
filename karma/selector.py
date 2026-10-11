@@ -3,15 +3,20 @@
 from __future__ import annotations
 
 import fnmatch
+import logging
 from collections import deque
-from collections.abc import Mapping
-from dataclasses import dataclass, field
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass, field, replace
+from pathlib import Path
 from typing import Any
 
 from karma.config import Config
 from karma.git import CASE_SENSITIVE, ChangeSet
 from karma.graph import DependencyGraph, matches_any
 from karma.languages.python import ImportRef, ModuleResolver
+from karma.symbols import refine
+
+log = logging.getLogger(__name__)
 
 _NOT_TESTS = frozenset({"conftest.py", "__init__.py"})
 _NOT_DOCTESTS = frozenset({"conftest.py", "setup.py", "__main__.py"})
@@ -78,10 +83,27 @@ class Selection:
     run_all_reason: str | None = None
     #: changed files that no test depends on (docs, assets, ...)
     no_impact: tuple[str, ...] = ()
+    #: "file", or "function" when tests were narrowed to the functions affected
+    granularity: str = "file"
+    #: test file -> the test functions/classes to run in it (absent: the whole file)
+    items: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+    #: node id -> (node id, symbol it uses, ..., changed symbol)
+    item_reasons: Mapping[str, tuple[str, ...]] = field(default_factory=dict)
+    #: test files that import a change but use none of the changed symbols
+    narrowed_out: tuple[str, ...] = ()
 
     @property
     def run_all(self) -> bool:
         return self.run_all_reason is not None
+
+    def targets(self, order: Sequence[str] | None = None) -> list[str]:
+        """What to pass to pytest: whole files, or the node ids of affected items."""
+        return [t for test in (order or self.tests) for t in self.items.get(test, (test,))]
+
+    @property
+    def item_count(self) -> int:
+        """Selected node ids, counting a whole file as one."""
+        return len(self.targets())
 
     @property
     def skipped_fraction(self) -> float:
@@ -99,10 +121,17 @@ class Selection:
             "changed": list(self.changed),
             "no_impact": list(self.no_impact),
             "reasons": {test: list(chain) for test, chain in self.reasons.items()},
+            "granularity": self.granularity,
+            "targets": self.targets(),
+            "items": {test: list(ids) for test, ids in self.items.items()},
+            "item_reasons": {i: list(chain) for i, chain in self.item_reasons.items()},
+            "narrowed_out": list(self.narrowed_out),
         }
 
 
-def select_tests(changes: ChangeSet, graph: DependencyGraph, config: Config) -> Selection:
+def select_tests(
+    changes: ChangeSet, graph: DependencyGraph, config: Config, root: Path | None = None
+) -> Selection:
     """Select every test that transitively depends on a changed file.
 
     Besides imports this follows pytest's own rules: a ``conftest.py`` or test-package
@@ -110,6 +139,10 @@ def select_tests(changes: ChangeSet, graph: DependencyGraph, config: Config) -> 
     ``-p`` apply to every test, and doctest options make modules and text files tests.
     It also applies the configured ``mappings`` for dependencies imports cannot express,
     and the ``run-all-on`` triggers that make the whole suite run.
+
+    With ``granularity = "function"`` (and ``root``, to read both versions of each
+    changed file) the selection is then narrowed to the test functions and classes
+    that use a changed symbol; see :mod:`karma.symbols`.
     """
     all_tests = sorted(f for f in graph.files if is_test_file(f, config))
     changed = changes.all
@@ -147,12 +180,40 @@ def select_tests(changes: ChangeSet, graph: DependencyGraph, config: Config) -> 
                 queue.append(neighbour)
 
     selected = tuple(sorted(f for f in parent if f in test_set))
-    return Selection(
+    selection = Selection(
         tests=selected,
         total_tests=len(all_tests),
         changed=changed,
         reasons={test: _chain(test, parent) for test in selected},
         no_impact=tuple(p for p in changed if not _reaches_test(p, affected, test_set)),
+    )
+    if config.granularity != "function" or root is None or not selected:
+        return selection
+    if config.doctest_modules:
+        log.info("--doctest-modules: selecting whole files (docstrings are tests)")
+        return selection
+    return _narrow(selection, changes, graph, config, root, parent, all_tests)
+
+
+def _narrow(
+    selection: Selection,
+    changes: ChangeSet,
+    graph: DependencyGraph,
+    config: Config,
+    root: Path,
+    reached: Mapping[str, str | None],
+    all_tests: Sequence[str],
+) -> Selection:
+    refined = refine(selection.tests, reached, changes, graph, config, root, all_tests)
+    dropped = set(refined.dropped)
+    return replace(
+        selection,
+        tests=tuple(t for t in selection.tests if t not in dropped),
+        reasons={t: c for t, c in selection.reasons.items() if t not in dropped},
+        granularity="function",
+        items=dict(refined.items),
+        item_reasons=dict(refined.item_reasons),
+        narrowed_out=refined.dropped,
     )
 
 

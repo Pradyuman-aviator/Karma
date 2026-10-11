@@ -243,6 +243,21 @@ def test_prioritize_input(upstream: GitRepo, tmp_path: Path) -> None:
     assert "prioritised by risk using built-in priors" in proc.stderr
 
 
+def test_granularity_input(upstream: GitRepo, tmp_path: Path) -> None:
+    clone = shallow_clone(upstream, tmp_path)
+
+    proc, _ = run_action(
+        clone,
+        tmp_path,
+        GITHUB_BASE_REF="main",
+        INPUT_COMMAND="select",
+        INPUT_GRANULARITY="function",
+    )
+
+    assert proc.returncode == 0, proc.stdout + proc.stderr
+    assert "--granularity=function" in proc.stdout  # the echoed command
+
+
 def test_diagnosis_inputs(upstream: GitRepo, tmp_path: Path) -> None:
     upstream.checkout("feature")
     upstream.write("app/other.py", "Y = 0\n")

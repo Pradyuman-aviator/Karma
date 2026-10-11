@@ -270,6 +270,73 @@ def diff_text(changes: ChangeSet, paths: Sequence[str], cwd: Path, context: int 
     return "".join(parts)
 
 
+def file_versions(
+    changes: ChangeSet, paths: Sequence[str], cwd: Path
+) -> dict[str, tuple[bytes | None, bytes | None]]:
+    """``path -> (before, after)``: each file's contents on both sides of ``changes``.
+
+    ``None`` means the file does not exist on that side (or could not be read). Without
+    git arguments (``--files``) the file is compared with ``HEAD``.
+    """
+    if not paths:
+        return {}
+    staged = changes.diff_args[:1] == ("--cached",)
+    if changes.diff_args:
+        old_rev = changes.diff_args[1] if staged else changes.diff_args[0]
+    else:
+        old_rev = "HEAD"
+    prefix = run_git(["rev-parse", "--show-prefix"], cwd).strip()
+    untracked = set(changes.untracked)
+    specs = [f"{old_rev}:{prefix}{p}" for p in paths]
+    if staged:
+        specs += [f":0:{prefix}{p}" for p in paths]
+    blobs = _cat_files(specs, cwd)
+    versions: dict[str, tuple[bytes | None, bytes | None]] = {}
+    for i, path in enumerate(paths):
+        before = None if path in untracked else blobs[i]
+        if staged:
+            after = blobs[len(paths) + i]
+        else:
+            try:
+                after = (cwd / path).read_bytes()
+            except OSError:
+                after = None
+        versions[path] = (before, after)
+    return versions
+
+
+def _cat_files(specs: Sequence[str], cwd: Path) -> list[bytes | None]:
+    """The contents of ``rev:path`` objects, in one ``git cat-file --batch`` process."""
+    try:
+        proc = subprocess.run(
+            ["git", "cat-file", "--batch"],
+            cwd=cwd,
+            input="".join(f"{s}\n" for s in specs).encode("utf-8", "surrogateescape"),
+            capture_output=True,
+            check=False,
+        )
+    except (FileNotFoundError, NotADirectoryError):
+        raise GitError("git executable not found on PATH") from None
+    if proc.returncode != 0:
+        raise GitError(f"`git cat-file --batch` failed: {proc.stderr.decode(errors='replace')}")
+    out, pos = proc.stdout, 0
+    blobs: list[bytes | None] = []
+    for _ in specs:
+        end = out.index(b"\n", pos)
+        header = out[pos:end].split()
+        pos = end + 1
+        if len(header) == 3 and header[1] == b"blob":
+            size = int(header[2])
+            blobs.append(out[pos : pos + size])
+            pos += size + 1
+        elif len(header) == 3:  # a tree or other object: skip its contents
+            pos += int(header[2]) + 1
+            blobs.append(None)
+        else:  # "<spec> missing" / "ambiguous"
+            blobs.append(None)
+    return blobs
+
+
 def _new_file_diff(cwd: Path, path: str) -> str:
     header = f"diff --git a/{path} b/{path}\nnew file (untracked)\n"
     try:

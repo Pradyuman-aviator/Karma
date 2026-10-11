@@ -45,10 +45,26 @@ def describe_selection(selection: Selection) -> str:
             f"running all {plural(selection.total_tests, 'test file')}: {selection.run_all_reason}"
         )
     changed = plural(len(selection.changed), "changed file")
-    return (
+    line = (
         f"{len(selection.tests)} of {plural(selection.total_tests, 'test file')} selected "
         f"({selection.skipped_fraction:.1%} skipped) for {changed}"
     )
+    if selection.granularity == "function":
+        line += f"; {_narrowing(selection)}"
+    return line
+
+
+def _narrowing(selection: Selection) -> str:
+    """``"narrowed to 3 test functions in 2 files; 1 whole file"``."""
+    items = sum(len(ids) for ids in selection.items.values())
+    whole = len(selection.tests) - len(selection.items)
+    parts = [f"{plural(items, 'test function')} in {plural(len(selection.items), 'file')}"]
+    if whole:
+        parts.append(f"{plural(whole, 'whole file')}")
+    text = "narrowed to " + " + ".join(parts)
+    if selection.narrowed_out:
+        text += f", {len(selection.narrowed_out)} more skipped"
+    return text
 
 
 def format_risk(risk: Risk) -> str:
@@ -74,11 +90,23 @@ def format_explanation(
         chain = selection.reasons.get(test, (test,))
         risk = by_test.get(test)
         lines.append(f"{test}  ({format_risk(risk)})" if risk else test)
+        items = selection.items.get(test)
+        if items:
+            for item in items:
+                steps = selection.item_reasons.get(item, (item,))
+                lines.append(f"  ::{item.partition('::')[2]}")
+                lines.extend(f"      {arrow} {step}" for step in steps[1:])
+            continue
         if len(chain) == 1:
             lines.append("    (changed)")
         for i, step in enumerate(chain[1:], start=1):
             suffix = "  (changed)" if i == len(chain) - 1 else ""
             lines.append(f"    {arrow} {step}{suffix}")
+    if selection.narrowed_out:
+        lines.append(
+            "Skipped at function level (they import the change but use none of the "
+            f"changed symbols): {', '.join(selection.narrowed_out)}"
+        )
     if selection.no_impact:
         lines.append(f"No test depends on: {', '.join(selection.no_impact)}")
     if not lines:
@@ -357,6 +385,8 @@ def selection_markdown(
             f"(**{selection.skipped_fraction:.1%}** skipped) for "
             f"{plural(len(selection.changed), 'changed file')}{against}."
         )
+        if selection.granularity == "function":
+            lines[-1] = lines[-1][:-1] + f", {_narrowing(selection)}."
     if selection.reasons:
         by_test = {risk.test: risk for risk in risks or ()}
         order = [risk.test for risk in risks] if risks else list(selection.tests)
@@ -375,6 +405,13 @@ def selection_markdown(
         for test in order[:MAX_SUMMARY_ROWS]:
             chain = selection.reasons.get(test, (test,))
             cause = " ← ".join(_code(p) for p in chain[1:]) or "changed directly"
+            items = selection.items.get(test)
+            if items:
+                names = [i.partition("::")[2] for i in items[:5]]
+                more = f" +{len(items) - 5}" if len(items) > 5 else ""
+                cause = f"{', '.join(_code(i) for i in names)}{more} ← " + " ← ".join(
+                    _code(p) for p in selection.item_reasons.get(items[0], ())[1:]
+                )
             risk = by_test.get(test)
             risk_cell = f" | {html.escape(format_risk(risk))}" if risk else ""
             lines.append(f"| {_code(test)} | {cause}{risk_cell} |")

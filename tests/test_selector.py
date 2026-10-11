@@ -205,6 +205,11 @@ def test_selection_to_dict() -> None:
             "tests/api/test_api.py": ["tests/api/test_api.py", "app/api.py", "app/core.py"],
             "tests/test_core.py": ["tests/test_core.py", "app/core.py"],
         },
+        "granularity": "file",
+        "targets": ["tests/api/test_api.py", "tests/test_core.py"],
+        "items": {},
+        "item_reasons": {},
+        "narrowed_out": [],
     }
 
 

@@ -10,6 +10,7 @@ Example::
     pytest-args = ["-p", "no:cacheprovider"]
     prioritize = true                             # run the likeliest failures first
     retries = 2                                   # re-run failures; pass-on-retry = flaky
+    granularity = "function"                      # select test functions, not files
     diagnose = true                               # explain failures from the evidence
     ai = "ollama"                                 # ...and ask a model (opt-in)
     ai-model = "qwen2.5-coder"
@@ -56,6 +57,8 @@ else:  # pragma: no cover - exercised on Python < 3.11 only
 #: language model providers for failure diagnosis (see karma.ai)
 AI_PROVIDERS = ("anthropic", "ollama", "openai")
 DEFAULT_TEST_PATTERNS = ("test_*.py", "*_test.py")
+#: what to select: whole test files, or the test functions and classes affected
+GRANULARITIES = ("file", "function")
 DEFAULT_SOURCE_ROOTS = (".", "src")
 # Changes to these can affect any test (dependencies, pytest configuration, ...),
 # so they select the whole suite rather than risk skipping a failing test.
@@ -102,7 +105,10 @@ class Config:
     ai: str | None = None
     ai_model: str | None = None
     ai_url: str | None = None
+    granularity: str = "file"
     # Derived from pytest's own configuration and command line:
+    python_functions: tuple[str, ...] = ("test",)
+    python_classes: tuple[str, ...] = ("Test",)
     testpaths: tuple[str, ...] = ()
     norecursedirs: tuple[str, ...] = DEFAULT_NORECURSEDIRS
     plugins: tuple[str, ...] = ()
@@ -146,6 +152,7 @@ _KNOWN_KEYS = {
     "ai",
     "ai-model",
     "ai-url",
+    "granularity",
 }
 
 
@@ -196,6 +203,16 @@ def load_config(root: Path) -> Config:
             if not isinstance(table[key], str) or not table[key].strip():
                 raise ConfigError(f"[tool.karma] {key} must be a non-empty string")
             values[field_name] = table[key].strip()
+    if "granularity" in table:
+        if table["granularity"] not in GRANULARITIES:
+            raise ConfigError(
+                f"[tool.karma] granularity must be one of: {', '.join(GRANULARITIES)}"
+            )
+        values["granularity"] = table["granularity"]
+    if settings.python_functions:
+        values["python_functions"] = settings.python_functions
+    if settings.python_classes:
+        values["python_classes"] = settings.python_classes
     if values.get("ai") is not None and values["ai"] not in AI_PROVIDERS:
         raise ConfigError(f"[tool.karma] ai must be one of: {', '.join(AI_PROVIDERS)}")
     if "retries" in table:

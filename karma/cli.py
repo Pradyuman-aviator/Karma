@@ -11,12 +11,12 @@ import logging
 import sys
 import time
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 from karma import __version__, ai
 from karma.cache import ImportCache, default_cache_path
-from karma.config import AI_PROVIDERS, Config, load_config
+from karma.config import AI_PROVIDERS, GRANULARITIES, Config, load_config
 from karma.diagnose import (
     MAX_DIAGNOSES,
     Diagnosis,
@@ -142,6 +142,8 @@ def _plan(args: argparse.Namespace) -> Plan:
     root = _resolve_root(args.repo)
     # `karma run -- -p plugin --doctest-modules` changes what pytest will collect.
     config = load_config(root).with_pytest_args(args.pytest_args)
+    if getattr(args, "granularity", None):
+        config = replace(config, granularity=args.granularity)
     changes, base, everything = _changes(args, root)
     graph = _build_graph(root, config, args, changes.deleted)
     if everything:
@@ -149,7 +151,7 @@ def _plan(args: argparse.Namespace) -> Plan:
         reason = "--all was requested" if args.all else "changes could not be determined"
         selection = Selection(tests=tests, total_tests=len(tests), run_all_reason=reason)
     else:
-        selection = select_tests(changes, graph, config)
+        selection = select_tests(changes, graph, config, root)
     if not selection.total_tests:
         log.warning(
             "found no test files (test patterns: %s); if pytest finds tests here, set "
@@ -254,13 +256,14 @@ def cmd_select(args: argparse.Namespace) -> int:
     plan = _plan(args)
     selection = plan.selection
     risks = _risks(args, plan)
-    ordered = [risk.test for risk in risks] if risks else list(selection.tests)
+    ordered = selection.targets([risk.test for risk in risks] if risks else None)
     if args.explain:
         sys.stdout.write(format_explanation(selection, sys.stdout, risks))
     elif args.format == "json":
         data = selection.to_dict()
         if risks:
-            data["tests"] = ordered
+            data["tests"] = [r.test for r in risks]
+            data["targets"] = ordered
             data["risk"] = {
                 r.test: {"probability": round(r.probability, 4), "reasons": list(r.reasons)}
                 for r in risks
@@ -295,7 +298,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     if selection.run_all:
         targets: list[str] = []
     else:  # the likeliest failures first, so they are found in the first seconds
-        targets = [r.test for r in risks] if risks else list(selection.tests)
+        targets = selection.targets([r.test for r in risks] if risks else None)
     pytest_args = [*plan.config.pytest_args, *args.pytest_args]
     result = run_pytest(
         targets,
@@ -601,6 +604,12 @@ def _add_selection_options(parser: argparse.ArgumentParser) -> None:
     _add_analysis_options(parser)
     _add_change_options(parser)
     parser.add_argument("--explain", action="store_true", help="show why each test was selected")
+    parser.add_argument(
+        "--granularity",
+        choices=GRANULARITIES,
+        help="select whole test files, or only the test functions and classes that use a "
+        "changed function, class or constant (default: [tool.karma] granularity, else file)",
+    )
     parser.add_argument(
         "--prioritize",
         action="store_true",

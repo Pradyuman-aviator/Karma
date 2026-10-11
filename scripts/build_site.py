@@ -38,6 +38,7 @@ EXAMPLES: dict[str, list[tuple[str, str]]] = {
     "run": [
         ("karma run", "Run the tests affected by your branch and uncommitted work"),
         ("karma run --explain", "Show why each test was selected"),
+        ("karma run --granularity function", "Only the test functions that use what changed"),
         ("karma run --prioritize -- -x", "Likeliest failures first; stop at the first one"),
         ("karma run --retries 2", "Re-run failures; a pass on retry is reported as flaky"),
         ("karma run --diagnose", "Explain each failure: the changed lines behind it"),
@@ -54,6 +55,10 @@ EXAMPLES: dict[str, list[tuple[str, str]]] = {
     "select": [
         ("pytest $(karma select)", "Hand the selection to your own pytest command"),
         ("karma select --format json", "Tests, reasons and risk for tooling"),
+        (
+            "karma select --granularity function --explain",
+            "Which test functions use the changed code, and through what",
+        ),
         ("karma select --files app/models.py", "What would a change to this file affect?"),
         ("karma select --base origin/develop --explain", "Compare against another branch"),
     ],
@@ -94,6 +99,11 @@ CONFIG_DOCS: dict[str, tuple[str, str, str]] = {
         "Dependencies imports cannot express, e.g. data files to tests",
     ),
     "pytest-args": ("list", "[]", "Always passed to pytest"),
+    "granularity": (
+        "string",
+        '"file"',
+        '"function": run only the test functions using a changed symbol',
+    ),
     "prioritize": ("bool", "false", "Run the tests most likely to fail first"),
     "retries": ("int", "0", "Re-run failed tests; a pass on retry means flaky"),
     "fail-on-flaky": ("bool", "false", "Fail the run when a test is flaky"),

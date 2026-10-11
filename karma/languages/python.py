@@ -492,6 +492,41 @@ class ModuleResolver:
         found.discard(importer)
         return found
 
+    def module_files(self, importer: str, module: str, level: int = 0) -> list[str]:
+        """The files that the dotted ``module`` (relative with ``level``) means inside
+        ``importer``: a package's ``__init__.py`` or a module, under any import root."""
+        if level:
+            package = _parent(importer)
+            for _ in range(level - 1):
+                if not package:
+                    return []
+                package = _parent(package)
+            path = _join(package, *module.split(".")) if module else package
+            if not path:
+                return []
+            found = self._module_file(path)
+            return [found] if found else []
+        if not module:
+            return []
+        hits = []
+        for root in self._roots_for(_parent(importer)):
+            found = self._module_file(_join(root, *module.split(".")))
+            if found and found not in hits:
+                hits.append(found)
+        return hits
+
+    def modules_with_prefix(self, importer: str, prefix: str) -> list[str]:
+        """Files whose dotted module name starts with ``prefix`` (e.g. ``"pkg.plugin_"``
+        from ``import_module(f"pkg.plugin_{name}")``), under any import root."""
+        path_prefix = prefix.replace(".", "/")
+        hits = []
+        for root in self._roots_for(_parent(importer)):
+            start = _join(root, path_prefix) if path_prefix else root
+            for f in self._files:
+                if f.endswith(".py") and f.startswith(start) and f not in hits:
+                    hits.append(f)
+        return sorted(hits)
+
     def _roots_for(self, directory: str) -> tuple[str, ...]:
         """Source roots, the directory's own import root, and those of conftests above."""
         roots = self._roots_memo.get(directory)

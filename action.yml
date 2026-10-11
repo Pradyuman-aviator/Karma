@@ -44,6 +44,14 @@ inputs:
       history. Combine with `pytest-args: -x` to stop at the first failure.
     required: false
     default: "false"
+  granularity:
+    description: >-
+      `function` to run only the test functions and classes that use a changed function,
+      class or constant (falling back to whole files wherever that cannot be decided
+      safely); `file` for whole test files. Default: `granularity` in `[tool.karma]`, else
+      `file`.
+    required: false
+    default: ""
   retries:
     description: >-
       Re-run failed tests up to this many times. A test that passes on retry is reported
@@ -122,6 +130,7 @@ runs:
         INPUT_ARGS: ${{ inputs.args }}
         INPUT_PRIORITIZE: ${{ inputs.prioritize }}
         INPUT_RETRIES: ${{ inputs.retries }}
+        INPUT_GRANULARITY: ${{ inputs.granularity }}
         INPUT_DIAGNOSE: ${{ inputs.diagnose }}
         INPUT_AI: ${{ inputs.ai }}
         INPUT_AI_MODEL: ${{ inputs.ai-model }}
