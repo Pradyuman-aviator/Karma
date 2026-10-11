@@ -1,0 +1,1273 @@
+{
+ "files": {
+  "billing/__init__.py": "",
+  "billing/money.py": "from decimal import ROUND_HALF_UP, Decimal\n\n\ndef to_cents(amount):\n    return int((Decimal(str(amount)) * 100).quantize(Decimal(\"1\"), ROUND_HALF_UP))\n\n\ndef format_eur(cents):\n    return f\"€{cents / 100:.2f}\"\n",
+  "billing/tax.py": "RATES = {\"eu\": 0.20, \"uk\": 0.20, \"us\": 0.07}\n\n\ndef rate(region):\n    return RATES.get(region, 0.0)\n\n\ndef tax_for(amount, region):\n    return amount * rate(region)\n",
+  "billing/discounts.py": "def loyalty(amount, years):\n    return amount * min(years, 10) * 0.01\n\n\ndef coupon(code):\n    return 5.0 if code == \"WELCOME5\" else 0.0\n",
+  "billing/invoice.py": "from billing.discounts import coupon, loyalty\nfrom billing.money import format_eur, to_cents\nfrom billing.tax import tax_for\n\n\nclass Invoice:\n    def __init__(self, amount, region, years=0, code=None):\n        self.amount = amount\n        self.region = region\n        self.years = years\n        self.code = code\n\n    def subtotal(self):\n        return self.amount - loyalty(self.amount, self.years) - coupon(self.code)\n\n    def total(self):\n        return self.subtotal() + tax_for(self.subtotal(), self.region)\n\n    def render(self):\n        return format_eur(to_cents(self.total()))\n\n\ndef quick_total(amount, region):\n    return amount + tax_for(amount, region)\n",
+  "billing/reports.py": "from billing.money import format_eur\n\n\ndef summary(invoices):\n    return format_eur(sum(invoice.amount for invoice in invoices) * 100)\n",
+  "tests/conftest.py": "import pytest\n\nfrom billing.invoice import Invoice\n\n\n@pytest.fixture\ndef eu_invoice():\n    return Invoice(100.0, \"eu\")\n",
+  "tests/test_tax.py": "from billing.tax import rate, tax_for\n\n\ndef test_known_region():\n    assert rate(\"eu\") == 0.20\n\n\ndef test_unknown_region():\n    assert rate(\"mars\") == 0.0\n\n\ndef test_tax_for():\n    assert tax_for(50, \"us\") == 3.5\n",
+  "tests/test_discounts.py": "from billing.discounts import coupon, loyalty\n\n\ndef test_loyalty_caps_at_ten_years():\n    assert loyalty(100, 25) == 10\n\n\ndef test_coupon():\n    assert coupon(\"WELCOME5\") == 5.0\n",
+  "tests/test_money.py": "from billing.money import format_eur, to_cents\n\n\ndef test_to_cents_rounds():\n    assert to_cents(0.125) == 13\n\n\ndef test_format_eur():\n    assert format_eur(1999) == \"€19.99\"\n",
+  "tests/test_invoice.py": "from billing.invoice import quick_total\n\n\ndef test_total(eu_invoice):\n    assert eu_invoice.total() == 115.0\n\n\ndef test_render(eu_invoice):\n    assert eu_invoice.render() == \"€115.00\"\n\n\ndef test_quick_total():\n    assert quick_total(10, \"uk\") == 12.0\n",
+  "tests/test_reports.py": "from billing.reports import summary\n\n\nclass Amount:\n    def __init__(self, amount):\n        self.amount = amount\n\n\ndef test_summary():\n    assert summary([Amount(1), Amount(2)]) == \"€3.00\"\n"
+ },
+ "symbols": {
+  "billing/money.py": [
+   {
+    "name": "to_cents",
+    "kind": "function",
+    "start": 4,
+    "end": 5
+   },
+   {
+    "name": "format_eur",
+    "kind": "function",
+    "start": 8,
+    "end": 9
+   }
+  ],
+  "billing/tax.py": [
+   {
+    "name": "RATES",
+    "kind": "constant",
+    "start": 1,
+    "end": 1
+   },
+   {
+    "name": "rate",
+    "kind": "function",
+    "start": 4,
+    "end": 5
+   },
+   {
+    "name": "tax_for",
+    "kind": "function",
+    "start": 8,
+    "end": 9
+   }
+  ],
+  "billing/discounts.py": [
+   {
+    "name": "loyalty",
+    "kind": "function",
+    "start": 1,
+    "end": 2
+   },
+   {
+    "name": "coupon",
+    "kind": "function",
+    "start": 5,
+    "end": 6
+   }
+  ],
+  "billing/invoice.py": [
+   {
+    "name": "Invoice.subtotal",
+    "kind": "method",
+    "start": 13,
+    "end": 14
+   },
+   {
+    "name": "Invoice.total",
+    "kind": "method",
+    "start": 16,
+    "end": 17
+   },
+   {
+    "name": "Invoice.render",
+    "kind": "method",
+    "start": 19,
+    "end": 20
+   },
+   {
+    "name": "quick_total",
+    "kind": "function",
+    "start": 23,
+    "end": 24
+   }
+  ],
+  "billing/reports.py": [
+   {
+    "name": "summary",
+    "kind": "function",
+    "start": 4,
+    "end": 5
+   }
+  ]
+ },
+ "tests": {
+  "tests/test_tax.py": [
+   "test_known_region",
+   "test_unknown_region",
+   "test_tax_for"
+  ],
+  "tests/test_discounts.py": [
+   "test_loyalty_caps_at_ten_years",
+   "test_coupon"
+  ],
+  "tests/test_money.py": [
+   "test_to_cents_rounds",
+   "test_format_eur"
+  ],
+  "tests/test_invoice.py": [
+   "test_total",
+   "test_render",
+   "test_quick_total"
+  ],
+  "tests/test_reports.py": [
+   "test_summary"
+  ]
+ },
+ "total_tests": 11,
+ "changes": [
+  {
+   "file": "billing/money.py",
+   "symbol": "to_cents",
+   "kind": "function",
+   "start": 4,
+   "end": 5,
+   "file_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/money.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/money.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "billing/money.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "billing/reports.py",
+      "billing/money.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/money.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_invoice.py",
+     "tests/test_money.py"
+    ],
+    "targets": [
+     "tests/test_invoice.py::test_render",
+     "tests/test_invoice.py::test_total",
+     "tests/test_money.py::test_to_cents_rounds"
+    ],
+    "file_reasons": {
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/money.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "billing/money.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_invoice.py::test_render": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/money.py::to_cents (changed, line 4)"
+     ],
+     "tests/test_invoice.py::test_total": [
+      "tests/test_invoice.py::test_total",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/money.py::to_cents (changed, line 4)"
+     ],
+     "tests/test_money.py::test_to_cents_rounds": [
+      "tests/test_money.py::test_to_cents_rounds",
+      "billing/money.py::to_cents (changed, line 4)"
+     ]
+    },
+    "narrowed_out": [
+     "tests/test_discounts.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ]
+   }
+  },
+  {
+   "file": "billing/money.py",
+   "symbol": "format_eur",
+   "kind": "function",
+   "start": 8,
+   "end": 9,
+   "file_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/money.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/money.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "billing/money.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "billing/reports.py",
+      "billing/money.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/money.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py"
+    ],
+    "targets": [
+     "tests/test_invoice.py::test_render",
+     "tests/test_invoice.py::test_total",
+     "tests/test_money.py::test_format_eur",
+     "tests/test_reports.py::test_summary"
+    ],
+    "file_reasons": {
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/money.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "billing/money.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "billing/reports.py",
+      "billing/money.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_invoice.py::test_render": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/money.py::format_eur (changed, line 8)"
+     ],
+     "tests/test_invoice.py::test_total": [
+      "tests/test_invoice.py::test_total",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/money.py::format_eur (changed, line 8)"
+     ],
+     "tests/test_money.py::test_format_eur": [
+      "tests/test_money.py::test_format_eur",
+      "billing/money.py::format_eur (changed, line 8)"
+     ],
+     "tests/test_reports.py::test_summary": [
+      "tests/test_reports.py::test_summary",
+      "billing/reports.py::summary",
+      "billing/money.py::format_eur (changed, line 8)"
+     ]
+    },
+    "narrowed_out": [
+     "tests/test_discounts.py",
+     "tests/test_tax.py"
+    ]
+   }
+  },
+  {
+   "file": "billing/tax.py",
+   "symbol": "RATES",
+   "kind": "constant",
+   "start": 1,
+   "end": 1,
+   "file_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "billing/tax.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_invoice.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_invoice.py::test_quick_total",
+     "tests/test_invoice.py::test_render",
+     "tests/test_invoice.py::test_total",
+     "tests/test_tax.py::test_known_region",
+     "tests/test_tax.py::test_tax_for",
+     "tests/test_tax.py::test_unknown_region"
+    ],
+    "file_reasons": {
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "billing/tax.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_invoice.py::test_quick_total": [
+      "tests/test_invoice.py::test_quick_total",
+      "billing/invoice.py::quick_total",
+      "billing/tax.py::tax_for",
+      "billing/tax.py::rate",
+      "billing/tax.py::RATES (changed, line 1)"
+     ],
+     "tests/test_invoice.py::test_render": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/tax.py::tax_for",
+      "billing/tax.py::rate",
+      "billing/tax.py::RATES (changed, line 1)"
+     ],
+     "tests/test_invoice.py::test_total": [
+      "tests/test_invoice.py::test_total",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/tax.py::tax_for",
+      "billing/tax.py::rate",
+      "billing/tax.py::RATES (changed, line 1)"
+     ],
+     "tests/test_tax.py::test_known_region": [
+      "tests/test_tax.py::test_known_region",
+      "billing/tax.py::rate",
+      "billing/tax.py::RATES (changed, line 1)"
+     ],
+     "tests/test_tax.py::test_tax_for": [
+      "tests/test_tax.py::test_tax_for",
+      "billing/tax.py::tax_for",
+      "billing/tax.py::rate",
+      "billing/tax.py::RATES (changed, line 1)"
+     ],
+     "tests/test_tax.py::test_unknown_region": [
+      "tests/test_tax.py::test_unknown_region",
+      "billing/tax.py::rate",
+      "billing/tax.py::RATES (changed, line 1)"
+     ]
+    },
+    "narrowed_out": [
+     "tests/test_discounts.py",
+     "tests/test_money.py",
+     "tests/test_reports.py"
+    ]
+   }
+  },
+  {
+   "file": "billing/tax.py",
+   "symbol": "rate",
+   "kind": "function",
+   "start": 4,
+   "end": 5,
+   "file_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "billing/tax.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_invoice.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_invoice.py::test_quick_total",
+     "tests/test_invoice.py::test_render",
+     "tests/test_invoice.py::test_total",
+     "tests/test_tax.py::test_known_region",
+     "tests/test_tax.py::test_tax_for",
+     "tests/test_tax.py::test_unknown_region"
+    ],
+    "file_reasons": {
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "billing/tax.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_invoice.py::test_quick_total": [
+      "tests/test_invoice.py::test_quick_total",
+      "billing/invoice.py::quick_total",
+      "billing/tax.py::tax_for",
+      "billing/tax.py::rate (changed, line 4)"
+     ],
+     "tests/test_invoice.py::test_render": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/tax.py::tax_for",
+      "billing/tax.py::rate (changed, line 4)"
+     ],
+     "tests/test_invoice.py::test_total": [
+      "tests/test_invoice.py::test_total",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/tax.py::tax_for",
+      "billing/tax.py::rate (changed, line 4)"
+     ],
+     "tests/test_tax.py::test_known_region": [
+      "tests/test_tax.py::test_known_region",
+      "billing/tax.py::rate (changed, line 4)"
+     ],
+     "tests/test_tax.py::test_tax_for": [
+      "tests/test_tax.py::test_tax_for",
+      "billing/tax.py::tax_for",
+      "billing/tax.py::rate (changed, line 4)"
+     ],
+     "tests/test_tax.py::test_unknown_region": [
+      "tests/test_tax.py::test_unknown_region",
+      "billing/tax.py::rate (changed, line 4)"
+     ]
+    },
+    "narrowed_out": [
+     "tests/test_discounts.py",
+     "tests/test_money.py",
+     "tests/test_reports.py"
+    ]
+   }
+  },
+  {
+   "file": "billing/tax.py",
+   "symbol": "tax_for",
+   "kind": "function",
+   "start": 8,
+   "end": 9,
+   "file_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "billing/tax.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_invoice.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_invoice.py::test_quick_total",
+     "tests/test_invoice.py::test_render",
+     "tests/test_invoice.py::test_total",
+     "tests/test_tax.py::test_tax_for"
+    ],
+    "file_reasons": {
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/tax.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "billing/tax.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_invoice.py::test_quick_total": [
+      "tests/test_invoice.py::test_quick_total",
+      "billing/invoice.py::quick_total",
+      "billing/tax.py::tax_for (changed, line 8)"
+     ],
+     "tests/test_invoice.py::test_render": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/tax.py::tax_for (changed, line 8)"
+     ],
+     "tests/test_invoice.py::test_total": [
+      "tests/test_invoice.py::test_total",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/tax.py::tax_for (changed, line 8)"
+     ],
+     "tests/test_tax.py::test_tax_for": [
+      "tests/test_tax.py::test_tax_for",
+      "billing/tax.py::tax_for (changed, line 8)"
+     ]
+    },
+    "narrowed_out": [
+     "tests/test_discounts.py",
+     "tests/test_money.py",
+     "tests/test_reports.py"
+    ]
+   }
+  },
+  {
+   "file": "billing/discounts.py",
+   "symbol": "loyalty",
+   "kind": "function",
+   "start": 1,
+   "end": 2,
+   "file_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "billing/discounts.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/discounts.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/discounts.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/discounts.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/discounts.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py::test_loyalty_caps_at_ten_years",
+     "tests/test_invoice.py::test_render",
+     "tests/test_invoice.py::test_total"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "billing/discounts.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/discounts.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_discounts.py::test_loyalty_caps_at_ten_years": [
+      "tests/test_discounts.py::test_loyalty_caps_at_ten_years",
+      "billing/discounts.py::loyalty (changed, line 1)"
+     ],
+     "tests/test_invoice.py::test_render": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/discounts.py::loyalty (changed, line 1)"
+     ],
+     "tests/test_invoice.py::test_total": [
+      "tests/test_invoice.py::test_total",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/discounts.py::loyalty (changed, line 1)"
+     ]
+    },
+    "narrowed_out": [
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ]
+   }
+  },
+  {
+   "file": "billing/discounts.py",
+   "symbol": "coupon",
+   "kind": "function",
+   "start": 5,
+   "end": 6,
+   "file_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "billing/discounts.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/discounts.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/discounts.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/discounts.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "tests/conftest.py",
+      "billing/invoice.py",
+      "billing/discounts.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py::test_coupon",
+     "tests/test_invoice.py::test_render",
+     "tests/test_invoice.py::test_total"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "billing/discounts.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py",
+      "billing/discounts.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_discounts.py::test_coupon": [
+      "tests/test_discounts.py::test_coupon",
+      "billing/discounts.py::coupon (changed, line 5)"
+     ],
+     "tests/test_invoice.py::test_render": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/discounts.py::coupon (changed, line 5)"
+     ],
+     "tests/test_invoice.py::test_total": [
+      "tests/test_invoice.py::test_total",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice",
+      "billing/discounts.py::coupon (changed, line 5)"
+     ]
+    },
+    "narrowed_out": [
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ]
+   }
+  },
+  {
+   "file": "billing/invoice.py",
+   "symbol": "Invoice.subtotal",
+   "kind": "method",
+   "start": 13,
+   "end": 14,
+   "file_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_invoice.py"
+    ],
+    "targets": [
+     "tests/test_invoice.py::test_render",
+     "tests/test_invoice.py::test_total"
+    ],
+    "file_reasons": {
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_invoice.py::test_render": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice (changed, line 6)"
+     ],
+     "tests/test_invoice.py::test_total": [
+      "tests/test_invoice.py::test_total",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice (changed, line 6)"
+     ]
+    },
+    "narrowed_out": [
+     "tests/test_discounts.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ]
+   }
+  },
+  {
+   "file": "billing/invoice.py",
+   "symbol": "Invoice.total",
+   "kind": "method",
+   "start": 16,
+   "end": 17,
+   "file_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_invoice.py"
+    ],
+    "targets": [
+     "tests/test_invoice.py::test_render",
+     "tests/test_invoice.py::test_total"
+    ],
+    "file_reasons": {
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_invoice.py::test_render": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice (changed, line 6)"
+     ],
+     "tests/test_invoice.py::test_total": [
+      "tests/test_invoice.py::test_total",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice (changed, line 6)"
+     ]
+    },
+    "narrowed_out": [
+     "tests/test_discounts.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ]
+   }
+  },
+  {
+   "file": "billing/invoice.py",
+   "symbol": "Invoice.render",
+   "kind": "method",
+   "start": 19,
+   "end": 20,
+   "file_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_invoice.py"
+    ],
+    "targets": [
+     "tests/test_invoice.py::test_render",
+     "tests/test_invoice.py::test_total"
+    ],
+    "file_reasons": {
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_invoice.py::test_render": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice (changed, line 6)"
+     ],
+     "tests/test_invoice.py::test_total": [
+      "tests/test_invoice.py::test_total",
+      "tests/test_invoice.py::eu_invoice",
+      "tests/conftest.py::eu_invoice",
+      "billing/invoice.py::Invoice (changed, line 6)"
+     ]
+    },
+    "narrowed_out": [
+     "tests/test_discounts.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ]
+   }
+  },
+  {
+   "file": "billing/invoice.py",
+   "symbol": "quick_total",
+   "kind": "function",
+   "start": 23,
+   "end": 24,
+   "file_level": {
+    "files": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "targets": [
+     "tests/test_discounts.py",
+     "tests/test_invoice.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ],
+    "file_reasons": {
+     "tests/test_discounts.py": [
+      "tests/test_discounts.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_money.py": [
+      "tests/test_money.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ],
+     "tests/test_tax.py": [
+      "tests/test_tax.py",
+      "tests/conftest.py",
+      "billing/invoice.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_invoice.py"
+    ],
+    "targets": [
+     "tests/test_invoice.py::test_quick_total"
+    ],
+    "file_reasons": {
+     "tests/test_invoice.py": [
+      "tests/test_invoice.py",
+      "billing/invoice.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_invoice.py::test_quick_total": [
+      "tests/test_invoice.py::test_quick_total",
+      "billing/invoice.py::quick_total (changed, line 23)"
+     ]
+    },
+    "narrowed_out": [
+     "tests/test_discounts.py",
+     "tests/test_money.py",
+     "tests/test_reports.py",
+     "tests/test_tax.py"
+    ]
+   }
+  },
+  {
+   "file": "billing/reports.py",
+   "symbol": "summary",
+   "kind": "function",
+   "start": 4,
+   "end": 5,
+   "file_level": {
+    "files": [
+     "tests/test_reports.py"
+    ],
+    "targets": [
+     "tests/test_reports.py"
+    ],
+    "file_reasons": {
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "billing/reports.py"
+     ]
+    },
+    "item_reasons": {},
+    "narrowed_out": []
+   },
+   "function_level": {
+    "files": [
+     "tests/test_reports.py"
+    ],
+    "targets": [
+     "tests/test_reports.py::test_summary"
+    ],
+    "file_reasons": {
+     "tests/test_reports.py": [
+      "tests/test_reports.py",
+      "billing/reports.py"
+     ]
+    },
+    "item_reasons": {
+     "tests/test_reports.py::test_summary": [
+      "tests/test_reports.py::test_summary",
+      "billing/reports.py::summary (changed, line 4)"
+     ]
+    },
+    "narrowed_out": []
+   }
+  }
+ ]
+}
