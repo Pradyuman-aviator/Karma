@@ -28,8 +28,10 @@ from __future__ import annotations
 
 import ast
 import fnmatch
+import importlib.util
 import logging
 import re
+import sys
 from collections import deque
 from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
@@ -93,6 +95,8 @@ _FILE_WIDE = frozenset(
         "__all__",
     }
 )
+# Units whose own code runs on import (not when called): module code and assignments.
+_RUNS_ON_IMPORT = frozenset({"code", "compound", "data"})
 # Class members that run when a class (or a subclass) is created, at import time.
 _CREATION_HOOKS = frozenset({"__init_subclass__", "__class_getitem__", "__prepare__"})
 _COMPOUND = (
@@ -156,6 +160,35 @@ def _split(tree: ast.Module) -> _Split:
             continue
         units[name] = ("\n".join(sorted(fp for _, _, fp in entries)), entries[0][1])
     return _Split(units, tuple(code), tuple(imports))
+
+
+def _creation_hooks(tree: ast.Module) -> dict[str, str]:
+    """Per top-level class, what runs when it or a subclass is created: its metaclass,
+    its creation hooks, and all of a metaclass's body."""
+    found: dict[str, str] = {}
+    for stmt in tree.body:
+        if not isinstance(stmt, ast.ClassDef):
+            continue
+        if _is_metaclass(stmt):
+            found[stmt.name] = _fingerprint(stmt)
+            continue
+        parts = [_fingerprint(k) for k in stmt.keywords]
+        parts += [_fingerprint(m) for m in _hook_members(stmt)]
+        if parts:
+            found[stmt.name] = "\n".join(parts)
+    return found
+
+
+def _is_metaclass(stmt: ast.ClassDef) -> bool:
+    return any(isinstance(b, ast.Name) and b.id == "type" for b in stmt.bases)
+
+
+def _hook_members(stmt: ast.ClassDef) -> list[ast.FunctionDef | ast.AsyncFunctionDef]:
+    return [
+        s
+        for s in stmt.body
+        if isinstance(s, (ast.FunctionDef, ast.AsyncFunctionDef)) and s.name in _CREATION_HOOKS
+    ]
 
 
 def _ignored(stmt: ast.stmt, index: int) -> bool:
@@ -277,7 +310,8 @@ def diff_units(
     if not path.endswith(".py"):
         return FileChange(True, why="not Python")
     try:
-        old, new = _split(_parse(before, path)), _split(_parse(after, path))
+        old_tree, new_tree = _parse(before, path), _parse(after, path)
+        old, new = _split(old_tree), _split(new_tree)
     except (SyntaxError, ValueError, RecursionError, MemoryError):
         return FileChange(True, why="not parseable")
     if old.code != new.code:
@@ -286,6 +320,8 @@ def diff_units(
         loaded_before = resolver.resolve(path, old.imports)
         if loaded_before != resolver.resolve(path, new.imports):
             return FileChange(True, why="imports a different set of modules")
+    if _creation_hooks(old_tree) != _creation_hooks(new_tree):
+        return FileChange(True, why="a class creation hook (metaclass, __init_subclass__) changed")
     names: dict[str, int] = {}
     for name in sorted(old.units.keys() | new.units.keys()):
         was, now = old.units.get(name), new.units.get(name)
@@ -307,8 +343,12 @@ class _Unit:
     refs: set[Key] = field(default_factory=set)
     #: keys it may change when it is affected (globals, mutated module objects)
     writes: set[Key] = field(default_factory=set)
-    #: data-like names passed to calls: may be mutated by them
-    arg_keys: set[Key] = field(default_factory=set)
+    #: (what is called, the data-like names passed to it): a changed callee may mutate them
+    calls: list[tuple[frozenset[Key], frozenset[Key]]] = field(default_factory=list)
+    #: every function it calls (for module-level code: what runs at import time)
+    callees: set[Key] = field(default_factory=set)
+    #: what it calls while its module is imported (decorators, defaults, class bodies)
+    import_callees: set[Key] = field(default_factory=set)
     #: objects its decorators register it with (``@app.route`` -> app)
     deco_receivers: set[Key] = field(default_factory=set)
     #: decorator functions applied to it (their own writes happen on import)
@@ -322,7 +362,12 @@ class _Unit:
     dynamic: bool = False
     #: runs code when a class (or subclass) is created: __init_subclass__, metaclass
     creation_hook: bool = False
+    #: what that creation code refers to (not counting the class itself) and writes
+    hook_refs: set[Key] = field(default_factory=set)
+    hook_writes: set[Key] = field(default_factory=set)
     fixture: bool = False
+    #: imports a module whose name is computed: it may use anything the file imports
+    opaque_import: bool = False
     #: ``@pytest.fixture(name="client")``: the name tests request it by
     fixture_alias: str | None = None
     autouse: bool = False
@@ -351,8 +396,8 @@ class _Module:
         self.units: dict[str, _Unit] = {}
         self.anonymous: list[_Unit] = []
         self.string_files: set[str] = set()
-        #: imports a module whose name is computed: names cannot follow it
-        self.opaque = False
+        #: names bound at module level to modules that resolve nowhere
+        self.unknown_names: set[str] = set()
         self._collect_bindings(tree)
 
         split = _split(tree)
@@ -406,6 +451,8 @@ class _Module:
                     else:
                         binding = _Binding("module", alias.name.partition(".")[0])
                     self.bindings.setdefault(alias.asname or binding.module, []).append(binding)
+                    if self.unknown(alias.name, 0):
+                        self.unknown_names.add(alias.asname or binding.module)
             elif isinstance(stmt, ast.ImportFrom):
                 for alias in stmt.names:
                     if alias.name == "*":
@@ -413,6 +460,8 @@ class _Module:
                     else:
                         binding = _Binding("from", stmt.module or "", stmt.level, alias.name)
                         self.bindings.setdefault(alias.asname or alias.name, []).append(binding)
+                        if self.unknown(stmt.module or "", stmt.level):
+                            self.unknown_names.add(alias.asname or alias.name)
             else:
                 self.locals.update(_bound_names(stmt) if not _is_nested_scope(stmt) else ())
             if isinstance(stmt, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
@@ -435,7 +484,20 @@ class _Module:
 
     # ------------------------------------------------------------------ resolution
     def _modules(self, module: str, level: int) -> list[str]:
-        return self._resolver.module_files(self.path, module, level)
+        found = self._resolver.module_files(self.path, module, level)
+        if found or level or not module or _installed(module.partition(".")[0]):
+            return found
+        # Not on a source root and not installed: a directory put on sys.path at
+        # runtime (by a fixture, say). Any file in the repository with that name.
+        found = self._resolver.find_anywhere(module)
+        self.string_files.update(found)
+        return found
+
+    def unknown(self, module: str, level: int) -> bool:
+        """An import that resolves nowhere: written at runtime (e.g. by a test)."""
+        if level or not module:
+            return False
+        return not self._modules(module, level) and not _installed(module.partition(".")[0])
 
     def _walk(self, module: str, level: int, attrs: Sequence[str]) -> set[Key]:
         """Keys for ``module.attr1.attr2...``, descending into submodules."""
@@ -520,9 +582,28 @@ class _Module:
             }
             unit.has_init = "__init__" in members
             metaclass = any(k.arg == "metaclass" for k in stmt.keywords)
-            bases_type = any(isinstance(b, ast.Name) and b.id == "type" for b in stmt.bases)
-            unit.creation_hook = bool(members & _CREATION_HOOKS) or metaclass or bases_type
-        _References(self, unit, local).visit(stmt)
+            unit.creation_hook = bool(members & _CREATION_HOOKS) or metaclass or _is_metaclass(stmt)
+            if unit.creation_hook:
+                hook = _Unit(stmt.name, "class", stmt.lineno)
+                parts: list[ast.AST] = [*stmt.keywords, *_hook_members(stmt)]
+                for part in [stmt] if _is_metaclass(stmt) else parts:
+                    _References(self, hook, local).visit(part)
+                # (Not the class itself, nor a registry the hook only adds to.)
+                unit.hook_refs = hook.refs - hook.writes - {(self.path, stmt.name)}
+                unit.hook_writes = hook.writes
+        for call in _import_time_calls(stmt):
+            chain = _chain(call.func)
+            if chain:
+                unit.import_callees |= self.resolve(chain[0], chain[1:], local)
+        visitor = _References(self, unit, local)
+        if isinstance(stmt, ast.AnnAssign):
+            # `x: T = value`: the annotation does not change the value (class bodies,
+            # which dataclasses and pydantic read, and function signatures still count).
+            visitor.visit(stmt.target)
+            if stmt.value is not None:
+                visitor.visit(stmt.value)
+        else:
+            visitor.visit(stmt)
         if unit.name is None:
             # A module-level call is run for its effect: `app.add_route("/", view)`.
             unit.writes |= unit.receivers
@@ -554,6 +635,25 @@ class _Module:
                 unit.deco_receivers |= self.resolve(chain[0], chain[1:-1], local)
             else:
                 unit.deco_funcs |= self.resolve(chain[0], (), local)
+
+
+def _import_time_calls(stmt: ast.stmt) -> Iterator[ast.Call]:
+    """Calls a top-level statement makes while its module is imported: decorators,
+    default values, class bodies and module code, but not function bodies."""
+    stack: list[ast.AST] = [stmt]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            stack.extend(node.decorator_list)
+            stack.extend(node.args.defaults)
+            stack.extend(d for d in node.args.kw_defaults if d is not None)
+            continue
+        if isinstance(node, ast.Lambda):
+            stack.extend(node.args.defaults)
+            continue
+        if isinstance(node, ast.Call):
+            yield node
+        stack.extend(ast.iter_child_nodes(node))
 
 
 def _module_statements(body: list[ast.stmt]) -> Iterator[ast.stmt]:
@@ -592,6 +692,22 @@ def _literal_prefix(node: ast.AST | None) -> str:
     return ""
 
 
+_STDLIB = frozenset(getattr(sys, "stdlib_module_names", ())) | frozenset(sys.builtin_module_names)
+_installed_memo: dict[str, bool] = {}
+
+
+def _installed(top: str) -> bool:
+    """Whether ``top`` is the standard library or an installed package."""
+    if top in _STDLIB:
+        return True
+    if top not in _installed_memo:
+        try:
+            _installed_memo[top] = importlib.util.find_spec(top) is not None
+        except (ImportError, ValueError):
+            _installed_memo[top] = False
+    return _installed_memo[top]
+
+
 def _chain(node: ast.AST) -> list[str]:
     """``a.b.c`` -> ``["a", "b", "c"]``; ``[]`` if not rooted at a plain name."""
     parts: list[str] = []
@@ -618,7 +734,17 @@ class _References(ast.NodeVisitor):
     def _module_level(self, name: str) -> bool:
         return name in self.module.locals or name in self.module.bindings or name in self.local
 
+    def visit_Import(self, node: ast.Import) -> None:
+        if any(self.module.unknown(alias.name, 0) for alias in node.names):
+            self.unit.opaque_import = True
+
+    def visit_ImportFrom(self, node: ast.ImportFrom) -> None:
+        if self.module.unknown(node.module or "", node.level):
+            self.unit.opaque_import = True
+
     def visit_Name(self, node: ast.Name) -> None:
+        if node.id in self.module.unknown_names:
+            self.unit.opaque_import = True
         self.unit.refs |= self._keys([node.id])
 
     def visit_Attribute(self, node: ast.Attribute) -> None:
@@ -666,7 +792,7 @@ class _References(ast.NodeVisitor):
                     found = self.module.prefixed_modules(prefix)
                     self.unit.refs |= {(f, None) for f in found}
                 else:
-                    self.module.opaque = True
+                    self.unit.opaque_import = True
         if len(func_chain) > 1 and self._module_level(func_chain[0]):
             receiver = self._keys(func_chain[:-1])
             self.unit.receivers |= receiver
@@ -676,8 +802,15 @@ class _References(ast.NodeVisitor):
             self.unit.dynamic = True
         if len(func_chain) == 1 and func_chain[0] in _DYNAMIC_CALLS:
             literal = node.args and isinstance(node.args[0], ast.Constant)
-            # eval("2+2") only evaluates; exec(...) and globals() can rebind names.
-            if not (func_chain[0] == "eval" and literal):
+            # eval("2+2") only evaluates, and exec(code, namespace) with a namespace of
+            # its own cannot rebind the module's names; globals() and exec(code) can.
+            namespace = node.args[1] if len(node.args) > 1 else None
+            own_namespace = namespace is not None and _chain(
+                namespace.func if isinstance(namespace, ast.Call) else namespace
+            ) not in (["globals"], ["vars"])
+            if func_chain[0] == "globals" or not (
+                (func_chain[0] == "eval" and literal) or own_namespace
+            ):
                 self.unit.dynamic = True
         if func_chain == ["vars"]:
             target = _chain(node.args[0]) if node.args else []
@@ -691,10 +824,16 @@ class _References(ast.NodeVisitor):
             target, attr = _chain(node.args[0]), node.args[1]
             if target and isinstance(attr, ast.Constant) and isinstance(attr.value, str):
                 self.unit.refs |= self._keys([*target, attr.value])
+        passed: set[Key] = set()
         for arg in [*node.args, *(k.value for k in node.keywords)]:
             chain = _chain(arg)
             if chain and self._module_level(chain[0]):
-                self.unit.arg_keys |= self._keys(chain)
+                passed |= self._keys(chain)
+        if func_chain:
+            callee = self._keys(func_chain)
+            self.unit.callees |= callee
+            if passed:
+                self.unit.calls.append((frozenset(callee), frozenset(passed)))
         self.generic_visit(node)
 
 
@@ -823,7 +962,17 @@ class _Engine:
             return None
         if name is None:
             return (path, min(names))
-        return (path, name) if name in names else None
+        if name in names:
+            return (path, name)
+        if "__getattr__" in names:
+            # PEP 562: a name the module does not define is looked up by __getattr__.
+            module = self.module(path)
+            defined = module is not None and (
+                name in module.units or name in module.locals or name in module.bindings
+            )
+            if not defined:
+                return (path, "__getattr__")
+        return None
 
     def make_whole(self, path: str, via: tuple[str, str] | Origin) -> None:
         if path in self.whole:
@@ -857,10 +1006,10 @@ class _Engine:
         runs_around_tests = scoped and (
             name in _FILE_WIDE or name.startswith("pytest_") or (unit is not None and unit.autouse)
         )
-        # __getattr__ and __all__ change how every other module sees this one. (__all__
-        # lists names as strings, so only a change to the list itself counts.)
+        # __all__ changes what `from module import *` binds. (It lists names as
+        # strings, so only a change to the list itself counts.)
         all_changed = name == "__all__" and len(via) == 3
-        if runs_around_tests or name == "__getattr__" or all_changed:
+        if runs_around_tests or all_changed:
             self.make_whole(path, here)
         if unit is not None and unit.fixture_alias and path not in self.whole:
             self.mark(path, unit.fixture_alias, here)
@@ -921,20 +1070,65 @@ class _Engine:
 
     def _consequences(self, module: _Module, unit: _Unit, here: tuple[str, str]) -> None:
         """An affected unit changes more than itself: what it writes, what it registers."""
-        if unit.dynamic or unit.creation_hook:
+        if unit.dynamic:
             self.make_whole(module.path, here)
             return
-        for key in _ordered(unit.writes):
-            self.mark_key(key, here)
-        for key in _ordered(unit.arg_keys | unit.deco_receivers):
+        if any(self.hit(k) for k in _ordered(unit.import_callees)):
+            # It calls something affected while the module is imported: if that call
+            # now fails, importing the module fails, and every test importing it.
+            self.make_whole(module.path, here)
+            return
+        if module.path in self.test_set and unit.name is not None and self._is_item(unit):
+            # A test's writes (flask.session["x"] = ...) only reach the state pytest sets
+            # up for that test; they are not a change other code observes.
+            return
+        if unit.creation_hook and any(self.hit(k) for k in _ordered(unit.hook_refs)):
+            self.make_whole(module.path, here)  # subclasses are created differently
+            return
+        for hook in self._creation_hooks(unit):
+            for key in _ordered(hook.hook_writes):
+                self.mark_key(key, here)  # e.g. a registry the class is added to
+        if unit.kind in _RUNS_ON_IMPORT:
+            # Module-level code: what it writes, and what the functions it calls write,
+            # happens on import, so every importer sees it.
+            for key in _ordered(unit.writes):
+                self.mark_key(key, here)
+            for key in _ordered(unit.callees):
+                if self.hit(key):
+                    for written in self._writes_of(key):
+                        self.mark_key(written, here)
+        for key in _ordered(unit.deco_receivers):
             if self.kind(key) == "data":
                 self.mark_key(key, here)
+        for callee, passed in unit.calls:
+            if any(self.hit(k) for k in _ordered(callee)):
+                for key in _ordered(passed):
+                    if self.kind(key) == "data":
+                        self.mark_key(key, here)
         for key in _ordered(unit.deco_funcs):
             target = self.module(key[0])
             decorator = target.units.get(key[1] or "") if target is not None else None
             if decorator is not None and decorator.kind == "def":
                 for written in _ordered(decorator.writes):
                     self.mark_key(written, here)
+
+    def _writes_of(self, key: Key) -> list[Key]:
+        """What the function ``key`` writes to module-level state when it runs."""
+        module = self.module(key[0])
+        unit = module.units.get(key[1] or "") if module is not None else None
+        return _ordered(unit.writes) if unit is not None and unit.kind == "def" else []
+
+    def _creation_hooks(self, unit: _Unit, depth: int = 0) -> list[_Unit]:
+        """The class and its repository base classes that run code on subclassing."""
+        found = [unit] if unit.creation_hook else []
+        if depth > 8:
+            return found
+        for path, name in _ordered(unit.base_keys):
+            module = self.module(path)
+            base = module.units.get(name or "") if module is not None else None
+            if base is not None and base.kind == "class" and base is not unit:
+                found += self._creation_hooks(base, depth + 1)
+        return found
 
     # ------------------------------------------------------------------ fixpoint
     def run(self) -> None:
@@ -960,30 +1154,37 @@ class _Engine:
             ancestor = trigger.endswith("/__init__.py") and path.startswith(
                 trigger[: -len("__init__.py")]
             )
-            opaque = (module.opaque and not ancestor) or trigger not in module.bound_files
-            if opaque and self.affected_any(trigger):
-                # Loaded in a way names cannot follow (importlib, pytest_plugins, ...).
+            if trigger not in module.bound_files and self.affected_any(trigger):
+                # Loaded in a way names cannot follow (pytest_plugins, ...).
                 self.make_whole(path, self._any_hit(trigger))
                 return
+            if not ancestor and self.affected_any(trigger):
+                # import_module(name) with a computed name may return any module this
+                # file imports, so the units doing it depend on all of them.
+                for unit in module.all_units():
+                    if unit.opaque_import:
+                        self._affect(module, unit, self._any_hit(trigger))
+                        if path in self.whole:
+                            return
         for unit in module.by_target.get(trigger, ()):
-            if unit.name is not None:
-                if unit.name in self.names.get(path, ()):
-                    continue
-                found = self._first_hit(unit)
-                if found is not None:
-                    self.mark(path, unit.name, found)
-            elif id(unit) not in self._done_anonymous:
-                found = self._first_hit(unit)
-                if found is not None:
-                    self._done_anonymous.add(id(unit))
-                    here = (path, f"<line {unit.line}>")
-                    self.why[here] = found
-                    # Module code that uses a change: what it binds or changes is affected.
-                    for name in unit.binds:
-                        self.mark(path, name, here)
-                    self._consequences(module, unit, here)
+            found = self._first_hit(unit)
+            if found is not None:
+                self._affect(module, unit, found)
             if path in self.whole:
                 return
+
+    def _affect(self, module: _Module, unit: _Unit, found: tuple[str, str]) -> None:
+        path = module.path
+        if unit.name is not None:
+            self.mark(path, unit.name, found)
+        elif id(unit) not in self._done_anonymous:
+            self._done_anonymous.add(id(unit))
+            here = (path, f"<line {unit.line}>")
+            self.why[here] = found
+            # Module code that uses a change: what it binds or changes is affected.
+            for name in unit.binds:
+                self.mark(path, name, here)
+            self._consequences(module, unit, here)
 
     def _any_hit(self, path: str) -> tuple[str, str]:
         return (path, WHOLE) if path in self.whole else (path, min(self.names[path]))
@@ -1038,6 +1239,13 @@ class _Engine:
             elif test_like and unit.kind in ("data", "import"):
                 return None
         return selected
+
+    def _is_item(self, unit: _Unit) -> bool:
+        """A test function or class pytest collects (by name, as in _items)."""
+        name = unit.name or ""
+        if unit.kind == "def":
+            return _pytest_match(name, self.config.python_functions) and not unit.fixture
+        return unit.kind == "class" and _pytest_match(name, self.config.python_classes)
 
     def _maybe_testcase(self, unit: _Unit, depth: int = 0) -> bool:
         if any("Test" in name for name in unit.base_names):

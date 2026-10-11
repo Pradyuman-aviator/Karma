@@ -22,20 +22,32 @@ Function-level selection: run only the test functions that use what changed.
     - attribute chains on modules
     - `mock.patch("pkg.mod.fn")`-style strings and `import_module(f"pkg.{name}")` prefixes
     - fixtures requested by parameter name, through every `conftest.py` above
-    - registries (`@app.route`, `app.add_route(...)`, `REGISTRY.append(...)`)
-    - module-level state that an affected function writes
-  - **Whole file when unsure.** Karma falls back to the whole file when module-level code
-    changed, for `exec`, `globals()` and writes to `sys.modules`, for metaclasses,
-    `__init_subclass__`, autouse fixtures, pytest hooks and `pytestmark`, for
-    `unittest.TestCase` subclasses it cannot name, for imports it cannot follow, and for
-    files that do not parse. It can only remove tests from the file-level selection.
+    - registries (`@app.route`, `app.add_route(...)`, `REGISTRY.append(...)`, subclass
+      registration in `__init_subclass__`)
+    - state written while a module is imported
+    - modules imported from a directory a fixture puts on `sys.path`, found by name
+  - **Whole file when unsure.** Karma falls back to the whole file when:
+    - module-level code changed, or code that runs on import (decorators, default
+      values, class bodies) calls something affected
+    - a module uses `exec`, `globals()` or writes to `sys.modules`
+    - a metaclass or `__init_subclass__` changed
+    - an autouse fixture, a pytest hook or `pytestmark` is affected
+    - a `unittest.TestCase` subclass cannot be named, `pytest_plugins` is involved, or a
+      file does not parse
+
+    Code importing a module with a computed name, or one that exists nowhere (written
+    by a test), is assumed to use everything its file imports. Function level can only
+    remove tests from the file-level selection.
   - `--explain`, `select --format json` (`targets`, `items`, `item_reasons`,
     `narrowed_out`) and the job summary show each test function's chain, e.g.
     `test_total ← app/invoice.py::total ← app/tax.py::rate (changed, line 12)`.
-  - Validated by breaking one function at a time in real projects:
-    - starlette: 40 functions, 0 failing tests missed, 39.8% of tests skipped on average
-      (18.8% at file level, on the same changes)
-    - rich: 40 functions, 0 missed, 30.6% of tests skipped (12.3% at file level)
+  - Validated by breaking one function at a time in three real projects, 40 each, with
+    0 failing tests missed. Tests skipped on average (file level on the same changes in
+    brackets):
+    - starlette: 36.8% (18.8%)
+    - rich: 27.1% (12.3%)
+    - Flask: 2.4% (2.2%)
+  - Pytest crashing outright counts as every test failing in the safety check.
 - `scripts/safety_check.py --granularity function`: the same check on your project.
 - pytest's `python_functions` and `python_classes` settings are read, to recognise test
   functions and classes.

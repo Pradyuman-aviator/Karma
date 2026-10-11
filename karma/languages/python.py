@@ -472,6 +472,7 @@ class ModuleResolver:
         # directory. This keeps resolving a large repository fast.
         self._absolute_memo: dict[tuple[ImportRef, str], tuple[str, ...]] = {}
         self._roots_memo: dict[str, tuple[str, ...]] = {}
+        self._anywhere_memo: dict[str, list[str]] = {}
 
     def resolve(self, importer: str, refs: Iterable[ImportRef]) -> set[str]:
         """Return the repository files that ``importer`` depends on via ``refs``."""
@@ -514,6 +515,19 @@ class ModuleResolver:
             if found and found not in hits:
                 hits.append(found)
         return hits
+
+    def find_anywhere(self, module: str) -> list[str]:
+        """Files anywhere in the repository that could be the dotted ``module``: for
+        imports that only resolve at runtime, from a directory a test or fixture puts
+        on ``sys.path`` (e.g. ``tests/test_apps/blueprintapp``)."""
+        found = self._anywhere_memo.get(module)
+        if found is None:
+            path = module.replace(".", "/")
+            suffixes = (f"/{path}/__init__.py", f"/{path}.py")
+            found = self._anywhere_memo[module] = sorted(
+                f for f in self._files if f.endswith(suffixes) or f"/{f}".endswith(suffixes)
+            )
+        return found
 
     def modules_with_prefix(self, importer: str, prefix: str) -> list[str]:
         """Files whose dotted module name starts with ``prefix`` (e.g. ``"pkg.plugin_"``

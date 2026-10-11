@@ -3120,7 +3120,7 @@ retries = 2
    "misclassified": 0
   },
   "quality": {
-   "tests": 506,
+   "tests": 515,
    "coverage": 93,
    "pythons": [
     "3.9",
@@ -3141,7 +3141,7 @@ retries = 2
     "repo": "encode/starlette",
     "tests": 1349,
     "file_level_skipped": 0.188,
-    "function_level_skipped": 0.398,
+    "function_level_skipped": 0.368,
     "mutants": [
      {
       "mutant": "starlette/middleware/gzip.py::_normalize_content_types",
@@ -3153,35 +3153,35 @@ retries = 2
      {
       "mutant": "starlette/authentication.py::UnauthenticatedUser.identity",
       "failing": 2,
-      "selected": 10,
+      "selected": 11,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/datastructures.py::State.__getitem__",
       "failing": 3,
-      "selected": 1248,
+      "selected": 1279,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/routing.py::Route.url_path_for",
       "failing": 18,
-      "selected": 898,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/datastructures.py::Headers.__iter__",
       "failing": 1,
-      "selected": 1248,
+      "selected": 1279,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/formparsers.py::MultiPartParser.on_header_end",
       "failing": 27,
-      "selected": 900,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
@@ -3195,7 +3195,7 @@ retries = 2
      {
       "mutant": "starlette/routing.py::WebSocketRoute.__init__",
       "failing": 6,
-      "selected": 898,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
@@ -3209,140 +3209,140 @@ retries = 2
      {
       "mutant": "starlette/responses.py::StreamingResponse.__call__",
       "failing": 18,
-      "selected": 380,
+      "selected": 297,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/convertors.py::IntegerConvertor.to_string",
       "failing": 1,
-      "selected": 898,
+      "selected": 1349,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/responses.py::FileResponse._should_use_range",
       "failing": 5,
-      "selected": 295,
+      "selected": 204,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/datastructures.py::ImmutableMultiDict.keys",
       "failing": 9,
-      "selected": 1275,
+      "selected": 1306,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/datastructures.py::CommaSeparatedStrings.__init__",
       "failing": 1,
-      "selected": 1249,
+      "selected": 1280,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/routing.py::Router.url_path_for",
       "failing": 20,
-      "selected": 898,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/datastructures.py::MultiDict.__delitem__",
       "failing": 1,
-      "selected": 1275,
+      "selected": 1306,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/routing.py::Host.__init__",
       "failing": 3,
-      "selected": 898,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/testclient.py::TestClient.websocket_connect",
       "failing": 59,
-      "selected": 1274,
+      "selected": 1271,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/datastructures.py::State.__init__",
       "failing": 7,
-      "selected": 1248,
+      "selected": 1279,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/middleware/__init__.py::Middleware.__iter__",
       "failing": 1,
-      "selected": 900,
+      "selected": 947,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/formparsers.py::MultiPartParser.on_end",
       "failing": 16,
-      "selected": 900,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/datastructures.py::MutableHeaders.add_vary_header",
       "failing": 24,
-      "selected": 1248,
+      "selected": 1279,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/requests.py::Request.is_disconnected",
       "failing": 3,
-      "selected": 898,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/testclient.py::TestClient.request",
       "failing": 357,
-      "selected": 1274,
+      "selected": 1271,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/datastructures.py::UploadFile.__init__",
       "failing": 23,
-      "selected": 1248,
+      "selected": 1279,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/datastructures.py::QueryParams.__init__",
       "failing": 5,
-      "selected": 1248,
+      "selected": 1279,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/datastructures.py::URL.netloc",
       "failing": 18,
-      "selected": 1274,
+      "selected": 1305,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/routing.py::_AsyncLiftContextManager.__aexit__",
       "failing": 1,
-      "selected": 898,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/convertors.py::StringConvertor.to_string",
       "failing": 4,
-      "selected": 898,
+      "selected": 1349,
       "total": 1349,
       "missed": 0
      },
@@ -3356,21 +3356,21 @@ retries = 2
      {
       "mutant": "starlette/datastructures.py::URL.__init__",
       "failing": 56,
-      "selected": 1274,
+      "selected": 1305,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/datastructures.py::URL.username",
       "failing": 3,
-      "selected": 1274,
+      "selected": 1305,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/formparsers.py::FormParser.on_end",
       "failing": 6,
-      "selected": 900,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
@@ -3384,14 +3384,14 @@ retries = 2
      {
       "mutant": "starlette/endpoints.py::WebSocketEndpoint.on_connect",
       "failing": 7,
-      "selected": 75,
+      "selected": 20,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/formparsers.py::MultiPartParser.on_part_end",
       "failing": 24,
-      "selected": 900,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
@@ -3405,14 +3405,14 @@ retries = 2
      {
       "mutant": "starlette/formparsers.py::MultiPartParser.on_part_data",
       "failing": 18,
-      "selected": 900,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
      {
       "mutant": "starlette/requests.py::HTTPConnection.state",
       "failing": 5,
-      "selected": 898,
+      "selected": 945,
       "total": 1349,
       "missed": 0
      },
@@ -3429,7 +3429,7 @@ retries = 2
     "repo": "Textualize/rich",
     "tests": 1007,
     "file_level_skipped": 0.123,
-    "function_level_skipped": 0.306,
+    "function_level_skipped": 0.271,
     "mutants": [
      {
       "mutant": "rich/emoji.py::Emoji.__repr__",
@@ -3455,7 +3455,7 @@ retries = 2
      {
       "mutant": "rich/segment.py::Segment.get_line_length",
       "failing": 45,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
@@ -3476,7 +3476,7 @@ retries = 2
      {
       "mutant": "rich/live_render.py::LiveRender.position_cursor",
       "failing": 17,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
@@ -3490,225 +3490,513 @@ retries = 2
      {
       "mutant": "rich/text.py::Span.split",
       "failing": 1,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/color.py::Color.is_default",
       "failing": 12,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/markdown.py::Paragraph.__rich_console__",
       "failing": 3,
-      "selected": 819,
+      "selected": 10,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/measure.py::measure_renderables",
       "failing": 23,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/markdown.py::ImageItem.create",
       "failing": 2,
-      "selected": 819,
+      "selected": 10,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/console.py::Console.size",
       "failing": 4,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/console.py::Console.__init__",
       "failing": 1,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/containers.py::Lines.__setitem__",
       "failing": 2,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/segment.py::Segment.get_shape",
       "failing": 46,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/console.py::Console.save_svg",
       "failing": 3,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/style.py::Style.__eq__",
       "failing": 144,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/markdown.py::MarkdownElement.on_child_close",
       "failing": 3,
-      "selected": 819,
+      "selected": 10,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/console.py::Console._theme_stack",
       "failing": 189,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/_win32_console.py::LegacyWindowsTerm.move_cursor_to",
       "failing": 3,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/color.py::Color.from_rgb",
       "failing": 3,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/markdown.py::BlockQuote.__rich_console__",
       "failing": 2,
-      "selected": 819,
+      "selected": 10,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/console.py::Console.size",
       "failing": 4,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/console.py::Console._write_buffer",
       "failing": 235,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/syntax.py::Syntax._get_token_color",
       "failing": 3,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/markdown.py::MarkdownContext.on_text",
       "failing": 8,
-      "selected": 819,
+      "selected": 10,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/rule.py::Rule.__repr__",
       "failing": 1,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/protocol.py::is_renderable",
       "failing": 89,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/live.py::Live.refresh",
       "failing": 24,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/table.py::Table.add_row",
       "failing": 48,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/_win32_console.py::LegacyWindowsTerm.erase_line",
       "failing": 1,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/box.py::Box.get_top",
       "failing": 27,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/live.py::Live.update",
       "failing": 9,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/_null_file.py::NullFile.read",
       "failing": 1,
-      "selected": 820,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/syntax.py::Syntax.highlight",
       "failing": 23,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/table.py::Table.add_column",
       "failing": 41,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/console.py::Console._render_buffer",
       "failing": 234,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
       "missed": 0
      },
      {
       "mutant": "rich/containers.py::Lines.__getitem__",
       "failing": 29,
-      "selected": 819,
+      "selected": 1007,
       "total": 1007,
+      "missed": 0
+     }
+    ]
+   },
+   "flask": {
+    "repo": "pallets/flask",
+    "tests": 494,
+    "file_level_skipped": 0.022,
+    "function_level_skipped": 0.024,
+    "mutants": [
+     {
+      "mutant": "src/flask/sansio/blueprints.py::Blueprint.app_template_global",
+      "failing": 1,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/app.py::App.add_template_global",
+      "failing": 2,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/scaffold.py::Scaffold.context_processor",
+      "failing": 5,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/testing.py::FlaskClient.__enter__",
+      "failing": 20,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/app.py::Flask.test_cli_runner",
+      "failing": 5,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/scaffold.py::Scaffold.query",
+      "failing": 1,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/ctx.py::_AppCtxGlobals.get",
+      "failing": 2,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/testing.py::FlaskClient._request_from_builder_args",
+      "failing": 192,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/ctx.py::AppContext.from_environ",
+      "failing": 221,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/json/tag.py::PassDict.to_json",
+      "failing": 187,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/templating.py::DispatchingJinjaLoader.list_templates",
+      "failing": 1,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sessions.py::SecureCookieSessionInterface.get_signing_serializer",
+      "failing": 215,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/config.py::ConfigAttribute.__get__",
+      "failing": 228,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/scaffold.py::Scaffold.post",
+      "failing": 4,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/cli.py::CertParamType.__init__",
+      "failing": 353,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/scaffold.py::Scaffold.static_folder",
+      "failing": 325,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/blueprints.py::Blueprint.add_url_rule",
+      "failing": 28,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sessions.py::SessionInterface.get_cookie_partitioned",
+      "failing": 153,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/globals.py::__getattr__",
+      "failing": 353,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/json/provider.py::JSONProvider._prepare_response_obj",
+      "failing": 14,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/blueprints.py::Blueprint.__init__",
+      "failing": 57,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/testing.py::FlaskCliRunner.__init__",
+      "failing": 5,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sessions.py::SessionInterface.get_cookie_secure",
+      "failing": 153,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/views.py::View.as_view",
+      "failing": 18,
+      "selected": 28,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/app.py::App.handle_url_build_error",
+      "failing": 3,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/app.py::Flask.do_teardown_request",
+      "failing": 222,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/app.py::App.trap_http_exception",
+      "failing": 36,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/app.py::App.teardown_appcontext",
+      "failing": 8,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/blueprints.py::Blueprint.app_template_test",
+      "failing": 5,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/blueprints.py::Blueprint.make_setup_state",
+      "failing": 53,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/json/tag.py::TagBytes.check",
+      "failing": 24,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/json/tag.py::TagUUID.check",
+      "failing": 25,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/scaffold.py::Scaffold.static_folder",
+      "failing": 325,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/scaffold.py::Scaffold.errorhandler",
+      "failing": 23,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/testing.py::FlaskClient._copy_environ",
+      "failing": 193,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/blueprints.py::Blueprint.record_once",
+      "failing": 23,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/ctx.py::_AppCtxGlobals.__setattr__",
+      "failing": 11,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/sansio/app.py::App.template_global",
+      "failing": 1,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/templating.py::DispatchingJinjaLoader._get_source_fast",
+      "failing": 27,
+      "selected": 494,
+      "total": 494,
+      "missed": 0
+     },
+     {
+      "mutant": "src/flask/templating.py::DispatchingJinjaLoader._get_source_explained",
+      "failing": 1,
+      "selected": 494,
+      "total": 494,
       "missed": 0
      }
     ]

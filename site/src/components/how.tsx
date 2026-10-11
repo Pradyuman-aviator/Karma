@@ -32,11 +32,11 @@ const STEPS = [
 
 const FALLBACKS = [
   "Module-level code changed",
+  "Import-time calls to changed code",
   "exec(), globals(), writes to sys.modules",
   "Metaclasses and __init_subclass__",
   "Autouse fixtures, pytest_* hooks, pytestmark",
   "unittest.TestCase subclasses it cannot name",
-  "import_module() with a computed name",
   "pytest_plugins and -p plugins",
   "Files that do not parse",
 ];

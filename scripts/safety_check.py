@@ -125,6 +125,8 @@ class Project:
         self.root = root
         self.tests = tests
         self.python = python
+        #: every test case of the unmodified suite, once known
+        self.baseline: list[tuple[str, str, bool]] = []
 
     def failing_test_files(self) -> frozenset[str]:
         return frozenset(file for file, _, failed in self.cases() if failed)
@@ -151,7 +153,11 @@ class Project:
                 check=False,
             )
             if not report.exists():
-                sys.exit("pytest did not produce a report; run it manually to see why")
+                if not self.baseline:
+                    sys.exit("pytest did not produce a report; run it manually to see why")
+                # The change broke pytest itself (e.g. an import-time crash in a plugin or
+                # conftest): every test fails, so Karma must select every one.
+                return [(file, item, True) for file, item, _ in self.baseline]
             found = []
             for case in ET.parse(report).getroot().iter("testcase"):
                 file = self._from_rootdir((case.get("file") or "").replace("\\", "/"))
@@ -206,7 +212,7 @@ def check_functions(project: Project, modules: list[str], samples: int, seed: in
     """Break one function at a time; every failing test must be among the selected."""
     root = project.root
     started = time.monotonic()
-    baseline = project.cases()
+    baseline = project.baseline = project.cases()
     already = {(file, item) for file, item, failed in baseline if failed}
     if already:
         print(f"ignoring {len(already)} test(s) that already fail")
@@ -306,7 +312,8 @@ def main() -> int:
         return check_functions(project, sources, args.samples, args.seed)
 
     started = time.monotonic()
-    baseline = project.failing_test_files()
+    project.baseline = project.cases()
+    baseline = frozenset(file for file, _, failed in project.baseline if failed)
     if baseline:
         print(f"ignoring {len(baseline)} test file(s) that already fail: {sorted(baseline)}")
     modules = sorted(

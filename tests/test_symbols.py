@@ -339,14 +339,15 @@ class TestFunctionSelection:
         edit(repo, "app/routes.py", "return 'home'", "return 'HOME'")
         assert targets(select(repo)) == ["tests/test_routes.py::test_routes"]
 
-    def test_global_state_written_by_a_changed_function(self, repo: GitRepo) -> None:
+    def test_changed_function_called_on_import(self, repo: GitRepo) -> None:
         project(
             repo,
             {
                 "app/cache.py": (
                     "CACHE = {}\n\n"
                     "def fill():\n    CACHE['k'] = 1\n\n"
-                    "def read():\n    return CACHE.get('k')\n"
+                    "def read():\n    return CACHE.get('k')\n\n"
+                    "fill()\n"  # on import: every reader of CACHE sees what fill wrote
                 ),
                 "tests/test_cache.py": (
                     "from app.cache import read\n\n"
@@ -356,7 +357,49 @@ class TestFunctionSelection:
             },
         )
         edit(repo, "app/cache.py", "CACHE['k'] = 1", "CACHE['k'] = 2")
-        assert targets(select(repo)) == ["tests/test_cache.py::test_read"]
+        # fill() runs while app.cache is imported: if it now failed, so would importing
+        # the module, and every test that does.
+        assert targets(select(repo)) == ["tests/test_cache.py"]
+
+    def test_decorator_argument_called_on_import(self, repo: GitRepo) -> None:
+        cli = (
+            "class Cert:\n    def __init__(self):\n        self.kind = 'pem'\n\n"
+            "def option(value):\n    return lambda f: f\n\n"
+            "@option(Cert())\ndef serve():\n    return 1\n\n"
+            "def other():\n    return 2\n"
+        )
+        test = "from app.cli import other\n\ndef test_other():\n    other()\n"
+        project(repo, {"app/cli.py": cli, "tests/test_cli.py": test})
+        edit(repo, "app/cli.py", "self.kind = 'pem'", "self.kind = 'der'")
+        # Cert() runs on import (in a decorator): test_other imports the module too.
+        assert targets(select(repo)) == ["tests/test_cli.py"]
+
+    def test_module_on_a_runtime_path_is_found_by_name(self, repo: GitRepo) -> None:
+        helper = "from app.tax import rate\n\nvalue = rate\n"
+        test = (
+            "def test_helper(test_apps):\n    from helperapp import value\n    value('x')\n\n"
+            "def test_x():\n    pass\n"
+        )
+        project(
+            repo,
+            {"tests/test_apps/helperapp/__init__.py": helper, "tests/test_helper.py": test},
+        )
+        edit(repo, "app/tax.py", "return RATE", "return RATE * 1")
+        found = targets(select(repo))
+        assert "tests/test_helper.py::test_helper" in found
+        assert "tests/test_helper.py::test_x" not in found
+
+    def test_module_written_at_runtime_is_opaque(self, repo: GitRepo) -> None:
+        test = (
+            "import app.tax\n\n"
+            "def test_generated(tmp_path):\n    import generated_by_test\n\n"
+            "def test_y():\n    pass\n"
+        )
+        project(repo, {"tests/test_gen.py": test})
+        edit(repo, "app/tax.py", "return RATE", "return RATE * 1")
+        found = targets(select(repo))
+        assert "tests/test_gen.py::test_generated" in found
+        assert "tests/test_gen.py::test_y" not in found
 
     def test_dynamic_code_falls_back_to_whole_file(self, repo: GitRepo) -> None:
         project(repo, {"app/dyn.py": "def run():\n    exec('x = 1')\n\ndef other():\n    pass\n"})
@@ -418,7 +461,7 @@ class TestFunctionSelection:
         edit(repo, "app/tax.py", "return RATE", "return RATE * 1")
         assert "tests/test_helper.py" in select(repo).narrowed_out
 
-    def test_dynamic_import_is_opaque(self, repo: GitRepo) -> None:
+    def test_computed_import_depends_on_everything_the_file_imports(self, repo: GitRepo) -> None:
         test = (
             "import importlib\nmod = 'app.' + 'tax'\n\n"
             "def test_a():\n    importlib.import_module(mod).rate('x')\n\n"
@@ -428,8 +471,99 @@ class TestFunctionSelection:
         repo.write("tests/test_dyn.py", test + "\nimport app.tax  # noqa\n")
         repo.commit("edge")
         edit(repo, "app/tax.py", "return RATE", "return RATE * 1")
-        # `importlib` is dynamic: the test file cannot be narrowed safely.
-        assert "tests/test_dyn.py" in targets(select(repo))
+        # The name is computed, so the test doing the import may use any module the file
+        # imports; the other test does not import anything dynamically.
+        found = targets(select(repo))
+        assert "tests/test_dyn.py::test_a" in found
+        assert "tests/test_dyn.py::test_b" not in found
+
+    def test_unrelated_change_to_a_class_with_a_creation_hook(self, repo: GitRepo) -> None:
+        base = (
+            "class Base:\n"
+            "    def __init_subclass__(cls):\n        cls.registered = True\n\n"
+            "    def hello(self):\n        return 'hi'\n\n"
+            "    def other(self):\n        return 1\n\n"
+            "def unrelated():\n    return 2\n"
+        )
+        test = (
+            "from app.base import Base, unrelated\n\n"
+            "def test_hello():\n    Base().hello()\n\n"
+            "def test_unrelated():\n    unrelated()\n"
+        )
+        project(repo, {"app/base.py": base, "tests/test_base.py": test})
+        edit(repo, "app/base.py", "return 'hi'", "return 'hello'")
+        # Only `hello` changed, not what runs when a subclass is created.
+        assert targets(select(repo)) == ["tests/test_base.py::test_hello"]
+
+    def test_subclass_registry_of_a_base_creation_hook(self, repo: GitRepo) -> None:
+        plugins = (
+            "PLUGINS = []\n\n"
+            "class Plugin:\n"
+            "    def __init_subclass__(cls):\n        PLUGINS.append(cls)\n\n"
+            "class Upper(Plugin):\n    def run(self, s):\n        return s.upper()\n"
+        )
+        test = (
+            "from app.plugins import PLUGINS\n\n"
+            "def test_all_plugins():\n    assert [p().run('a') for p in PLUGINS] == ['A']\n\n"
+            "def test_other():\n    pass\n"
+        )
+        project(repo, {"app/plugins.py": plugins, "tests/test_plugins.py": test})
+        edit(repo, "app/plugins.py", "s.upper()", "s.lower()")
+        # Upper is in PLUGINS because its base registers every subclass.
+        assert targets(select(repo)) == ["tests/test_plugins.py::test_all_plugins"]
+
+    def test_module_getattr_only_affects_names_it_provides(self, repo: GitRepo) -> None:
+        compat = (
+            "from app.tax import rate\n\n"
+            "def defined():\n    return 1\n\n"
+            "def __getattr__(name):\n"
+            "    if name == 'old_rate':\n        return rate\n"
+            "    raise AttributeError(name)\n"
+        )
+        test = (
+            "import app.compat\n\n"
+            "def test_old():\n    app.compat.old_rate('x')\n\n"
+            "def test_defined():\n    app.compat.defined()\n"
+        )
+        project(repo, {"app/compat.py": compat, "tests/test_compat.py": test})
+        edit(repo, "app/tax.py", "return RATE", "return RATE * 1")
+        found = targets(select(repo))
+        assert "tests/test_compat.py::test_old" in found
+        assert "tests/test_compat.py::test_defined" not in found
+
+    def test_annotation_of_a_module_variable_is_not_a_dependency(self, repo: GitRepo) -> None:
+        proxy = "from app.tax import rate\n\nlabel: rate = 'EUR'\n\ndef other():\n    return 1\n"
+        test = "from app.proxy import label\n\ndef test_label():\n    assert label\n"
+        project(repo, {"app/proxy.py": proxy, "tests/test_proxy.py": test})
+        edit(repo, "app/tax.py", "return RATE", "return RATE * 1")
+        assert "tests/test_proxy.py::test_label" not in targets(select(repo))
+
+    def test_exec_with_its_own_namespace_is_not_dynamic(self, repo: GitRepo) -> None:
+        shell = (
+            "def run(code):\n    ns = {}\n    exec(code, ns)\n    return ns\n\n"
+            "def other():\n    return 1\n"
+        )
+        test = (
+            "from app.shell import other, run\n\n"
+            "def test_run():\n    run('x = 1')\n\n"
+            "def test_other():\n    other()\n"
+        )
+        project(repo, {"app/shell.py": shell, "tests/test_shell.py": test})
+        edit(repo, "app/shell.py", "ns = {}", "ns = {'y': 2}")
+        assert targets(select(repo)) == ["tests/test_shell.py::test_run"]
+
+    def test_writes_inside_a_test_do_not_spread(self, repo: GitRepo) -> None:
+        state = "SESSION = {}\n\ndef read():\n    return SESSION.get('user')\n"
+        test = (
+            "from app.state import SESSION, read\nfrom app.tax import rate\n\n"
+            "def test_login():\n    rate('x')\n    SESSION['user'] = 'me'\n\n"
+            "def test_read():\n    read()\n"
+        )
+        project(repo, {"app/state.py": state, "tests/test_state.py": test})
+        edit(repo, "app/tax.py", "return RATE", "return RATE * 1")
+        found = targets(select(repo))
+        assert "tests/test_state.py::test_login" in found
+        assert "tests/test_state.py::test_read" not in found
 
     def test_custom_python_functions(self, repo: GitRepo) -> None:
         test = (

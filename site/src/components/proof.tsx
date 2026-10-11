@@ -19,13 +19,15 @@ export function Proof() {
         <>
           A test selector is only worth using if it never skips a test that would fail. So we
           broke {projects.reduce((n, [, r]) => n + r.mutants.length, 0)} randomly chosen functions
-          in two well-known projects, one at a time, ran the full suite, and checked every failing
-          test against Karma&apos;s selection. Run the same check on your code with{" "}
+          in {projects.length} well-known projects, one at a time, ran the full suite, and checked
+          every failing test against Karma&apos;s selection. Flask, where nearly every test builds
+          an app, shows the limit: little to skip at any granularity, and still nothing missed.
+          Run the same check on your code with{" "}
           <code className="font-mono text-sm">scripts/safety_check.py</code>.
         </>
       }
     >
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {projects.map(([name, result]) => (
           <Card key={name}>
             <CardHeader>

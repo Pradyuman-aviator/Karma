@@ -47,7 +47,8 @@ export function Hero() {
   const results = Object.values(data.benchmarks.function_level);
   const mutants = results.reduce((n, r) => n + r.mutants.length, 0);
   const missed = results.reduce((n, r) => n + r.mutants.filter((m) => m.missed).length, 0);
-  const gain = Math.min(...results.map((r) => r.function_level_skipped / r.file_level_skipped));
+  const gain = Math.max(...results.map((r) => r.function_level_skipped / r.file_level_skipped));
+  const names = Object.values(data.benchmarks.function_level).map((r) => r.repo.split("/")[1]);
 
   return (
     <section id="top" className="relative overflow-hidden">
@@ -89,8 +90,8 @@ export function Hero() {
               <strong className="font-medium text-foreground">
                 {missed} missed failures in {mutants} broken functions
               </strong>{" "}
-              across starlette and rich, while skipping {gain.toFixed(1)}× more tests than
-              file-level selection.
+              across {names.slice(0, -1).join(", ")} and {names.at(-1)}, while skipping up to{" "}
+              {gain.toFixed(1)}× more tests than file-level selection.
             </span>
           </p>
         </div>
@@ -105,7 +106,11 @@ function Stats() {
   const fl = data.benchmarks.function_level;
   const warm = data.benchmarks.performance.runs.find((r) => r.name.startsWith("Warm"));
   const stats = [
-    { value: "0", label: "failing tests missed", detail: "80 functions broken in 2 real projects" },
+    {
+      value: String(Object.values(fl).reduce((n, r) => n + r.mutants.filter((m) => m.missed).length, 0)),
+      label: "failing tests missed",
+      detail: `${Object.values(fl).reduce((n, r) => n + r.mutants.length, 0)} functions broken in ${Object.keys(fl).length} real projects`,
+    },
     {
       value: percent(fl.starlette.function_level_skipped),
       label: "of starlette's tests skipped",

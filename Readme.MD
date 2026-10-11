@@ -216,8 +216,16 @@ Skipped at function level (they import the change but use none of the changed sy
 How it decides, following what regression-test-selection research found to work:
 
 1. **What changed**, per top-level function, class, constant and imported name, by comparing the syntax trees of both versions. Comments, formatting, module docstrings and moved code are not changes (like Ekstazi's "smart checksums").
-2. **Who uses it**, by *name*: imports and re-exports, `module.attr` chains, star imports, `mock.patch("pkg.mod.fn")` strings, fixtures requested by parameter name (through every `conftest.py` above), registries (`@app.route`, `app.add_route(...)`, `REGISTRY.append(...)`) and module-level state a changed function writes. Static *call graphs* proved unsafe and imprecise for method-level selection (Legunsen et al., FSE 2016); matching names over-approximates instead, which is what made static selection safe for Python (NameRTS, ISSTA 2026).
-3. **Whole file whenever it cannot be sure**, like HyRTS's hybrid of method and file granularity (Zhang, ICSE 2018): module-level code that changed, `exec`/`globals()`/writes to `sys.modules`, metaclasses and `__init_subclass__`, autouse fixtures, `pytest_*` hooks, `pytestmark`, `unittest.TestCase` subclasses it cannot name, imports it cannot follow (`importlib` with a computed name, `pytest_plugins`), and files that do not parse. A whole file affects everything importing it, exactly as file-level selection does.
+2. **Who uses it**, by *name*: imports and re-exports, `module.attr` chains, star imports, `mock.patch("pkg.mod.fn")` strings, fixtures requested by parameter name (through every `conftest.py` above), registries (`@app.route`, `app.add_route(...)`, `REGISTRY.append(...)`, subclass registration in `__init_subclass__`), state written while a module is imported, and modules imported from directories a fixture puts on `sys.path`. Static *call graphs* proved unsafe and imprecise for method-level selection (Legunsen et al., FSE 2016); matching names over-approximates instead, which is what made static selection safe for Python (NameRTS, ISSTA 2026).
+3. **Whole file whenever it cannot be sure**, like HyRTS's hybrid of method and file granularity (Zhang, ICSE 2018):
+   - module-level code that changed, or code that runs on import (decorators, default values, class bodies, module code) calling something affected: if that call now fails, importing the module fails
+   - `exec`/`globals()`/writes to `sys.modules`
+   - a changed metaclass or `__init_subclass__`
+   - autouse fixtures, `pytest_*` hooks and `pytestmark`
+   - `unittest.TestCase` subclasses it cannot name
+   - `pytest_plugins`, and files that do not parse
+
+   Code importing a module whose name is computed (`import_module(name)`) or that exists nowhere (written by a test at runtime) is assumed to use everything its file imports. A whole file affects everything importing it, exactly as file-level selection does.
 
 So function granularity can only *remove* tests from the file-level selection, never add risk beyond it. It is off by default; measure it on your project first:
 
@@ -229,10 +237,13 @@ That breaks one function at a time, runs your full suite, and checks every faili
 
 | Project | Functions broken | Failing tests Karma missed | Tests skipped (avg): file level | Function level |
 | --- | ---: | ---: | ---: | ---: |
-| [encode/starlette](https://github.com/encode/starlette) (1,349 tests) | 40 | **0** | 18.8% | **39.8%** |
-| [Textualize/rich](https://github.com/Textualize/rich) (1,007 tests) | 40 | **0** | 12.3% | **30.6%** |
+| [encode/starlette](https://github.com/encode/starlette) (1,349 tests) | 40 | **0** | 18.8% | **36.8%** |
+| [Textualize/rich](https://github.com/Textualize/rich) (1,007 tests) | 40 | **0** | 12.3% | **27.1%** |
+| [pallets/flask](https://github.com/pallets/flask) (494 tests) | 40 | **0** | 2.2% | **2.4%** |
 
-Both columns are measured on the same 40 randomly chosen functions per project, counting individual tests: function level skips 2–2.5× as many. Leaf code gains the most (a change to rich's `RichHandler` runs 4 of 1,007 tests); core classes everything uses, such as rich's `Console`, rightly still select most of the suite.
+Both columns are measured on the same 40 randomly chosen functions per project, counting individual tests. On starlette and rich function level skips about twice as many: leaf code gains the most (a change to rich's `RichHandler` runs 4 of 1,007 tests), while core classes everything uses, such as rich's `Console`, rightly still select most of the suite. Flask shows the limit: nearly every test builds a `Flask` app, so almost any change reaches almost every test at either granularity.
+
+Flask was also the hardest test of safety. Its first run missed failures in 11 of 40 changes, through three patterns now handled: test apps imported from a directory a fixture adds to `sys.path`, modules a test writes at runtime, and calls that run while a module is imported (`@click.option(type=CertParamType())`). After those fixes all three projects pass 40 of 40.
 
 ---
 
