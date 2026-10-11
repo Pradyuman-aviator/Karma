@@ -401,7 +401,7 @@
     "misclassified": 0
   },
   "quality": {
-    "tests": 355,
+    "tests": 506,
     "coverage": 97,
     "pythons": [
       "3.9",
