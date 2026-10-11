@@ -1,6 +1,7 @@
 import { DemoSection } from "@/components/demo";
 import { Features } from "@/components/features";
 import { CallToAction, Footer } from "@/components/footer";
+import { GraphLab } from "@/components/graph-lab";
 import { Hero } from "@/components/hero";
 import { How } from "@/components/how";
 import { Nav } from "@/components/nav";
@@ -33,7 +34,21 @@ export default function Home() {
             <Simulation demo={data.demo} />
           </Section>
         </div>
-        <How />
+        <Section
+          id="graph"
+          eyebrow="Dependency graph"
+          title={
+            <>
+              See the <span className="text-amber">blast radius</span> of any file
+            </>
+          }
+          intro="This is Karma's real import graph of starlette (karma graph --format json). Click any file to change it and watch the impact ripple outwards through everything that imports it, wave by wave, until it reaches the tests. Hover a file to see what it imports and what imports it."
+        >
+          <GraphLab samples={data.samples} />
+        </Section>
+        <div className="border-y bg-card/30">
+          <How />
+        </div>
         <Proof />
         <div className="border-y bg-card/30">
           <Research />
