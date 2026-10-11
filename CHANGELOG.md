@@ -4,6 +4,42 @@ All notable changes to Karma are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses
 [Semantic Versioning](https://semver.org/).
 
+## [3.4.0] - 2026-10-11
+
+Function-level selection: run only the test functions that use what changed.
+
+### Added
+- **`--granularity function`** (config `granularity`, action input `granularity`). Karma
+  narrows the file-level selection to the test functions and classes that can reach a
+  changed function, class, constant or imported name, and passes them to pytest as node
+  ids.
+  - **What changed** is decided per top-level unit by comparing the syntax trees of both
+    versions (from git, or `HEAD` with `--files`). Comments, formatting, module
+    docstrings, `if __name__ == "__main__":` and `if TYPE_CHECKING:` blocks are not
+    changes.
+  - **Who is affected** is found by name, through:
+    - imports, re-exports and star imports
+    - attribute chains on modules
+    - `mock.patch("pkg.mod.fn")`-style strings and `import_module(f"pkg.{name}")` prefixes
+    - fixtures requested by parameter name, through every `conftest.py` above
+    - registries (`@app.route`, `app.add_route(...)`, `REGISTRY.append(...)`)
+    - module-level state that an affected function writes
+  - **Whole file when unsure.** Karma falls back to the whole file when module-level code
+    changed, for `exec`, `globals()` and writes to `sys.modules`, for metaclasses,
+    `__init_subclass__`, autouse fixtures, pytest hooks and `pytestmark`, for
+    `unittest.TestCase` subclasses it cannot name, for imports it cannot follow, and for
+    files that do not parse. It can only remove tests from the file-level selection.
+  - `--explain`, `select --format json` (`targets`, `items`, `item_reasons`,
+    `narrowed_out`) and the job summary show each test function's chain, e.g.
+    `test_total ← app/invoice.py::total ← app/tax.py::rate (changed, line 12)`.
+  - Validated by breaking one function at a time in real projects:
+    - starlette: 40 functions, 0 failing tests missed, 39.8% of tests skipped on average
+      (18.8% at file level, on the same changes)
+    - rich: 40 functions, 0 missed, 30.6% of tests skipped (12.3% at file level)
+- `scripts/safety_check.py --granularity function`: the same check on your project.
+- pytest's `python_functions` and `python_classes` settings are read, to recognise test
+  functions and classes.
+
 ## [3.3.0] - 2026-09-27
 
 Phase 5 of the roadmap: failure diagnosis. With it, every phase is shipped.

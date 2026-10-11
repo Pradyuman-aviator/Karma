@@ -35,6 +35,7 @@ Karma reads your git diff, builds a dependency graph from your imports, and runs
 | Works on the first run, no history or database | ✅ | ✅ | ❌ | ❌ | ✅ |
 | No overhead while tests run | ✅ | ✅ | ❌ (tracing) | varies | ✅ |
 | Data never leaves your machine | ✅ | ✅ | ✅ | ❌ | ✅ |
+| Selects individual test functions, statically | ✅ (`--granularity function`) | ❌ | ✅ (dynamically) | varies | ❌ |
 | Explains *why* each test was chosen | ✅ | ❌ | ❌ | partly | partly |
 | Points each failure at the change behind it | ✅ (AI optional) | ❌ | ❌ | varies | ❌ |
 | Adopt without changing your build | ✅ | ✅ | ✅ | ✅ | ❌ |
@@ -53,6 +54,7 @@ pip install git+https://github.com/Pradyuman-aviator/Karma.git
 karma run                 # run tests affected by your branch + uncommitted work
 karma run --explain       # ...and show why each test was selected
 karma run --diagnose      # ...and point each failure at the change that broke it
+karma run --granularity function  # only the test functions that use what changed
 karma select              # just print them:  pytest $(karma select)
 karma run -- -x -n auto   # everything after -- goes to pytest
 ```
@@ -94,6 +96,7 @@ The action runs in **your** job's Python environment, so selected tests can impo
 | `working-directory` | `.` | Project directory within the repository |
 | `on-git-error` | `fail` | `run-all` runs the whole suite if changes can't be determined |
 | `args` | | Extra Karma arguments, e.g. `--explain` |
+| `granularity` | config, else `file` | `function` runs only the test functions and classes using a change (see *Function-level selection*) |
 | `prioritize` | `false` | `true` runs the tests most likely to fail first (see *Predict and prioritise*) |
 | `retries` | `0` | Re-run failed tests up to N times; a pass on retry is reported as flaky, not a failure |
 | `cache` | `true` | Keep `.karma_cache/` (import cache + test history) between runs with `actions/cache` |
@@ -187,6 +190,49 @@ The graph is cached per file by content hash, so a typical run re-parses only wh
 | Warm cache | 0.34 s |
 
 Absolute timings vary with machine load: a later run of the same benchmark on a busier machine measured 4.4 s / 1.7 s / 0.8 s. The ratios hold: parallel parsing is about 3× faster than serial on a cold start, and the cache makes warm runs several times faster again.
+
+---
+
+## Function-level selection
+
+File-level selection runs a whole test file when it imports a changed file. With `--granularity function` (or `granularity = "function"` in `[tool.karma]`) Karma goes one level deeper and runs only the **test functions and classes that use what changed**:
+
+```console
+$ karma select --granularity function --explain
+karma: 2 of 214 test files selected (99.1% skipped) for 1 changed file; narrowed to 3 test functions in 2 files
+tests/billing/test_invoice.py
+  ::test_total
+      ← billing/invoice.py::total
+      ← billing/tax.py::rate (changed, line 12)
+  ::TestRefunds
+      ← tests/billing/conftest.py::eu_rate
+      ← billing/tax.py::rate (changed, line 12)
+tests/billing/test_tax.py
+  ::test_rate
+      ← billing/tax.py::rate (changed, line 12)
+Skipped at function level (they import the change but use none of the changed symbols): tests/test_reports.py
+```
+
+How it decides, following what regression-test-selection research found to work:
+
+1. **What changed**, per top-level function, class, constant and imported name, by comparing the syntax trees of both versions. Comments, formatting, module docstrings and moved code are not changes (like Ekstazi's "smart checksums").
+2. **Who uses it**, by *name*: imports and re-exports, `module.attr` chains, star imports, `mock.patch("pkg.mod.fn")` strings, fixtures requested by parameter name (through every `conftest.py` above), registries (`@app.route`, `app.add_route(...)`, `REGISTRY.append(...)`) and module-level state a changed function writes. Static *call graphs* proved unsafe and imprecise for method-level selection (Legunsen et al., FSE 2016); matching names over-approximates instead, which is what made static selection safe for Python (NameRTS, ISSTA 2026).
+3. **Whole file whenever it cannot be sure**, like HyRTS's hybrid of method and file granularity (Zhang, ICSE 2018): module-level code that changed, `exec`/`globals()`/writes to `sys.modules`, metaclasses and `__init_subclass__`, autouse fixtures, `pytest_*` hooks, `pytestmark`, `unittest.TestCase` subclasses it cannot name, imports it cannot follow (`importlib` with a computed name, `pytest_plugins`), and files that do not parse. A whole file affects everything importing it, exactly as file-level selection does.
+
+So function granularity can only *remove* tests from the file-level selection, never add risk beyond it. It is off by default; measure it on your project first:
+
+```bash
+python scripts/safety_check.py --package src/yourpackage --granularity function --samples 40
+```
+
+That breaks one function at a time, runs your full suite, and checks every failing test was selected. On real projects:
+
+| Project | Functions broken | Failing tests Karma missed | Tests skipped (avg): file level | Function level |
+| --- | ---: | ---: | ---: | ---: |
+| [encode/starlette](https://github.com/encode/starlette) (1,349 tests) | 40 | **0** | 18.8% | **39.8%** |
+| [Textualize/rich](https://github.com/Textualize/rich) (1,007 tests) | 40 | **0** | 12.3% | **30.6%** |
+
+Both columns are measured on the same 40 randomly chosen functions per project, counting individual tests: function level skips 2–2.5× as many. Leaf code gains the most (a change to rich's `RichHandler` runs 4 of 1,007 tests); core classes everything uses, such as rich's `Console`, rightly still select most of the suite.
 
 ---
 
@@ -360,6 +406,7 @@ source-roots = [".", "src"]                  # where your top-level packages liv
 exclude = ["examples/*"]                     # never selected as tests (still analysed)
 extend-run-all-on = ["Dockerfile"]           # add to the full-suite triggers (run-all-on replaces them)
 pytest-args = ["-p", "no:cacheprovider"]     # always passed to pytest
+granularity = "function"                     # run only the test functions using a change
 prioritize = true                            # run the likeliest failures first
 retries = 2                                  # re-run failures; a pass on retry means flaky
 diagnose = true                              # explain failures after a run
@@ -391,7 +438,7 @@ Patterns without `/` match file names anywhere; patterns with `/` match the path
 - `--files PATH…` to skip git entirely
 - `--all` to select everything
 
-**Other options:** `--explain`, `--prioritize`, `--retries N`, `--fail-on-flaky`, `--no-history`, `--diagnose` (run), `--ai PROVIDER`, `--ai-model NAME`, `--ai-url URL`, `--no-ai` (run and diagnose), `--show-prompt`, `--report XML`, `--max N` (diagnose), `--ci` (GitHub outputs, summary and annotations), `--repo DIR`, `--python EXE`, `--jobs N`, `--no-cache`, `--on-git-error {fail,run-all}`, `-v`/`-q`.
+**Other options:** `--granularity {file,function}`, `--explain`, `--prioritize`, `--retries N`, `--fail-on-flaky`, `--no-history`, `--diagnose` (run), `--ai PROVIDER`, `--ai-model NAME`, `--ai-url URL`, `--no-ai` (run and diagnose), `--show-prompt`, `--report XML`, `--max N` (diagnose), `--ci` (GitHub outputs, summary and annotations), `--repo DIR`, `--python EXE`, `--jobs N`, `--no-cache`, `--on-git-error {fail,run-all}`, `-v`/`-q`.
 
 **Exit codes:**
 
@@ -413,6 +460,7 @@ Patterns without `/` match file names anywhere; patterns with `/` match the path
 | 3 | ML prediction layer: predict failures from local history and run the likeliest first (`--prioritize`, `karma history`) | ✅ |
 | 4 | Flaky-test registry: confirm flakiness with retries, quarantine in a reviewed registry, release healed tests (`--retries`, `karma flaky`) | ✅ |
 | 5 | Failure diagnosis: the changed lines behind each failure, from its traceback and the diff, with its history; optionally explained by an AI, in the cloud or on your machine (`--diagnose`, `karma diagnose`, `--ai`) | ✅ |
+| 6 | Function-level selection: only the test functions and classes that use a changed symbol, whole files where that cannot be decided safely (`--granularity function`) | ✅ |
 
 ## Contributing
 
