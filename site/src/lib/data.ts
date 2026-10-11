@@ -38,6 +38,9 @@ export type DemoChange = {
   kind: "function" | "method" | "constant";
   start: number;
   end: number;
+  /** the symbol's lines before and after the change */
+  before: string[];
+  after: string[];
   file_level: Selection;
   function_level: Selection;
 };

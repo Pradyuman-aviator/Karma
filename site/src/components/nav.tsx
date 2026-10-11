@@ -9,6 +9,7 @@ import { cn, REPO } from "@/lib/utils";
 
 const LINKS = [
   { href: "#demo", label: "Function-level" },
+  { href: "#simulation", label: "Simulation" },
   { href: "#how", label: "How it works" },
   { href: "#proof", label: "Proof" },
   { href: "#research", label: "Research" },

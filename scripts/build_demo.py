@@ -262,7 +262,9 @@ def build() -> dict[str, Any]:
                 continue
             for symbol in symbols(content):
                 path = root / rel
-                path.write_text(mutate(content, symbol), encoding="utf-8", newline="\n")
+                changed = mutate(content, symbol)
+                span = slice(symbol["start"] - 1, symbol["end"])
+                path.write_text(changed, encoding="utf-8", newline="\n")
                 try:
                     results.append(
                         {
@@ -271,6 +273,9 @@ def build() -> dict[str, Any]:
                             "kind": symbol["kind"],
                             "start": symbol["start"],
                             "end": symbol["end"],
+                            # The symbol's lines before and after the change, for the diff.
+                            "before": content.splitlines()[span],
+                            "after": changed.splitlines()[span],
                             "file_level": selection(root, Config()),
                             "function_level": selection(root, function_level),
                         }

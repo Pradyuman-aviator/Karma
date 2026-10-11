@@ -9,6 +9,7 @@ import { Reference } from "@/components/reference";
 import { Research } from "@/components/research";
 import { Section } from "@/components/section";
 import { Setup } from "@/components/setup";
+import { Simulation } from "@/components/simulation";
 import { data } from "@/lib/data";
 
 export default function Home() {
@@ -19,8 +20,20 @@ export default function Home() {
         <Hero />
         <DemoSection />
         <div className="border-y bg-card/30">
-          <How />
+          <Section
+            id="simulation"
+            eyebrow="Simulation"
+            title={
+              <>
+                Watch Karma think, <span className="text-amber">step by step</span>
+              </>
+            }
+            intro="Pick a change and press play. Each step is what Karma really does, replayed from its real output for the demo project: read the diff, compare units, follow the names wave by wave, select, run."
+          >
+            <Simulation demo={data.demo} />
+          </Section>
         </div>
+        <How />
         <Proof />
         <div className="border-y bg-card/30">
           <Research />

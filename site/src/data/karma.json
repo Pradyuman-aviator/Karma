@@ -1732,7 +1732,7 @@
   },
   "quality": {
    "tests": 506,
-   "coverage": 97,
+   "coverage": 93,
    "pythons": [
     "3.9",
     "3.10",
@@ -3104,6 +3104,14 @@
     "kind": "function",
     "start": 4,
     "end": 5,
+    "before": [
+     "def to_cents(amount):",
+     "    return int((Decimal(str(amount)) * 100).quantize(Decimal(\"1\"), ROUND_HALF_UP))"
+    ],
+    "after": [
+     "def to_cents(amount):",
+     "    return 1 + int((Decimal(str(amount)) * 100).quantize(Decimal(\"1\"), ROUND_HALF_UP))  # changed"
+    ],
     "file_level": {
      "files": [
       "tests/test_discounts.py",
@@ -3204,6 +3212,14 @@
     "kind": "function",
     "start": 8,
     "end": 9,
+    "before": [
+     "def format_eur(cents):",
+     "    return f\"€{cents / 100:.2f}\""
+    ],
+    "after": [
+     "def format_eur(cents):",
+     "    return 1 + f\"€{cents / 100:.2f}\"  # changed"
+    ],
     "file_level": {
      "files": [
       "tests/test_discounts.py",
@@ -3315,6 +3331,12 @@
     "kind": "constant",
     "start": 1,
     "end": 1,
+    "before": [
+     "RATES = {\"eu\": 0.20, \"uk\": 0.20, \"us\": 0.07}"
+    ],
+    "after": [
+     "RATES = {\"eu\": 0.20, \"uk\": 0.20, \"us\": 0.08}"
+    ],
     "file_level": {
      "files": [
       "tests/test_discounts.py",
@@ -3442,6 +3464,14 @@
     "kind": "function",
     "start": 4,
     "end": 5,
+    "before": [
+     "def rate(region):",
+     "    return RATES.get(region, 0.0)"
+    ],
+    "after": [
+     "def rate(region):",
+     "    return 1 + RATES.get(region, 0.0)  # changed"
+    ],
     "file_level": {
      "files": [
       "tests/test_discounts.py",
@@ -3563,6 +3593,14 @@
     "kind": "function",
     "start": 8,
     "end": 9,
+    "before": [
+     "def tax_for(amount, region):",
+     "    return amount * rate(region)"
+    ],
+    "after": [
+     "def tax_for(amount, region):",
+     "    return 1 + amount * rate(region)  # changed"
+    ],
     "file_level": {
      "files": [
       "tests/test_discounts.py",
@@ -3670,6 +3708,14 @@
     "kind": "function",
     "start": 1,
     "end": 2,
+    "before": [
+     "def loyalty(amount, years):",
+     "    return amount * min(years, 10) * 0.01"
+    ],
+    "after": [
+     "def loyalty(amount, years):",
+     "    return 1 + amount * min(years, 10) * 0.01  # changed"
+    ],
     "file_level": {
      "files": [
       "tests/test_discounts.py",
@@ -3771,6 +3817,14 @@
     "kind": "function",
     "start": 5,
     "end": 6,
+    "before": [
+     "def coupon(code):",
+     "    return 5.0 if code == \"WELCOME5\" else 0.0"
+    ],
+    "after": [
+     "def coupon(code):",
+     "    return 1 + 5.0 if code == \"WELCOME5\" else 0.0  # changed"
+    ],
     "file_level": {
      "files": [
       "tests/test_discounts.py",
@@ -3872,6 +3926,14 @@
     "kind": "method",
     "start": 13,
     "end": 14,
+    "before": [
+     "    def subtotal(self):",
+     "        return self.amount - loyalty(self.amount, self.years) - coupon(self.code)"
+    ],
+    "after": [
+     "    def subtotal(self):",
+     "        return 1 + self.amount - loyalty(self.amount, self.years) - coupon(self.code)  # changed"
+    ],
     "file_level": {
      "files": [
       "tests/test_discounts.py",
@@ -3958,6 +4020,14 @@
     "kind": "method",
     "start": 16,
     "end": 17,
+    "before": [
+     "    def total(self):",
+     "        return self.subtotal() + tax_for(self.subtotal(), self.region)"
+    ],
+    "after": [
+     "    def total(self):",
+     "        return 1 + self.subtotal() + tax_for(self.subtotal(), self.region)  # changed"
+    ],
     "file_level": {
      "files": [
       "tests/test_discounts.py",
@@ -4044,6 +4114,14 @@
     "kind": "method",
     "start": 19,
     "end": 20,
+    "before": [
+     "    def render(self):",
+     "        return format_eur(to_cents(self.total()))"
+    ],
+    "after": [
+     "    def render(self):",
+     "        return 1 + format_eur(to_cents(self.total()))  # changed"
+    ],
     "file_level": {
      "files": [
       "tests/test_discounts.py",
@@ -4130,6 +4208,14 @@
     "kind": "function",
     "start": 23,
     "end": 24,
+    "before": [
+     "def quick_total(amount, region):",
+     "    return amount + tax_for(amount, region)"
+    ],
+    "after": [
+     "def quick_total(amount, region):",
+     "    return 1 + amount + tax_for(amount, region)  # changed"
+    ],
     "file_level": {
      "files": [
       "tests/test_discounts.py",
@@ -4207,6 +4293,14 @@
     "kind": "function",
     "start": 4,
     "end": 5,
+    "before": [
+     "def summary(invoices):",
+     "    return format_eur(sum(invoice.amount for invoice in invoices) * 100)"
+    ],
+    "after": [
+     "def summary(invoices):",
+     "    return 1 + format_eur(sum(invoice.amount for invoice in invoices) * 100)  # changed"
+    ],
     "file_level": {
      "files": [
       "tests/test_reports.py"
