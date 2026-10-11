@@ -29,6 +29,16 @@ def test_the_site_is_generated_from_the_current_source() -> None:
     assert proc.returncode == 0, proc.stderr + "\nFix: python scripts/build_site.py"
 
 
+def test_the_function_level_demo_is_karmas_real_output() -> None:
+    proc = subprocess.run(
+        [sys.executable, str(ROOT / "scripts" / "build_demo.py"), "--check"],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    assert proc.returncode == 0, proc.stdout + "\nFix: python scripts/build_demo.py"
+
+
 def test_every_command_and_action_input_is_documented() -> None:
     data = embedded_data()
     commands = {c["name"]: c for c in data["commands"]}  # type: ignore[index, union-attr]

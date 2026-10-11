@@ -1,0 +1,4250 @@
+{
+ "version": "3.4.0",
+ "commands": [
+  {
+   "name": "run",
+   "description": "Select the tests affected by your change and run them with pytest. Arguments after '--' go to pytest, e.g.: karma run -- -x -n auto",
+   "options": [
+    {
+     "flags": [
+      "--repo"
+     ],
+     "positional": false,
+     "metavar": "DIR",
+     "kind": "value",
+     "choices": null,
+     "default": ".",
+     "help": "project directory to analyse (default: .)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--no-cache"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "do not read or write the cache",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--jobs"
+     ],
+     "positional": false,
+     "metavar": "N",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "worker processes for parsing (default: CPU count)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--base"
+     ],
+     "positional": false,
+     "metavar": "REF",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "branch or commit the change will merge into (default: $KARMA_BASE, the pull request base on GitHub Actions, origin/HEAD, or main/master)",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--head"
+     ],
+     "positional": false,
+     "metavar": "REF",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "compare this commit instead of the working tree",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--staged"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "only changes staged for commit",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--files"
+     ],
+     "positional": false,
+     "metavar": "PATH",
+     "kind": "list",
+     "choices": null,
+     "default": null,
+     "help": "treat these files as changed; skip git",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--all"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "select every test",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--on-git-error"
+     ],
+     "positional": false,
+     "metavar": "ON_GIT_ERROR",
+     "kind": "choice",
+     "choices": [
+      "fail",
+      "run-all"
+     ],
+     "default": "fail",
+     "help": "if changes cannot be determined: fail (default) or run the full suite",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--explain"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "show why each test was selected",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--granularity"
+     ],
+     "positional": false,
+     "metavar": "GRANULARITY",
+     "kind": "choice",
+     "choices": [
+      "file",
+      "function"
+     ],
+     "default": null,
+     "help": "select whole test files, or only the test functions and classes that use a changed function, class or constant (default: [tool.karma] granularity, else file)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--prioritize"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "order tests by predicted risk of failure, learned from local history",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--ci"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "write GitHub Actions outputs, summary and annotations",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--retries"
+     ],
+     "positional": false,
+     "metavar": "N",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "re-run failed tests up to N times; a pass on retry marks a test flaky (default: [tool.karma] retries, else 0)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--fail-on-flaky"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "fail the run if a test is flaky (by default flaky tests only warn)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--no-history"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "do not record results in .karma_cache/ (the history --prioritize learns from, and the failures karma diagnose explains)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--python"
+     ],
+     "positional": false,
+     "metavar": "EXE",
+     "kind": "value",
+     "choices": null,
+     "default": "the Python running Karma",
+     "help": "interpreter used to run pytest (default: the one running Karma)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--diagnose"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "after a failure, show the evidence: the changed lines in its traceback, why the test ran and its history (default: [tool.karma] diagnose)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--ai"
+     ],
+     "positional": false,
+     "metavar": "PROVIDER",
+     "kind": "choice",
+     "choices": [
+      "anthropic",
+      "ollama",
+      "openai"
+     ],
+     "default": null,
+     "help": "also ask a language model to explain failures: anthropic, ollama (a model on this machine) or openai (any OpenAI-compatible server). Off by default; it is sent each failure's traceback and the relevant diff (default: [tool.karma] ai)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--ai-model"
+     ],
+     "positional": false,
+     "metavar": "NAME",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "model to ask (default for anthropic: claude-sonnet-5; required for ollama and openai)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--ai-url"
+     ],
+     "positional": false,
+     "metavar": "URL",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "API base URL, e.g. http://localhost:1234/v1 for LM Studio (default: the provider's)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--no-ai"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "never ask a language model, even if configured",
+     "group": "failure diagnosis"
+    }
+   ],
+   "actions": [],
+   "examples": [
+    {
+     "command": "karma run",
+     "what": "Run the tests affected by your branch and uncommitted work"
+    },
+    {
+     "command": "karma run --explain",
+     "what": "Show why each test was selected"
+    },
+    {
+     "command": "karma run --granularity function",
+     "what": "Only the test functions that use what changed"
+    },
+    {
+     "command": "karma run --prioritize -- -x",
+     "what": "Likeliest failures first; stop at the first one"
+    },
+    {
+     "command": "karma run --retries 2",
+     "what": "Re-run failures; a pass on retry is reported as flaky"
+    },
+    {
+     "command": "karma run --diagnose",
+     "what": "Explain each failure: the changed lines behind it"
+    },
+    {
+     "command": "karma run --staged",
+     "what": "Only what is staged for commit (pre-commit hook)"
+    },
+    {
+     "command": "karma run --all",
+     "what": "The whole suite, still recorded in the history"
+    }
+   ],
+   "pytest_args": true,
+   "help": "select affected tests and run them with pytest"
+  },
+  {
+   "name": "select",
+   "description": "Print the tests affected by your change, e.g.: pytest $(karma select)",
+   "options": [
+    {
+     "flags": [
+      "--repo"
+     ],
+     "positional": false,
+     "metavar": "DIR",
+     "kind": "value",
+     "choices": null,
+     "default": ".",
+     "help": "project directory to analyse (default: .)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--no-cache"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "do not read or write the cache",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--jobs"
+     ],
+     "positional": false,
+     "metavar": "N",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "worker processes for parsing (default: CPU count)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--base"
+     ],
+     "positional": false,
+     "metavar": "REF",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "branch or commit the change will merge into (default: $KARMA_BASE, the pull request base on GitHub Actions, origin/HEAD, or main/master)",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--head"
+     ],
+     "positional": false,
+     "metavar": "REF",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "compare this commit instead of the working tree",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--staged"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "only changes staged for commit",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--files"
+     ],
+     "positional": false,
+     "metavar": "PATH",
+     "kind": "list",
+     "choices": null,
+     "default": null,
+     "help": "treat these files as changed; skip git",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--all"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "select every test",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--on-git-error"
+     ],
+     "positional": false,
+     "metavar": "ON_GIT_ERROR",
+     "kind": "choice",
+     "choices": [
+      "fail",
+      "run-all"
+     ],
+     "default": "fail",
+     "help": "if changes cannot be determined: fail (default) or run the full suite",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--explain"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "show why each test was selected",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--granularity"
+     ],
+     "positional": false,
+     "metavar": "GRANULARITY",
+     "kind": "choice",
+     "choices": [
+      "file",
+      "function"
+     ],
+     "default": null,
+     "help": "select whole test files, or only the test functions and classes that use a changed function, class or constant (default: [tool.karma] granularity, else file)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--prioritize"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "order tests by predicted risk of failure, learned from local history",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--ci"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "write GitHub Actions outputs, summary and annotations",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--format"
+     ],
+     "positional": false,
+     "metavar": "FORMAT",
+     "kind": "choice",
+     "choices": [
+      "text",
+      "lines",
+      "json"
+     ],
+     "default": "text",
+     "help": "text: space-separated (default); lines: one per line; json: full details",
+     "group": "general"
+    }
+   ],
+   "actions": [],
+   "examples": [
+    {
+     "command": "pytest $(karma select)",
+     "what": "Hand the selection to your own pytest command"
+    },
+    {
+     "command": "karma select --format json",
+     "what": "Tests, reasons and risk for tooling"
+    },
+    {
+     "command": "karma select --granularity function --explain",
+     "what": "Which test functions use the changed code, and through what"
+    },
+    {
+     "command": "karma select --files app/models.py",
+     "what": "What would a change to this file affect?"
+    },
+    {
+     "command": "karma select --base origin/develop --explain",
+     "what": "Compare against another branch"
+    }
+   ],
+   "pytest_args": false,
+   "help": "print the affected tests without running them"
+  },
+  {
+   "name": "diagnose",
+   "description": "Explain the failures of the last `karma run`, or of a JUnit report: the changed lines in each traceback, why the test ran and its history. Nothing leaves the machine unless --ai is given; --show-prompt prints what would be sent.",
+   "options": [
+    {
+     "flags": [
+      "--repo"
+     ],
+     "positional": false,
+     "metavar": "DIR",
+     "kind": "value",
+     "choices": null,
+     "default": ".",
+     "help": "project directory to analyse (default: .)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--no-cache"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "do not read or write the cache",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--jobs"
+     ],
+     "positional": false,
+     "metavar": "N",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "worker processes for parsing (default: CPU count)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--base"
+     ],
+     "positional": false,
+     "metavar": "REF",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "branch or commit the change will merge into (default: $KARMA_BASE, the pull request base on GitHub Actions, origin/HEAD, or main/master)",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--head"
+     ],
+     "positional": false,
+     "metavar": "REF",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "compare this commit instead of the working tree",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--staged"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "only changes staged for commit",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--files"
+     ],
+     "positional": false,
+     "metavar": "PATH",
+     "kind": "list",
+     "choices": null,
+     "default": null,
+     "help": "treat these files as changed; skip git",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--all"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "select every test",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--on-git-error"
+     ],
+     "positional": false,
+     "metavar": "ON_GIT_ERROR",
+     "kind": "choice",
+     "choices": [
+      "fail",
+      "run-all"
+     ],
+     "default": "fail",
+     "help": "if changes cannot be determined: fail (default) or run the full suite",
+     "group": "what counts as changed"
+    },
+    {
+     "flags": [
+      "--report"
+     ],
+     "positional": false,
+     "metavar": "XML",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "diagnose this JUnit XML report (e.g. a CI artifact) instead of the last run",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--max"
+     ],
+     "positional": false,
+     "metavar": "N",
+     "kind": "value",
+     "choices": null,
+     "default": 3,
+     "help": "diagnose at most N distinct failures (default: 3)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--format"
+     ],
+     "positional": false,
+     "metavar": "FORMAT",
+     "kind": "choice",
+     "choices": [
+      "text",
+      "markdown",
+      "json"
+     ],
+     "default": "text",
+     "help": "text (default), markdown for a pull request comment, or json",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--ai"
+     ],
+     "positional": false,
+     "metavar": "PROVIDER",
+     "kind": "choice",
+     "choices": [
+      "anthropic",
+      "ollama",
+      "openai"
+     ],
+     "default": null,
+     "help": "also ask a language model to explain failures: anthropic, ollama (a model on this machine) or openai (any OpenAI-compatible server). Off by default; it is sent each failure's traceback and the relevant diff (default: [tool.karma] ai)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--ai-model"
+     ],
+     "positional": false,
+     "metavar": "NAME",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "model to ask (default for anthropic: claude-sonnet-5; required for ollama and openai)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--ai-url"
+     ],
+     "positional": false,
+     "metavar": "URL",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "API base URL, e.g. http://localhost:1234/v1 for LM Studio (default: the provider's)",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--no-ai"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "never ask a language model, even if configured",
+     "group": "failure diagnosis"
+    },
+    {
+     "flags": [
+      "--show-prompt"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "print exactly what would be sent to the model, and send nothing",
+     "group": "failure diagnosis"
+    }
+   ],
+   "actions": [],
+   "examples": [
+    {
+     "command": "karma diagnose",
+     "what": "Explain the last run's failures, all locally"
+    },
+    {
+     "command": "karma diagnose --ai ollama --ai-model qwen2.5-coder",
+     "what": "Ask a model on your machine"
+    },
+    {
+     "command": "karma diagnose --ai anthropic",
+     "what": "Ask Claude (uses your ANTHROPIC_API_KEY)"
+    },
+    {
+     "command": "karma diagnose --ai anthropic --show-prompt",
+     "what": "See exactly what would be sent"
+    },
+    {
+     "command": "karma diagnose --report junit.xml --format markdown",
+     "what": "A CI report, as Markdown"
+    }
+   ],
+   "pytest_args": false,
+   "help": "explain why tests failed: the suspect changes, history, and optionally AI"
+  },
+  {
+   "name": "graph",
+   "description": "Print the dependency graph.",
+   "options": [
+    {
+     "flags": [
+      "--repo"
+     ],
+     "positional": false,
+     "metavar": "DIR",
+     "kind": "value",
+     "choices": null,
+     "default": ".",
+     "help": "project directory to analyse (default: .)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--no-cache"
+     ],
+     "positional": false,
+     "metavar": null,
+     "kind": "flag",
+     "choices": null,
+     "default": null,
+     "help": "do not read or write the cache",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--jobs"
+     ],
+     "positional": false,
+     "metavar": "N",
+     "kind": "value",
+     "choices": null,
+     "default": null,
+     "help": "worker processes for parsing (default: CPU count)",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--format"
+     ],
+     "positional": false,
+     "metavar": "FORMAT",
+     "kind": "choice",
+     "choices": [
+      "json",
+      "dot",
+      "mermaid"
+     ],
+     "default": "json",
+     "help": "json (default), dot for Graphviz, or mermaid for GitHub and docs",
+     "group": "general"
+    }
+   ],
+   "actions": [],
+   "examples": [
+    {
+     "command": "karma graph --format mermaid",
+     "what": "Paste into a GitHub comment or README"
+    },
+    {
+     "command": "karma graph --format dot | dot -Tsvg > deps.svg",
+     "what": "Render with Graphviz"
+    }
+   ],
+   "pytest_args": false,
+   "help": "print the dependency graph"
+  },
+  {
+   "name": "history",
+   "description": "Summarise .karma_cache/history.jsonl, the data --prioritize learns from. --import seeds it from existing JUnit XML reports (e.g. CI artifacts).",
+   "options": [
+    {
+     "flags": [
+      "--repo"
+     ],
+     "positional": false,
+     "metavar": "DIR",
+     "kind": "value",
+     "choices": null,
+     "default": ".",
+     "help": "project directory",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--import"
+     ],
+     "positional": false,
+     "metavar": "REPORT",
+     "kind": "list",
+     "choices": null,
+     "default": null,
+     "help": "JUnit XML reports",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--format"
+     ],
+     "positional": false,
+     "metavar": "FORMAT",
+     "kind": "choice",
+     "choices": [
+      "text",
+      "json"
+     ],
+     "default": "text",
+     "help": "text (default) or json",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--top"
+     ],
+     "positional": false,
+     "metavar": "N",
+     "kind": "value",
+     "choices": null,
+     "default": 10,
+     "help": "rows per list",
+     "group": "general"
+    }
+   ],
+   "actions": [],
+   "examples": [
+    {
+     "command": "karma history",
+     "what": "Most-failing, flaky and slowest tests"
+    },
+    {
+     "command": "karma history --import reports/*.xml",
+     "what": "Seed the history from old CI reports"
+    },
+    {
+     "command": "karma history --format json",
+     "what": "Per-test statistics for tooling"
+    }
+   ],
+   "pytest_args": false,
+   "help": "show the recorded test history; import JUnit reports into it"
+  },
+  {
+   "name": "flaky",
+   "description": "Manage the quarantine registry (karma-quarantine.toml): quarantined tests still run, but their failures do not fail the build.",
+   "options": [
+    {
+     "flags": [
+      "--repo"
+     ],
+     "positional": false,
+     "metavar": "DIR",
+     "kind": "value",
+     "choices": null,
+     "default": ".",
+     "help": "project directory",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--format"
+     ],
+     "positional": false,
+     "metavar": "FORMAT",
+     "kind": "choice",
+     "choices": [
+      "text",
+      "json"
+     ],
+     "default": "text",
+     "help": "text (default) or json",
+     "group": "general"
+    }
+   ],
+   "actions": [
+    {
+     "name": "flaky quarantine",
+     "description": "",
+     "options": [
+      {
+       "flags": [
+        "--repo"
+       ],
+       "positional": false,
+       "metavar": "DIR",
+       "kind": "value",
+       "choices": null,
+       "default": null,
+       "help": "project",
+       "group": "general"
+      },
+      {
+       "flags": [
+        "ids"
+       ],
+       "positional": true,
+       "metavar": "ID",
+       "kind": "list",
+       "choices": null,
+       "default": null,
+       "help": "",
+       "group": "positional arguments"
+      },
+      {
+       "flags": [
+        "--reason"
+       ],
+       "positional": false,
+       "metavar": "REASON",
+       "kind": "value",
+       "choices": null,
+       "default": "",
+       "help": "why it is quarantined",
+       "group": "general"
+      },
+      {
+       "flags": [
+        "--issue"
+       ],
+       "positional": false,
+       "metavar": "ISSUE",
+       "kind": "value",
+       "choices": null,
+       "default": "",
+       "help": "link to the tracking issue",
+       "group": "general"
+      }
+     ],
+     "actions": [],
+     "examples": [],
+     "pytest_args": false,
+     "help": "quarantine tests by pytest node id"
+    },
+    {
+     "name": "flaky release",
+     "description": "",
+     "options": [
+      {
+       "flags": [
+        "--repo"
+       ],
+       "positional": false,
+       "metavar": "DIR",
+       "kind": "value",
+       "choices": null,
+       "default": null,
+       "help": "project",
+       "group": "general"
+      },
+      {
+       "flags": [
+        "ids"
+       ],
+       "positional": true,
+       "metavar": "ID",
+       "kind": "list",
+       "choices": null,
+       "default": null,
+       "help": "",
+       "group": "positional arguments"
+      }
+     ],
+     "actions": [],
+     "examples": [],
+     "pytest_args": false,
+     "help": "take tests out of quarantine"
+    },
+    {
+     "name": "flaky sync",
+     "description": "",
+     "options": [
+      {
+       "flags": [
+        "--repo"
+       ],
+       "positional": false,
+       "metavar": "DIR",
+       "kind": "value",
+       "choices": null,
+       "default": null,
+       "help": "project",
+       "group": "general"
+      },
+      {
+       "flags": [
+        "--min-flakes"
+       ],
+       "positional": false,
+       "metavar": "N",
+       "kind": "value",
+       "choices": null,
+       "default": 2,
+       "help": "confirmed flaky in at least N runs (default: 2)",
+       "group": "general"
+      },
+      {
+       "flags": [
+        "--heal-after"
+       ],
+       "positional": false,
+       "metavar": "N",
+       "kind": "value",
+       "choices": null,
+       "default": 10,
+       "help": "release after passing N runs in a row (default: 10)",
+       "group": "general"
+      },
+      {
+       "flags": [
+        "--dry-run"
+       ],
+       "positional": false,
+       "metavar": null,
+       "kind": "flag",
+       "choices": null,
+       "default": null,
+       "help": "show changes, write nothing",
+       "group": "general"
+      }
+     ],
+     "actions": [],
+     "examples": [],
+     "pytest_args": false,
+     "help": "quarantine confirmed flaky tests and release healed ones, from the history"
+    }
+   ],
+   "examples": [
+    {
+     "command": "karma flaky",
+     "what": "Quarantined tests with their recent results"
+    },
+    {
+     "command": "karma flaky quarantine \"tests/test_net.py::test_timeout\" --issue https://…",
+     "what": "Quarantine a test"
+    },
+    {
+     "command": "karma flaky release tests/test_net.py::test_timeout",
+     "what": "It is fixed: release it"
+    },
+    {
+     "command": "karma flaky sync --dry-run",
+     "what": "Preview automatic quarantine and release"
+    }
+   ],
+   "pytest_args": false,
+   "help": "list, quarantine and release flaky tests"
+  }
+ ],
+ "action": {
+  "inputs": [
+   {
+    "name": "base-branch",
+    "description": "Git ref to compare against. Default: the pull request's base branch, or the previous commit for a push.",
+    "default": ""
+   },
+   {
+    "name": "command",
+    "description": "`run` to select and run tests with pytest, or `select` to only compute the selection.",
+    "default": "run"
+   },
+   {
+    "name": "python",
+    "description": "Python interpreter to use. It must have pytest and your project's dependencies installed (e.g. set up by actions/setup-python). Default: `python`, else `python3`.",
+    "default": ""
+   },
+   {
+    "name": "pytest-args",
+    "description": "Extra arguments for pytest, separated by spaces (e.g. `-x -n auto`).",
+    "default": ""
+   },
+   {
+    "name": "working-directory",
+    "description": "Directory of the Python project, relative to the repository root.",
+    "default": "."
+   },
+   {
+    "name": "on-git-error",
+    "description": "If changes cannot be determined: `fail`, or `run-all` to run the full suite.",
+    "default": "fail"
+   },
+   {
+    "name": "args",
+    "description": "Extra arguments for Karma itself, separated by spaces (e.g. `--explain`).",
+    "default": ""
+   },
+   {
+    "name": "prioritize",
+    "description": "`true` to run the tests most likely to fail first, predicted from the recorded test history. Combine with `pytest-args: -x` to stop at the first failure.",
+    "default": "false"
+   },
+   {
+    "name": "granularity",
+    "description": "`function` to run only the test functions and classes that use a changed function, class or constant (falling back to whole files wherever that cannot be decided safely); `file` for whole test files. Default: `granularity` in `[tool.karma]`, else `file`.",
+    "default": ""
+   },
+   {
+    "name": "retries",
+    "description": "Re-run failed tests up to this many times. A test that passes on retry is reported as flaky (a warning, not a failure) and recorded for `karma flaky sync`.",
+    "default": "0"
+   },
+   {
+    "name": "cache",
+    "description": "`true` to keep `.karma_cache/` (import cache and test history) between runs with actions/cache, so history accumulates and graphs build faster.",
+    "default": "true"
+   },
+   {
+    "name": "diagnose",
+    "description": "`true` to explain each failure in the job summary and on the diff: the changed lines in its traceback, why the test ran, and its history. Computed locally.",
+    "default": "false"
+   },
+   {
+    "name": "ai",
+    "description": "Also ask a language model to explain failures: `anthropic` (set `ANTHROPIC_API_KEY` in the step's `env` from a secret), `ollama` or `openai` (any OpenAI-compatible server). Off by default; the model is sent each failure's traceback and diff.",
+    "default": ""
+   },
+   {
+    "name": "ai-model",
+    "description": "Model for `ai`; the default for `anthropic` is claude-sonnet-5.",
+    "default": ""
+   }
+  ],
+  "outputs": [
+   {
+    "name": "test_files",
+    "description": "Space-separated list of the selected test files",
+    "default": ""
+   },
+   {
+    "name": "tests-run",
+    "description": "Number of test files that were run",
+    "default": ""
+   },
+   {
+    "name": "selected-count",
+    "description": "Number of test files selected",
+    "default": ""
+   },
+   {
+    "name": "total-count",
+    "description": "Number of test files in the project",
+    "default": ""
+   },
+   {
+    "name": "run-all",
+    "description": "`true` when a change (e.g. to pyproject.toml) selected the whole suite",
+    "default": ""
+   },
+   {
+    "name": "flaky-tests",
+    "description": "Space-separated node ids of tests that failed, then passed on retry",
+    "default": ""
+   }
+  ]
+ },
+ "config": [
+  {
+   "key": "test-patterns",
+   "type": "list",
+   "default": "pytest's python_files",
+   "description": "Which files are tests"
+  },
+  {
+   "key": "source-roots",
+   "type": "list",
+   "default": "[\".\", \"src\"]",
+   "description": "Where top-level packages live"
+  },
+  {
+   "key": "exclude",
+   "type": "list",
+   "default": "[]",
+   "description": "Never selected as tests (still analysed)"
+  },
+  {
+   "key": "run-all-on",
+   "type": "list",
+   "default": "packaging, pytest and dependency files",
+   "description": "Changes that run the whole suite (replaces the defaults)"
+  },
+  {
+   "key": "extend-run-all-on",
+   "type": "list",
+   "default": "[]",
+   "description": "Add to the full-suite triggers"
+  },
+  {
+   "key": "mappings",
+   "type": "table",
+   "default": "{}",
+   "description": "Dependencies imports cannot express, e.g. data files to tests"
+  },
+  {
+   "key": "pytest-args",
+   "type": "list",
+   "default": "[]",
+   "description": "Always passed to pytest"
+  },
+  {
+   "key": "granularity",
+   "type": "string",
+   "default": "\"file\"",
+   "description": "\"function\": run only the test functions using a changed symbol"
+  },
+  {
+   "key": "prioritize",
+   "type": "bool",
+   "default": "false",
+   "description": "Run the tests most likely to fail first"
+  },
+  {
+   "key": "retries",
+   "type": "int",
+   "default": "0",
+   "description": "Re-run failed tests; a pass on retry means flaky"
+  },
+  {
+   "key": "fail-on-flaky",
+   "type": "bool",
+   "default": "false",
+   "description": "Fail the run when a test is flaky"
+  },
+  {
+   "key": "quarantine-file",
+   "type": "string",
+   "default": "\"karma-quarantine.toml\"",
+   "description": "Where quarantined tests are listed"
+  },
+  {
+   "key": "diagnose",
+   "type": "bool",
+   "default": "false",
+   "description": "Explain failures after a run: suspect changes, history"
+  },
+  {
+   "key": "ai",
+   "type": "string",
+   "default": "off",
+   "description": "Also ask a language model: anthropic, ollama or openai"
+  },
+  {
+   "key": "ai-model",
+   "type": "string",
+   "default": "\"claude-sonnet-5\" for anthropic",
+   "description": "The model to ask"
+  },
+  {
+   "key": "ai-url",
+   "type": "string",
+   "default": "the provider's API",
+   "description": "API base URL, e.g. a server on this machine"
+  }
+ ],
+ "benchmarks": {
+  "safety": {
+   "starlette": {
+    "repo": "encode/starlette",
+    "commit": "9774b08",
+    "tests": 1277,
+    "test_files": 31,
+    "modules": [
+     {
+      "module": "starlette/convertors.py",
+      "failing": 8,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/_exception_handler.py",
+      "failing": 20,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/schemas.py",
+      "failing": 1,
+      "selected": 1,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/opentelemetry.py",
+      "failing": 1,
+      "selected": 1,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/exceptions.py",
+      "failing": 9,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/concurrency.py",
+      "failing": 22,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/sessions.py",
+      "failing": 1,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/base.py",
+      "failing": 3,
+      "selected": 4,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/_utils.py",
+      "failing": 7,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/exceptions.py",
+      "failing": 1,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/testclient.py",
+      "failing": 25,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/trustedhost.py",
+      "failing": 2,
+      "selected": 2,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/wsgi.py",
+      "failing": 1,
+      "selected": 1,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/websockets.py",
+      "failing": 8,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/body_limit.py",
+      "failing": 1,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/templating.py",
+      "failing": 1,
+      "selected": 1,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/authentication.py",
+      "failing": 1,
+      "selected": 1,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/httpsredirect.py",
+      "failing": 1,
+      "selected": 1,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/background.py",
+      "failing": 4,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/status.py",
+      "failing": 1,
+      "selected": 7,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/gzip.py",
+      "failing": 2,
+      "selected": 2,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/formparsers.py",
+      "failing": 3,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/staticfiles.py",
+      "failing": 1,
+      "selected": 2,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/endpoints.py",
+      "failing": 3,
+      "selected": 4,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/responses.py",
+      "failing": 1,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/authentication.py",
+      "failing": 1,
+      "selected": 1,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/cors.py",
+      "failing": 1,
+      "selected": 1,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/middleware/errors.py",
+      "failing": 18,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/datastructures.py",
+      "failing": 7,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/applications.py",
+      "failing": 7,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/routing.py",
+      "failing": 9,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     },
+     {
+      "module": "starlette/requests.py",
+      "failing": 23,
+      "selected": 31,
+      "total": 31,
+      "missed": 0
+     }
+    ]
+   },
+   "rich": {
+    "repo": "Textualize/rich",
+    "commit": "9d8f9a3",
+    "tests": 1007,
+    "test_files": 63,
+    "modules": [
+     {
+      "module": "rich/_log_render.py",
+      "failing": 1,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/pretty.py",
+      "failing": 7,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/align.py",
+      "failing": 5,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/columns.py",
+      "failing": 3,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/_null_file.py",
+      "failing": 3,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/_ratio.py",
+      "failing": 10,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/syntax.py",
+      "failing": 3,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/prompt.py",
+      "failing": 1,
+      "selected": 1,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/color.py",
+      "failing": 41,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/json.py",
+      "failing": 3,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/table.py",
+      "failing": 13,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/terminal_theme.py",
+      "failing": 50,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/file_proxy.py",
+      "failing": 3,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/_fileno.py",
+      "failing": 26,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     },
+     {
+      "module": "rich/segment.py",
+      "failing": 37,
+      "selected": 63,
+      "total": 63,
+      "missed": 0
+     }
+    ]
+   }
+  },
+  "prioritization": {
+   "repo": "encode/starlette",
+   "faults": 24,
+   "replays": 20,
+   "orderings": [
+    {
+     "name": "Random",
+     "first_failure": 5.04,
+     "apfd": 0.785
+    },
+    {
+     "name": "Alphabetical",
+     "first_failure": 3.5,
+     "apfd": 0.84
+    },
+    {
+     "name": "Karma, priors only",
+     "first_failure": 2.04,
+     "apfd": 0.896
+    },
+    {
+     "name": "Karma, learned from history",
+     "first_failure": 1.81,
+     "apfd": 0.89
+    }
+   ]
+  },
+  "performance": {
+   "repo": "pandas source tree",
+   "files": 1415,
+   "edges": 8140,
+   "machine": "Windows, 16 logical CPUs",
+   "runs": [
+    {
+     "name": "Cold, one process",
+     "seconds": 3.7
+    },
+    {
+     "name": "Cold, parallel",
+     "seconds": 1.2
+    },
+    {
+     "name": "Warm cache",
+     "seconds": 0.34
+    }
+   ]
+  },
+  "flaky": {
+   "repo": "encode/starlette",
+   "tests": 1277,
+   "deterministic_failures": 14,
+   "retries": 2,
+   "misclassified": 0
+  },
+  "quality": {
+   "tests": 355,
+   "coverage": 97,
+   "pythons": [
+    "3.9",
+    "3.10",
+    "3.11",
+    "3.12",
+    "3.13"
+   ],
+   "os": [
+    "Linux",
+    "macOS",
+    "Windows"
+   ],
+   "ci_jobs": 11
+  },
+  "function_level": {
+   "starlette": {
+    "repo": "encode/starlette",
+    "tests": 1349,
+    "file_level_skipped": 0.188,
+    "function_level_skipped": 0.398,
+    "mutants": [
+     {
+      "mutant": "starlette/middleware/gzip.py::_normalize_content_types",
+      "failing": 23,
+      "selected": 72,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/authentication.py::UnauthenticatedUser.identity",
+      "failing": 2,
+      "selected": 10,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::State.__getitem__",
+      "failing": 3,
+      "selected": 1248,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/routing.py::Route.url_path_for",
+      "failing": 18,
+      "selected": 898,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::Headers.__iter__",
+      "failing": 1,
+      "selected": 1248,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/formparsers.py::MultiPartParser.on_header_end",
+      "failing": 27,
+      "selected": 900,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/middleware/cors.py::CORSMiddleware.is_allowed_origin",
+      "failing": 15,
+      "selected": 36,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/routing.py::WebSocketRoute.__init__",
+      "failing": 6,
+      "selected": 898,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/concurrency.py::iterate_in_threadpool",
+      "failing": 6,
+      "selected": 97,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/responses.py::StreamingResponse.__call__",
+      "failing": 18,
+      "selected": 380,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/convertors.py::IntegerConvertor.to_string",
+      "failing": 1,
+      "selected": 898,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/responses.py::FileResponse._should_use_range",
+      "failing": 5,
+      "selected": 295,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::ImmutableMultiDict.keys",
+      "failing": 9,
+      "selected": 1275,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::CommaSeparatedStrings.__init__",
+      "failing": 1,
+      "selected": 1249,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/routing.py::Router.url_path_for",
+      "failing": 20,
+      "selected": 898,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::MultiDict.__delitem__",
+      "failing": 1,
+      "selected": 1275,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/routing.py::Host.__init__",
+      "failing": 3,
+      "selected": 898,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/testclient.py::TestClient.websocket_connect",
+      "failing": 59,
+      "selected": 1274,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::State.__init__",
+      "failing": 7,
+      "selected": 1248,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/middleware/__init__.py::Middleware.__iter__",
+      "failing": 1,
+      "selected": 900,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/formparsers.py::MultiPartParser.on_end",
+      "failing": 16,
+      "selected": 900,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::MutableHeaders.add_vary_header",
+      "failing": 24,
+      "selected": 1248,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/requests.py::Request.is_disconnected",
+      "failing": 3,
+      "selected": 898,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/testclient.py::TestClient.request",
+      "failing": 357,
+      "selected": 1274,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::UploadFile.__init__",
+      "failing": 23,
+      "selected": 1248,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::QueryParams.__init__",
+      "failing": 5,
+      "selected": 1248,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::URL.netloc",
+      "failing": 18,
+      "selected": 1274,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/routing.py::_AsyncLiftContextManager.__aexit__",
+      "failing": 1,
+      "selected": 898,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/convertors.py::StringConvertor.to_string",
+      "failing": 4,
+      "selected": 898,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/config.py::Config._read_file",
+      "failing": 2,
+      "selected": 5,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::URL.__init__",
+      "failing": 56,
+      "selected": 1274,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/datastructures.py::URL.username",
+      "failing": 3,
+      "selected": 1274,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/formparsers.py::FormParser.on_end",
+      "failing": 6,
+      "selected": 900,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/config.py::Config._perform_cast",
+      "failing": 4,
+      "selected": 5,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/endpoints.py::WebSocketEndpoint.on_connect",
+      "failing": 7,
+      "selected": 75,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/formparsers.py::MultiPartParser.on_part_end",
+      "failing": 24,
+      "selected": 900,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/schemas.py::SchemaGenerator.__init__",
+      "failing": 1,
+      "selected": 4,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/formparsers.py::MultiPartParser.on_part_data",
+      "failing": 18,
+      "selected": 900,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/requests.py::HTTPConnection.state",
+      "failing": 5,
+      "selected": 898,
+      "total": 1349,
+      "missed": 0
+     },
+     {
+      "mutant": "starlette/status.py::__getattr__",
+      "failing": 2,
+      "selected": 366,
+      "total": 1349,
+      "missed": 0
+     }
+    ]
+   },
+   "rich": {
+    "repo": "Textualize/rich",
+    "tests": 1007,
+    "file_level_skipped": 0.123,
+    "function_level_skipped": 0.306,
+    "mutants": [
+     {
+      "mutant": "rich/emoji.py::Emoji.__repr__",
+      "failing": 1,
+      "selected": 6,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/prompt.py::PromptBase.render_default",
+      "failing": 3,
+      "selected": 8,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/logging.py::RichHandler.render_message",
+      "failing": 3,
+      "selected": 4,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/segment.py::Segment.get_line_length",
+      "failing": 45,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/layout.py::Layout.__rich_repr__",
+      "failing": 1,
+      "selected": 6,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/progress.py::Progress.open",
+      "failing": 2,
+      "selected": 39,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/live_render.py::LiveRender.position_cursor",
+      "failing": 17,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/progress.py::_TrackThread.__init__",
+      "failing": 3,
+      "selected": 39,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/text.py::Span.split",
+      "failing": 1,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/color.py::Color.is_default",
+      "failing": 12,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/markdown.py::Paragraph.__rich_console__",
+      "failing": 3,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/measure.py::measure_renderables",
+      "failing": 23,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/markdown.py::ImageItem.create",
+      "failing": 2,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/console.py::Console.size",
+      "failing": 4,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/console.py::Console.__init__",
+      "failing": 1,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/containers.py::Lines.__setitem__",
+      "failing": 2,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/segment.py::Segment.get_shape",
+      "failing": 46,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/console.py::Console.save_svg",
+      "failing": 3,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/style.py::Style.__eq__",
+      "failing": 144,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/markdown.py::MarkdownElement.on_child_close",
+      "failing": 3,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/console.py::Console._theme_stack",
+      "failing": 189,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/_win32_console.py::LegacyWindowsTerm.move_cursor_to",
+      "failing": 3,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/color.py::Color.from_rgb",
+      "failing": 3,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/markdown.py::BlockQuote.__rich_console__",
+      "failing": 2,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/console.py::Console.size",
+      "failing": 4,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/console.py::Console._write_buffer",
+      "failing": 235,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/syntax.py::Syntax._get_token_color",
+      "failing": 3,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/markdown.py::MarkdownContext.on_text",
+      "failing": 8,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/rule.py::Rule.__repr__",
+      "failing": 1,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/protocol.py::is_renderable",
+      "failing": 89,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/live.py::Live.refresh",
+      "failing": 24,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/table.py::Table.add_row",
+      "failing": 48,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/_win32_console.py::LegacyWindowsTerm.erase_line",
+      "failing": 1,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/box.py::Box.get_top",
+      "failing": 27,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/live.py::Live.update",
+      "failing": 9,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/_null_file.py::NullFile.read",
+      "failing": 1,
+      "selected": 820,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/syntax.py::Syntax.highlight",
+      "failing": 23,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/table.py::Table.add_column",
+      "failing": 41,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/console.py::Console._render_buffer",
+      "failing": 234,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     },
+     {
+      "mutant": "rich/containers.py::Lines.__getitem__",
+      "failing": 29,
+      "selected": 819,
+      "total": 1007,
+      "missed": 0
+     }
+    ]
+   }
+  }
+ },
+ "risk": {
+  "features": [
+   "test_changed",
+   "proximity",
+   "failure_rate",
+   "recent_failure",
+   "co_failure",
+   "flakiness",
+   "new_test"
+  ],
+  "prior": {
+   "bias": -3.0,
+   "test_changed": 2.0,
+   "proximity": 1.5,
+   "failure_rate": 3.0,
+   "recent_failure": 2.0,
+   "co_failure": 3.0,
+   "flakiness": 1.0,
+   "new_test": 1.0
+  },
+  "recency": 0.7
+ },
+ "samples": {
+  "billing": {
+   "edges": {
+    "auth/session.py": [],
+    "billing/__init__.py": [],
+    "billing/invoice.py": [
+     "billing/tax.py"
+    ],
+    "billing/tax.py": [],
+    "tests/test_billing_api.py": [
+     "billing/invoice.py"
+    ],
+    "tests/test_invoice.py": [
+     "billing/invoice.py"
+    ],
+    "tests/test_login.py": [
+     "auth/session.py"
+    ],
+    "tests/test_tax.py": [
+     "billing/tax.py"
+    ],
+    "tests/test_theme.py": [
+     "ui/theme.py"
+    ],
+    "ui/theme.py": []
+   },
+   "real": false,
+   "suggest": "billing/tax.py",
+   "title": "Billing service (example)"
+  },
+  "starlette": {
+   "commit": "9774b08",
+   "edges": {
+    "starlette/__init__.py": [],
+    "starlette/_exception_handler.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py",
+     "starlette/exceptions.py",
+     "starlette/requests.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/_utils.py": [
+     "starlette/__init__.py",
+     "starlette/types.py"
+    ],
+    "starlette/applications.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/body_limit.py",
+     "starlette/middleware/errors.py",
+     "starlette/middleware/exceptions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py"
+    ],
+    "starlette/authentication.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/exceptions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/background.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py"
+    ],
+    "starlette/concurrency.py": [
+     "starlette/__init__.py",
+     "starlette/exceptions.py"
+    ],
+    "starlette/config.py": [],
+    "starlette/convertors.py": [],
+    "starlette/datastructures.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py",
+     "starlette/types.py"
+    ],
+    "starlette/endpoints.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py",
+     "starlette/exceptions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/status.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/exceptions.py": [],
+    "starlette/formparsers.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py"
+    ],
+    "starlette/middleware/__init__.py": [],
+    "starlette/middleware/authentication.py": [
+     "starlette/__init__.py",
+     "starlette/authentication.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/base.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/body_limit.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/exceptions.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/cors.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/errors.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/exceptions.py": [
+     "starlette/__init__.py",
+     "starlette/_exception_handler.py",
+     "starlette/exceptions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/middleware/gzip.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/httpsredirect.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/opentelemetry.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/routing.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/sessions.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py",
+     "starlette/requests.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/trustedhost.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/datastructures.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/middleware/wsgi.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/exceptions.py",
+     "starlette/types.py"
+    ],
+    "starlette/requests.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/applications.py",
+     "starlette/datastructures.py",
+     "starlette/exceptions.py",
+     "starlette/formparsers.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/sessions.py",
+     "starlette/routing.py",
+     "starlette/types.py"
+    ],
+    "starlette/responses.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/background.py",
+     "starlette/concurrency.py",
+     "starlette/datastructures.py",
+     "starlette/requests.py",
+     "starlette/types.py"
+    ],
+    "starlette/routing.py": [
+     "starlette/__init__.py",
+     "starlette/_exception_handler.py",
+     "starlette/_utils.py",
+     "starlette/concurrency.py",
+     "starlette/convertors.py",
+     "starlette/datastructures.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/body_limit.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/schemas.py": [
+     "starlette/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py"
+    ],
+    "starlette/staticfiles.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/datastructures.py",
+     "starlette/exceptions.py",
+     "starlette/responses.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/status.py": [
+     "starlette/__init__.py",
+     "starlette/exceptions.py"
+    ],
+    "starlette/templating.py": [
+     "starlette/__init__.py",
+     "starlette/background.py",
+     "starlette/datastructures.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "starlette/testclient.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/exceptions.py",
+     "starlette/types.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/types.py": [
+     "starlette/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/websockets.py"
+    ],
+    "starlette/websockets.py": [
+     "starlette/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/types.py"
+    ],
+    "tests/__init__.py": [],
+    "tests/conftest.py": [
+     "starlette/__init__.py",
+     "starlette/testclient.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/__init__.py": [],
+    "tests/middleware/test_base.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/background.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/base.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_body_limit.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/base.py",
+     "starlette/middleware/body_limit.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_cors.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/cors.py",
+     "starlette/middleware/gzip.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_errors.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/background.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/errors.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_gzip.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/gzip.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_https_redirect.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/httpsredirect.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_middleware.py": [
+     "starlette/__init__.py",
+     "starlette/middleware/__init__.py",
+     "starlette/types.py"
+    ],
+    "tests/middleware/test_opentelemetry.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/opentelemetry.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_session.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/sessions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_trusted_host.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/trustedhost.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/middleware/test_wsgi.py": [
+     "starlette/__init__.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/wsgi.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test__utils.py": [
+     "starlette/__init__.py",
+     "starlette/_utils.py",
+     "starlette/types.py"
+    ],
+    "tests/test_applications.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/endpoints.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/trustedhost.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/staticfiles.py",
+     "starlette/status.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_authentication.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/authentication.py",
+     "starlette/endpoints.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/authentication.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_background.py": [
+     "starlette/__init__.py",
+     "starlette/background.py",
+     "starlette/responses.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_concurrency.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/concurrency.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_config.py": [
+     "starlette/__init__.py",
+     "starlette/config.py",
+     "starlette/datastructures.py"
+    ],
+    "tests/test_convertors.py": [
+     "starlette/__init__.py",
+     "starlette/convertors.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_datastructures.py": [
+     "starlette/__init__.py",
+     "starlette/datastructures.py"
+    ],
+    "tests/test_endpoints.py": [
+     "starlette/__init__.py",
+     "starlette/endpoints.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/status.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_exceptions.py": [
+     "starlette/__init__.py",
+     "starlette/_exception_handler.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/exceptions.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_formparsers.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/datastructures.py",
+     "starlette/formparsers.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_requests.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/datastructures.py",
+     "starlette/middleware/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_responses.py": [
+     "starlette/__init__.py",
+     "starlette/background.py",
+     "starlette/datastructures.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/status.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_routing.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_schemas.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/endpoints.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/schemas.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_staticfiles.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/base.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/staticfiles.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_status.py": [
+     "starlette/__init__.py",
+     "starlette/exceptions.py",
+     "starlette/status.py"
+    ],
+    "tests/test_templates.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/middleware/__init__.py",
+     "starlette/middleware/base.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/templating.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_testclient.py": [
+     "starlette/__init__.py",
+     "starlette/applications.py",
+     "starlette/exceptions.py",
+     "starlette/middleware/__init__.py",
+     "starlette/requests.py",
+     "starlette/responses.py",
+     "starlette/routing.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/test_websockets.py": [
+     "starlette/__init__.py",
+     "starlette/responses.py",
+     "starlette/status.py",
+     "starlette/testclient.py",
+     "starlette/types.py",
+     "starlette/websockets.py",
+     "tests/__init__.py",
+     "tests/types.py"
+    ],
+    "tests/types.py": [
+     "starlette/__init__.py",
+     "starlette/testclient.py",
+     "starlette/types.py"
+    ]
+   },
+   "real": true,
+   "suggest": "starlette/middleware/cors.py",
+   "title": "encode/starlette"
+  }
+ },
+ "demo": {
+  "files": {
+   "billing/__init__.py": "",
+   "billing/money.py": "from decimal import ROUND_HALF_UP, Decimal\n\n\ndef to_cents(amount):\n    return int((Decimal(str(amount)) * 100).quantize(Decimal(\"1\"), ROUND_HALF_UP))\n\n\ndef format_eur(cents):\n    return f\"€{cents / 100:.2f}\"\n",
+   "billing/tax.py": "RATES = {\"eu\": 0.20, \"uk\": 0.20, \"us\": 0.07}\n\n\ndef rate(region):\n    return RATES.get(region, 0.0)\n\n\ndef tax_for(amount, region):\n    return amount * rate(region)\n",
+   "billing/discounts.py": "def loyalty(amount, years):\n    return amount * min(years, 10) * 0.01\n\n\ndef coupon(code):\n    return 5.0 if code == \"WELCOME5\" else 0.0\n",
+   "billing/invoice.py": "from billing.discounts import coupon, loyalty\nfrom billing.money import format_eur, to_cents\nfrom billing.tax import tax_for\n\n\nclass Invoice:\n    def __init__(self, amount, region, years=0, code=None):\n        self.amount = amount\n        self.region = region\n        self.years = years\n        self.code = code\n\n    def subtotal(self):\n        return self.amount - loyalty(self.amount, self.years) - coupon(self.code)\n\n    def total(self):\n        return self.subtotal() + tax_for(self.subtotal(), self.region)\n\n    def render(self):\n        return format_eur(to_cents(self.total()))\n\n\ndef quick_total(amount, region):\n    return amount + tax_for(amount, region)\n",
+   "billing/reports.py": "from billing.money import format_eur\n\n\ndef summary(invoices):\n    return format_eur(sum(invoice.amount for invoice in invoices) * 100)\n",
+   "tests/conftest.py": "import pytest\n\nfrom billing.invoice import Invoice\n\n\n@pytest.fixture\ndef eu_invoice():\n    return Invoice(100.0, \"eu\")\n",
+   "tests/test_tax.py": "from billing.tax import rate, tax_for\n\n\ndef test_known_region():\n    assert rate(\"eu\") == 0.20\n\n\ndef test_unknown_region():\n    assert rate(\"mars\") == 0.0\n\n\ndef test_tax_for():\n    assert tax_for(50, \"us\") == 3.5\n",
+   "tests/test_discounts.py": "from billing.discounts import coupon, loyalty\n\n\ndef test_loyalty_caps_at_ten_years():\n    assert loyalty(100, 25) == 10\n\n\ndef test_coupon():\n    assert coupon(\"WELCOME5\") == 5.0\n",
+   "tests/test_money.py": "from billing.money import format_eur, to_cents\n\n\ndef test_to_cents_rounds():\n    assert to_cents(0.125) == 13\n\n\ndef test_format_eur():\n    assert format_eur(1999) == \"€19.99\"\n",
+   "tests/test_invoice.py": "from billing.invoice import quick_total\n\n\ndef test_total(eu_invoice):\n    assert eu_invoice.total() == 115.0\n\n\ndef test_render(eu_invoice):\n    assert eu_invoice.render() == \"€115.00\"\n\n\ndef test_quick_total():\n    assert quick_total(10, \"uk\") == 12.0\n",
+   "tests/test_reports.py": "from billing.reports import summary\n\n\nclass Amount:\n    def __init__(self, amount):\n        self.amount = amount\n\n\ndef test_summary():\n    assert summary([Amount(1), Amount(2)]) == \"€3.00\"\n"
+  },
+  "symbols": {
+   "billing/money.py": [
+    {
+     "name": "to_cents",
+     "kind": "function",
+     "start": 4,
+     "end": 5
+    },
+    {
+     "name": "format_eur",
+     "kind": "function",
+     "start": 8,
+     "end": 9
+    }
+   ],
+   "billing/tax.py": [
+    {
+     "name": "RATES",
+     "kind": "constant",
+     "start": 1,
+     "end": 1
+    },
+    {
+     "name": "rate",
+     "kind": "function",
+     "start": 4,
+     "end": 5
+    },
+    {
+     "name": "tax_for",
+     "kind": "function",
+     "start": 8,
+     "end": 9
+    }
+   ],
+   "billing/discounts.py": [
+    {
+     "name": "loyalty",
+     "kind": "function",
+     "start": 1,
+     "end": 2
+    },
+    {
+     "name": "coupon",
+     "kind": "function",
+     "start": 5,
+     "end": 6
+    }
+   ],
+   "billing/invoice.py": [
+    {
+     "name": "Invoice.subtotal",
+     "kind": "method",
+     "start": 13,
+     "end": 14
+    },
+    {
+     "name": "Invoice.total",
+     "kind": "method",
+     "start": 16,
+     "end": 17
+    },
+    {
+     "name": "Invoice.render",
+     "kind": "method",
+     "start": 19,
+     "end": 20
+    },
+    {
+     "name": "quick_total",
+     "kind": "function",
+     "start": 23,
+     "end": 24
+    }
+   ],
+   "billing/reports.py": [
+    {
+     "name": "summary",
+     "kind": "function",
+     "start": 4,
+     "end": 5
+    }
+   ]
+  },
+  "tests": {
+   "tests/test_tax.py": [
+    "test_known_region",
+    "test_unknown_region",
+    "test_tax_for"
+   ],
+   "tests/test_discounts.py": [
+    "test_loyalty_caps_at_ten_years",
+    "test_coupon"
+   ],
+   "tests/test_money.py": [
+    "test_to_cents_rounds",
+    "test_format_eur"
+   ],
+   "tests/test_invoice.py": [
+    "test_total",
+    "test_render",
+    "test_quick_total"
+   ],
+   "tests/test_reports.py": [
+    "test_summary"
+   ]
+  },
+  "total_tests": 11,
+  "changes": [
+   {
+    "file": "billing/money.py",
+    "symbol": "to_cents",
+    "kind": "function",
+    "start": 4,
+    "end": 5,
+    "file_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/money.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/money.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "billing/money.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "billing/reports.py",
+       "billing/money.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/money.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_invoice.py",
+      "tests/test_money.py"
+     ],
+     "targets": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::test_total",
+      "tests/test_money.py::test_to_cents_rounds"
+     ],
+     "file_reasons": {
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/money.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "billing/money.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_invoice.py::test_render": [
+       "tests/test_invoice.py::test_render",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/money.py::to_cents (changed, line 4)"
+      ],
+      "tests/test_invoice.py::test_total": [
+       "tests/test_invoice.py::test_total",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/money.py::to_cents (changed, line 4)"
+      ],
+      "tests/test_money.py::test_to_cents_rounds": [
+       "tests/test_money.py::test_to_cents_rounds",
+       "billing/money.py::to_cents (changed, line 4)"
+      ]
+     },
+     "narrowed_out": [
+      "tests/test_discounts.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ]
+    }
+   },
+   {
+    "file": "billing/money.py",
+    "symbol": "format_eur",
+    "kind": "function",
+    "start": 8,
+    "end": 9,
+    "file_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/money.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/money.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "billing/money.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "billing/reports.py",
+       "billing/money.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/money.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py"
+     ],
+     "targets": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::test_total",
+      "tests/test_money.py::test_format_eur",
+      "tests/test_reports.py::test_summary"
+     ],
+     "file_reasons": {
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/money.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "billing/money.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "billing/reports.py",
+       "billing/money.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_invoice.py::test_render": [
+       "tests/test_invoice.py::test_render",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/money.py::format_eur (changed, line 8)"
+      ],
+      "tests/test_invoice.py::test_total": [
+       "tests/test_invoice.py::test_total",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/money.py::format_eur (changed, line 8)"
+      ],
+      "tests/test_money.py::test_format_eur": [
+       "tests/test_money.py::test_format_eur",
+       "billing/money.py::format_eur (changed, line 8)"
+      ],
+      "tests/test_reports.py::test_summary": [
+       "tests/test_reports.py::test_summary",
+       "billing/reports.py::summary",
+       "billing/money.py::format_eur (changed, line 8)"
+      ]
+     },
+     "narrowed_out": [
+      "tests/test_discounts.py",
+      "tests/test_tax.py"
+     ]
+    }
+   },
+   {
+    "file": "billing/tax.py",
+    "symbol": "RATES",
+    "kind": "constant",
+    "start": 1,
+    "end": 1,
+    "file_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "billing/tax.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_invoice.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_invoice.py::test_quick_total",
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::test_total",
+      "tests/test_tax.py::test_known_region",
+      "tests/test_tax.py::test_tax_for",
+      "tests/test_tax.py::test_unknown_region"
+     ],
+     "file_reasons": {
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "billing/tax.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_invoice.py::test_quick_total": [
+       "tests/test_invoice.py::test_quick_total",
+       "billing/invoice.py::quick_total",
+       "billing/tax.py::tax_for",
+       "billing/tax.py::rate",
+       "billing/tax.py::RATES (changed, line 1)"
+      ],
+      "tests/test_invoice.py::test_render": [
+       "tests/test_invoice.py::test_render",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/tax.py::tax_for",
+       "billing/tax.py::rate",
+       "billing/tax.py::RATES (changed, line 1)"
+      ],
+      "tests/test_invoice.py::test_total": [
+       "tests/test_invoice.py::test_total",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/tax.py::tax_for",
+       "billing/tax.py::rate",
+       "billing/tax.py::RATES (changed, line 1)"
+      ],
+      "tests/test_tax.py::test_known_region": [
+       "tests/test_tax.py::test_known_region",
+       "billing/tax.py::rate",
+       "billing/tax.py::RATES (changed, line 1)"
+      ],
+      "tests/test_tax.py::test_tax_for": [
+       "tests/test_tax.py::test_tax_for",
+       "billing/tax.py::tax_for",
+       "billing/tax.py::rate",
+       "billing/tax.py::RATES (changed, line 1)"
+      ],
+      "tests/test_tax.py::test_unknown_region": [
+       "tests/test_tax.py::test_unknown_region",
+       "billing/tax.py::rate",
+       "billing/tax.py::RATES (changed, line 1)"
+      ]
+     },
+     "narrowed_out": [
+      "tests/test_discounts.py",
+      "tests/test_money.py",
+      "tests/test_reports.py"
+     ]
+    }
+   },
+   {
+    "file": "billing/tax.py",
+    "symbol": "rate",
+    "kind": "function",
+    "start": 4,
+    "end": 5,
+    "file_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "billing/tax.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_invoice.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_invoice.py::test_quick_total",
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::test_total",
+      "tests/test_tax.py::test_known_region",
+      "tests/test_tax.py::test_tax_for",
+      "tests/test_tax.py::test_unknown_region"
+     ],
+     "file_reasons": {
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "billing/tax.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_invoice.py::test_quick_total": [
+       "tests/test_invoice.py::test_quick_total",
+       "billing/invoice.py::quick_total",
+       "billing/tax.py::tax_for",
+       "billing/tax.py::rate (changed, line 4)"
+      ],
+      "tests/test_invoice.py::test_render": [
+       "tests/test_invoice.py::test_render",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/tax.py::tax_for",
+       "billing/tax.py::rate (changed, line 4)"
+      ],
+      "tests/test_invoice.py::test_total": [
+       "tests/test_invoice.py::test_total",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/tax.py::tax_for",
+       "billing/tax.py::rate (changed, line 4)"
+      ],
+      "tests/test_tax.py::test_known_region": [
+       "tests/test_tax.py::test_known_region",
+       "billing/tax.py::rate (changed, line 4)"
+      ],
+      "tests/test_tax.py::test_tax_for": [
+       "tests/test_tax.py::test_tax_for",
+       "billing/tax.py::tax_for",
+       "billing/tax.py::rate (changed, line 4)"
+      ],
+      "tests/test_tax.py::test_unknown_region": [
+       "tests/test_tax.py::test_unknown_region",
+       "billing/tax.py::rate (changed, line 4)"
+      ]
+     },
+     "narrowed_out": [
+      "tests/test_discounts.py",
+      "tests/test_money.py",
+      "tests/test_reports.py"
+     ]
+    }
+   },
+   {
+    "file": "billing/tax.py",
+    "symbol": "tax_for",
+    "kind": "function",
+    "start": 8,
+    "end": 9,
+    "file_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "billing/tax.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_invoice.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_invoice.py::test_quick_total",
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::test_total",
+      "tests/test_tax.py::test_tax_for"
+     ],
+     "file_reasons": {
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/tax.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "billing/tax.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_invoice.py::test_quick_total": [
+       "tests/test_invoice.py::test_quick_total",
+       "billing/invoice.py::quick_total",
+       "billing/tax.py::tax_for (changed, line 8)"
+      ],
+      "tests/test_invoice.py::test_render": [
+       "tests/test_invoice.py::test_render",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/tax.py::tax_for (changed, line 8)"
+      ],
+      "tests/test_invoice.py::test_total": [
+       "tests/test_invoice.py::test_total",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/tax.py::tax_for (changed, line 8)"
+      ],
+      "tests/test_tax.py::test_tax_for": [
+       "tests/test_tax.py::test_tax_for",
+       "billing/tax.py::tax_for (changed, line 8)"
+      ]
+     },
+     "narrowed_out": [
+      "tests/test_discounts.py",
+      "tests/test_money.py",
+      "tests/test_reports.py"
+     ]
+    }
+   },
+   {
+    "file": "billing/discounts.py",
+    "symbol": "loyalty",
+    "kind": "function",
+    "start": 1,
+    "end": 2,
+    "file_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "billing/discounts.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/discounts.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/discounts.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/discounts.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/discounts.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py::test_loyalty_caps_at_ten_years",
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::test_total"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "billing/discounts.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/discounts.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_discounts.py::test_loyalty_caps_at_ten_years": [
+       "tests/test_discounts.py::test_loyalty_caps_at_ten_years",
+       "billing/discounts.py::loyalty (changed, line 1)"
+      ],
+      "tests/test_invoice.py::test_render": [
+       "tests/test_invoice.py::test_render",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/discounts.py::loyalty (changed, line 1)"
+      ],
+      "tests/test_invoice.py::test_total": [
+       "tests/test_invoice.py::test_total",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/discounts.py::loyalty (changed, line 1)"
+      ]
+     },
+     "narrowed_out": [
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ]
+    }
+   },
+   {
+    "file": "billing/discounts.py",
+    "symbol": "coupon",
+    "kind": "function",
+    "start": 5,
+    "end": 6,
+    "file_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "billing/discounts.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/discounts.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/discounts.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/discounts.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "tests/conftest.py",
+       "billing/invoice.py",
+       "billing/discounts.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py::test_coupon",
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::test_total"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "billing/discounts.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py",
+       "billing/discounts.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_discounts.py::test_coupon": [
+       "tests/test_discounts.py::test_coupon",
+       "billing/discounts.py::coupon (changed, line 5)"
+      ],
+      "tests/test_invoice.py::test_render": [
+       "tests/test_invoice.py::test_render",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/discounts.py::coupon (changed, line 5)"
+      ],
+      "tests/test_invoice.py::test_total": [
+       "tests/test_invoice.py::test_total",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice",
+       "billing/discounts.py::coupon (changed, line 5)"
+      ]
+     },
+     "narrowed_out": [
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ]
+    }
+   },
+   {
+    "file": "billing/invoice.py",
+    "symbol": "Invoice.subtotal",
+    "kind": "method",
+    "start": 13,
+    "end": 14,
+    "file_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_invoice.py"
+     ],
+     "targets": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::test_total"
+     ],
+     "file_reasons": {
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_invoice.py::test_render": [
+       "tests/test_invoice.py::test_render",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice (changed, line 6)"
+      ],
+      "tests/test_invoice.py::test_total": [
+       "tests/test_invoice.py::test_total",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice (changed, line 6)"
+      ]
+     },
+     "narrowed_out": [
+      "tests/test_discounts.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ]
+    }
+   },
+   {
+    "file": "billing/invoice.py",
+    "symbol": "Invoice.total",
+    "kind": "method",
+    "start": 16,
+    "end": 17,
+    "file_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_invoice.py"
+     ],
+     "targets": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::test_total"
+     ],
+     "file_reasons": {
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_invoice.py::test_render": [
+       "tests/test_invoice.py::test_render",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice (changed, line 6)"
+      ],
+      "tests/test_invoice.py::test_total": [
+       "tests/test_invoice.py::test_total",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice (changed, line 6)"
+      ]
+     },
+     "narrowed_out": [
+      "tests/test_discounts.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ]
+    }
+   },
+   {
+    "file": "billing/invoice.py",
+    "symbol": "Invoice.render",
+    "kind": "method",
+    "start": 19,
+    "end": 20,
+    "file_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_invoice.py"
+     ],
+     "targets": [
+      "tests/test_invoice.py::test_render",
+      "tests/test_invoice.py::test_total"
+     ],
+     "file_reasons": {
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_invoice.py::test_render": [
+       "tests/test_invoice.py::test_render",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice (changed, line 6)"
+      ],
+      "tests/test_invoice.py::test_total": [
+       "tests/test_invoice.py::test_total",
+       "tests/test_invoice.py::eu_invoice",
+       "tests/conftest.py::eu_invoice",
+       "billing/invoice.py::Invoice (changed, line 6)"
+      ]
+     },
+     "narrowed_out": [
+      "tests/test_discounts.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ]
+    }
+   },
+   {
+    "file": "billing/invoice.py",
+    "symbol": "quick_total",
+    "kind": "function",
+    "start": 23,
+    "end": 24,
+    "file_level": {
+     "files": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "targets": [
+      "tests/test_discounts.py",
+      "tests/test_invoice.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ],
+     "file_reasons": {
+      "tests/test_discounts.py": [
+       "tests/test_discounts.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_money.py": [
+       "tests/test_money.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ],
+      "tests/test_tax.py": [
+       "tests/test_tax.py",
+       "tests/conftest.py",
+       "billing/invoice.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_invoice.py"
+     ],
+     "targets": [
+      "tests/test_invoice.py::test_quick_total"
+     ],
+     "file_reasons": {
+      "tests/test_invoice.py": [
+       "tests/test_invoice.py",
+       "billing/invoice.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_invoice.py::test_quick_total": [
+       "tests/test_invoice.py::test_quick_total",
+       "billing/invoice.py::quick_total (changed, line 23)"
+      ]
+     },
+     "narrowed_out": [
+      "tests/test_discounts.py",
+      "tests/test_money.py",
+      "tests/test_reports.py",
+      "tests/test_tax.py"
+     ]
+    }
+   },
+   {
+    "file": "billing/reports.py",
+    "symbol": "summary",
+    "kind": "function",
+    "start": 4,
+    "end": 5,
+    "file_level": {
+     "files": [
+      "tests/test_reports.py"
+     ],
+     "targets": [
+      "tests/test_reports.py"
+     ],
+     "file_reasons": {
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "billing/reports.py"
+      ]
+     },
+     "item_reasons": {},
+     "narrowed_out": []
+    },
+    "function_level": {
+     "files": [
+      "tests/test_reports.py"
+     ],
+     "targets": [
+      "tests/test_reports.py::test_summary"
+     ],
+     "file_reasons": {
+      "tests/test_reports.py": [
+       "tests/test_reports.py",
+       "billing/reports.py"
+      ]
+     },
+     "item_reasons": {
+      "tests/test_reports.py::test_summary": [
+       "tests/test_reports.py::test_summary",
+       "billing/reports.py::summary (changed, line 4)"
+      ]
+     },
+     "narrowed_out": []
+    }
+   }
+  ]
+ }
+}

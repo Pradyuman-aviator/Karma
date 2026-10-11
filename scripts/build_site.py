@@ -5,8 +5,11 @@ inputs and outputs from action.yml, configuration keys from karma.config, and th
 benchmark figures from docs/benchmarks.json. The result is embedded in the page, so
 the site always documents exactly what the tool does.
 
-    python scripts/build_site.py          # update docs/index.html
-    python scripts/build_site.py --check  # exit 1 if the page is out of date (used in tests)
+The same data, plus the function-level demo (docs/demo.json, from build_demo.py), feeds
+the Next.js site in site/ as site/src/data/karma.json.
+
+    python scripts/build_site.py          # update docs/index.html and site/src/data/karma.json
+    python scripts/build_site.py --check  # exit 1 if either is out of date (used in tests)
 """
 
 from __future__ import annotations
@@ -29,6 +32,8 @@ from karma.risk import FEATURES, PRIOR, RECENCY  # noqa: E402
 PAGE = ROOT / "docs" / "index.html"
 BENCHMARKS = ROOT / "docs" / "benchmarks.json"
 SAMPLES = ROOT / "docs" / "samples.json"
+DEMO = ROOT / "docs" / "demo.json"
+SITE_DATA = ROOT / "site" / "src" / "data" / "karma.json"
 START = '<script id="karma-data" type="application/json">'
 END = "</script>"
 
@@ -231,7 +236,19 @@ def config_reference() -> list[dict[str, str]]:
 
 
 def render_data() -> str:
-    data = {
+    # `</` could end the <script> element early; JSON allows the escaped form.
+    return json.dumps(data_dict(), ensure_ascii=False, indent=1).replace("</", "<\\/")
+
+
+def render_site_data() -> str:
+    """The Next.js site's data: the same, plus the function-level demo."""
+    data = data_dict()
+    data["demo"] = json.loads(DEMO.read_text(encoding="utf-8"))
+    return json.dumps(data, ensure_ascii=False, indent=1) + "\n"
+
+
+def data_dict() -> dict[str, Any]:
+    return {
         "version": __version__,
         "commands": cli_reference(),
         "action": action_reference(),
@@ -242,8 +259,6 @@ def render_data() -> str:
         # Dependency graphs (`karma graph --format json`) for the playground.
         "samples": json.loads(SAMPLES.read_text(encoding="utf-8")),
     }
-    # `</` could end the <script> element early; JSON allows the escaped form.
-    return json.dumps(data, ensure_ascii=False, indent=1).replace("</", "<\\/")
 
 
 def embedded(page: str) -> str:
@@ -257,13 +272,19 @@ def main() -> int:
     args = parser.parse_args()
     page = PAGE.read_text(encoding="utf-8")
     data = render_data()
+    site_data = render_site_data()
     if args.check:
-        if embedded(page) != data:
+        current = SITE_DATA.read_text(encoding="utf-8") if SITE_DATA.exists() else ""
+        if embedded(page) != data or current != site_data:
             print(
-                "docs/index.html is out of date: run python scripts/build_site.py", file=sys.stderr
+                "docs/index.html or site/src/data/karma.json is out of date: "
+                "run python scripts/build_site.py",
+                file=sys.stderr,
             )
             return 1
         return 0
+    SITE_DATA.parent.mkdir(parents=True, exist_ok=True)
+    SITE_DATA.write_text(site_data, encoding="utf-8", newline="\n")
     start = page.index(START) + len(START)
     page = page[:start] + data + page[page.index(END, start) :]
     PAGE.write_text(page, encoding="utf-8", newline="\n")

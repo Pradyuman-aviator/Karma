@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import json
+import os
+import subprocess
+import sys
 import textwrap
 from dataclasses import replace
+from pathlib import Path
 
 import pytest
 
@@ -17,6 +21,7 @@ from karma.selector import Selection, select_tests
 from karma.symbols import diff_units
 from tests.helpers import GitRepo
 
+ROOT = Path(__file__).resolve().parent.parent
 FUNCTION = Config(granularity="function")
 
 TAX = """\
@@ -530,3 +535,20 @@ class TestOutput:
         ]
         assert cli.main(argv) == cli.EXIT_OK
         assert capsys.readouterr().out.split() == data["targets"]
+
+    def test_explanations_are_the_same_on_every_run(self, repo: GitRepo) -> None:
+        project(repo)
+        edit(repo, "app/tax.py", "return RATE", "return RATE * 1")
+        outputs = set()
+        command = ["-m", "karma", "-q", "select", "--granularity", "function", "--format", "json"]
+        for seed in ("1", "2", "3"):
+            proc = subprocess.run(
+                [sys.executable, *command],
+                cwd=repo.path,
+                env={**os.environ, "PYTHONHASHSEED": seed, "PYTHONPATH": str(ROOT)},
+                capture_output=True,
+                text=True,
+                check=True,
+            )
+            outputs.add(proc.stdout)
+        assert len(outputs) == 1

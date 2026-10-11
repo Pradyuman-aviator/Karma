@@ -287,7 +287,7 @@ def diff_units(
         if loaded_before != resolver.resolve(path, new.imports):
             return FileChange(True, why="imports a different set of modules")
     names: dict[str, int] = {}
-    for name in old.units.keys() | new.units.keys():
+    for name in sorted(old.units.keys() | new.units.keys()):
         was, now = old.units.get(name), new.units.get(name)
         if was is None or now is None or was[0] != now[0]:
             names[name] = (now or was or ("", 0))[1]
@@ -873,13 +873,13 @@ class _Engine:
         ):
             directory = path.rpartition("/")[0]
             prefix = f"{directory}/" if directory else ""
-            for target in self.candidates:
+            for target in sorted(self.candidates):
                 fixtures_visible = target in self.test_set or target.endswith("/conftest.py")
                 if target != path and target.startswith(prefix) and fixtures_visible:
                     self.mark(target, unit.fixture_alias or name, here)
 
     def _changed(self, path: str) -> None:
-        for dependent in self.reverse(path) | {path}:
+        for dependent in sorted(self.reverse(path) | {path}):
             if (dependent, path) not in self._queued:
                 self._queued.add((dependent, path))
                 self.queue.append((dependent, path))
@@ -888,7 +888,7 @@ class _Engine:
                 self.make_whole(test, (path, WHOLE))
         for pattern, targets in self.config.mappings:
             if matches_any(path, [pattern]):
-                for target in self.graph.files:
+                for target in sorted(self.graph.files):
                     if matches_any(target, targets):
                         self.make_whole(target, (path, WHOLE))
 
@@ -903,7 +903,7 @@ class _Engine:
         if module is not None and depth < 8:
             unit = module.units.get(name)
             if unit is not None and unit.kind == "import":
-                for origin in unit.refs:
+                for origin in _ordered(unit.refs):
                     self.mark_key(origin, via, depth + 1)
 
     def kind(self, key: Key, depth: int = 0) -> str:
@@ -924,16 +924,16 @@ class _Engine:
         if unit.dynamic or unit.creation_hook:
             self.make_whole(module.path, here)
             return
-        for key in unit.writes:
+        for key in _ordered(unit.writes):
             self.mark_key(key, here)
-        for key in unit.arg_keys | unit.deco_receivers:
+        for key in _ordered(unit.arg_keys | unit.deco_receivers):
             if self.kind(key) == "data":
                 self.mark_key(key, here)
-        for key in unit.deco_funcs:
+        for key in _ordered(unit.deco_funcs):
             target = self.module(key[0])
             decorator = target.units.get(key[1] or "") if target is not None else None
             if decorator is not None and decorator.kind == "def":
-                for written in decorator.writes:
+                for written in _ordered(decorator.writes):
                     self.mark_key(written, here)
 
     # ------------------------------------------------------------------ fixpoint
@@ -989,7 +989,7 @@ class _Engine:
         return (path, WHOLE) if path in self.whole else (path, min(self.names[path]))
 
     def _first_hit(self, unit: _Unit) -> tuple[str, str] | None:
-        for key in unit.refs:
+        for key in _ordered(unit.refs):
             found = self.hit(key)
             if found is not None:
                 return found
@@ -1011,7 +1011,7 @@ class _Engine:
                 dropped.append(test)
                 continue
             items[test] = tuple(f"{test}::{name}" for name in sorted(selected))
-            for name in selected:
+            for name in sorted(selected):
                 reasons[f"{test}::{name}"] = self.chain(test, name)
         return Refinement(items, reasons, tuple(dropped), dict(changes))
 
@@ -1021,7 +1021,7 @@ class _Engine:
         functions = self.config.python_functions
         classes = self.config.python_classes
         selected = []
-        for name in names:
+        for name in sorted(names):
             unit = module.units.get(name)
             test_like = _pytest_match(name, functions) or _pytest_match(name, classes)
             if unit is None:
@@ -1070,6 +1070,11 @@ class _Engine:
                 out.append(label)
             key = via
         return tuple(out)
+
+
+def _ordered(keys: Iterable[Key]) -> list[Key]:
+    """A stable order, so explanations are the same on every run."""
+    return sorted(keys, key=lambda key: (key[0], key[1] or ""))
 
 
 def _pytest_match(name: str, patterns: Sequence[str]) -> bool:
