@@ -1388,7 +1388,7 @@ retries = 2
 </div>
 
 <script id="karma-data" type="application/json">{
- "version": "3.3.0",
+ "version": "3.4.0",
  "commands": [
   {
    "name": "run",
@@ -1515,6 +1515,21 @@ retries = 2
      "choices": null,
      "default": null,
      "help": "show why each test was selected",
+     "group": "general"
+    },
+    {
+     "flags": [
+      "--granularity"
+     ],
+     "positional": false,
+     "metavar": "GRANULARITY",
+     "kind": "choice",
+     "choices": [
+      "file",
+      "function"
+     ],
+     "default": null,
+     "help": "select whole test files, or only the test functions and classes that use a changed function, class or constant (default: [tool.karma] granularity, else file)",
      "group": "general"
     },
     {
@@ -1663,6 +1678,10 @@ retries = 2
     {
      "command": "karma run --explain",
      "what": "Show why each test was selected"
+    },
+    {
+     "command": "karma run --granularity function",
+     "what": "Only the test functions that use what changed"
     },
     {
      "command": "karma run --prioritize -- -x",
@@ -1817,6 +1836,21 @@ retries = 2
     },
     {
      "flags": [
+      "--granularity"
+     ],
+     "positional": false,
+     "metavar": "GRANULARITY",
+     "kind": "choice",
+     "choices": [
+      "file",
+      "function"
+     ],
+     "default": null,
+     "help": "select whole test files, or only the test functions and classes that use a changed function, class or constant (default: [tool.karma] granularity, else file)",
+     "group": "general"
+    },
+    {
+     "flags": [
       "--prioritize"
      ],
      "positional": false,
@@ -1865,6 +1899,10 @@ retries = 2
     {
      "command": "karma select --format json",
      "what": "Tests, reasons and risk for tooling"
+    },
+    {
+     "command": "karma select --granularity function --explain",
+     "what": "Which test functions use the changed code, and through what"
     },
     {
      "command": "karma select --files app/models.py",
@@ -2518,6 +2556,11 @@ retries = 2
     "default": "false"
    },
    {
+    "name": "granularity",
+    "description": "`function` to run only the test functions and classes that use a changed function, class or constant (falling back to whole files wherever that cannot be decided safely); `file` for whole test files. Default: `granularity` in `[tool.karma]`, else `file`.",
+    "default": ""
+   },
+   {
     "name": "retries",
     "description": "Re-run failed tests up to this many times. A test that passes on retry is reported as flaky (a warning, not a failure) and recorded for `karma flaky sync`.",
     "default": "0"
@@ -2618,6 +2661,12 @@ retries = 2
    "type": "list",
    "default": "[]",
    "description": "Always passed to pytest"
+  },
+  {
+   "key": "granularity",
+   "type": "string",
+   "default": "\"file\"",
+   "description": "\"function\": run only the test functions using a changed symbol"
   },
   {
    "key": "prioritize",
