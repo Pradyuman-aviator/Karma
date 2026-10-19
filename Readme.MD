@@ -23,7 +23,9 @@ tests/test_settings.py
 
 Karma reads your git diff, builds a dependency graph from your imports, and runs **only the tests that can be affected**. Every selected test comes with the chain of imports that selected it, so you can check its reasoning.
 
-**Website: [pradyuman-aviator.github.io/Karma](https://pradyuman-aviator.github.io/Karma/)** has the full tour: a playground on starlette's real dependency graph (or paste your own), a live demo of the risk model, interactive benchmarks, CI setup for GitHub Actions, GitLab, Jenkins, CircleCI and pre-commit, a savings calculator, a command explorer that builds any `karma` command, and a pitch mode for presenting (add `#pitch` to the link to open it directly). The page is [`docs/index.html`](docs/index.html); its commands, Action inputs and configuration are generated from the source by `scripts/build_site.py`, and the Website workflow publishes it to GitHub Pages whenever it changes on `main`.
+**🌐 Live site: [site-chi-seven-45.vercel.app](https://site-chi-seven-45.vercel.app/)**: an interactive function-level demo on a real project, a step-by-step simulation of how Karma decides, starlette's real dependency graph with the blast radius of every file, and the validation results. Its source is [`site/`](site/) (Next.js).
+
+The original single-page site, **[pradyuman-aviator.github.io/Karma](https://pradyuman-aviator.github.io/Karma/)**, has the full tour: a playground on starlette's real dependency graph (or paste your own), a live demo of the risk model, interactive benchmarks, CI setup for GitHub Actions, GitLab, Jenkins, CircleCI and pre-commit, a savings calculator, a command explorer that builds any `karma` command, and a pitch mode for presenting (add `#pitch` to the link to open it directly). The page is [`docs/index.html`](docs/index.html); its commands, Action inputs and configuration are generated from the source by `scripts/build_site.py`, and the Website workflow publishes it to GitHub Pages whenever it changes on `main`.
 
 ---
 
